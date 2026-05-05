@@ -26,3 +26,5 @@ testdata/**             linguist-vendored=true
 # Treat HTML/CSV fixtures as binary-ish: don't munge whitespace.
 testdata/**/*.html      -text
 testdata/**/*.csv       -text
+# .eml fixtures must keep CRLF line endings per RFC 5322.
+testdata/**/*.eml       -text

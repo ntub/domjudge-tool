@@ -13,4 +13,7 @@ func init() { //nolint:gochecknoinits // registry wiring per CLAUDE.md
 
 func register(root *cobra.Command) {
 	root.AddCommand(NewSendUserAccountsCmd(DefaultDeps()))
+	root.AddCommand(NewTemplateExampleCmd())
+	root.AddCommand(NewTemplateValidateCmd())
+	root.AddCommand(NewRenderUserAccountsCmd())
 }

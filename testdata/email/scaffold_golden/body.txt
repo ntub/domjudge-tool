@@ -1,0 +1,9 @@
+Hello $name ($affiliation),
+
+Your DOMjudge account credentials:
+  Username: $username
+  Password: $password
+  Email:    $email
+  Server:   $server_host
+
+Please log in at https://$server_host and change your password.
