@@ -1,0 +1,11 @@
+From: noreply@test.example.com
+To: testuser@example.org
+Subject: Hello testuser, your password is testpass on http://example.test
+Date: Mon, 15 Jan 2024 12:00:00 +0000
+Message-ID: <aabbccddeeff1122.1705320000000000000@test.example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: base64
+
+PHA+SGVsbG8gVGVzdCBVc2VyIChOVFVCKSwgZW1haWw6IHRlc3R1c2VyQGV4YW1wbGUub3JnPC9w
+Pgo=

@@ -13,6 +13,21 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
+// nowFn and randRead are package-level seams replaced by tests via
+// SetDeterministicSeams to make buildMessage byte-deterministic.
+var (
+	nowFn    = time.Now
+	randRead = rand.Read
+)
+
+// SetDeterministicSeams replaces nowFn and randRead for deterministic
+// testing. Returns a restore function; call from t.Cleanup.
+func SetDeterministicSeams(now func() time.Time, rnd func([]byte) (int, error)) func() {
+	prevNow, prevRand := nowFn, randRead
+	nowFn, randRead = now, rnd
+	return func() { nowFn, randRead = prevNow, prevRand }
+}
+
 // SendOptions configures a SendUserAccounts call.
 type SendOptions struct {
 	FromEmail string // From: header value and recipient-fallback domain source
@@ -44,15 +59,11 @@ func SendUserAccounts(
 	if err := tmpl.Validate(); err != nil {
 		return err
 	}
-	domain := domainFromEmail(opts.FromEmail)
 	for _, user := range users {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("email: send: %w", err)
 		}
-		vars := templateVars(user, cfg)
-		subject, body := tmpl.Render(vars)
-		recipient := recipientFor(user, domain)
-		msg, err := buildMessage(opts.FromEmail, recipient, subject, body, tmpl.BodyHTML, domain)
+		msg, recipient, err := BuildEML(tmpl, user, cfg, opts)
 		if err != nil {
 			return fmt.Errorf("email: build message for %s: %w", user.Username, err)
 		}
@@ -122,7 +133,7 @@ func buildMessage(from, to, subject, body string, isHTML bool, domain string) ([
 	fmt.Fprintf(&sb, "From: %s\r\n", from)
 	fmt.Fprintf(&sb, "To: %s\r\n", to)
 	fmt.Fprintf(&sb, "Subject: %s\r\n", subject)
-	fmt.Fprintf(&sb, "Date: %s\r\n", time.Now().Format(time.RFC1123Z))
+	fmt.Fprintf(&sb, "Date: %s\r\n", nowFn().Format(time.RFC1123Z))
 	fmt.Fprintf(&sb, "Message-ID: %s\r\n", msgID)
 	sb.WriteString("MIME-Version: 1.0\r\n")
 	fmt.Fprintf(&sb, "Content-Type: %s\r\n", contentType)
@@ -153,8 +164,8 @@ func wrapBase64(body string) string {
 // makeMessageID returns "<<random_hex>.<unix_nano>@<domain>>".
 func makeMessageID(domain string) (string, error) {
 	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return "", fmt.Errorf("email: random bytes: %w", err)
 	}
-	return fmt.Sprintf("<%s.%d@%s>", hex.EncodeToString(b[:]), time.Now().UnixNano(), domain), nil
+	return fmt.Sprintf("<%s.%d@%s>", hex.EncodeToString(b[:]), nowFn().UnixNano(), domain), nil
 }
