@@ -2,6 +2,11 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
+      "Bash(rg *)",
+      "Bash(sed *)",
+      "Bash(wc *)",
+      "Bash(ls *)",
+      "Bash(just)",
       "Bash(just *)",
       "Bash(go test:*)",
       "Bash(go build:*)",
@@ -15,10 +20,35 @@
       "Bash(gofumpt:*)",
       "Bash(gofmt:*)",
       "Bash(git status)",
+      "Bash(git status *)",
       "Bash(git log:*)",
       "Bash(git diff:*)",
       "Bash(git branch:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(npx -y ctx7@latest *)",
+      "Bash(npx ctx7@latest *)"
+    ],
+    "ask": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git reset:*)",
+      "Bash(git push:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./tmp/**)",
+      "Read(./domserver.json)",
+      "Read(./domserver.*.json)",
+      "Bash(git push --force:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push -f:*)"
     ]
   },
   "hooks": {
@@ -28,7 +58,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "gofumpt -w \"$CLAUDE_FILE_PATHS\" 2>/dev/null || true"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/format-go.sh",
+            "timeout": 30
           }
         ]
       }
@@ -39,17 +70,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "(just check 2>&1 | tail -20) || true"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.sh",
+            "timeout": 5
           }
         ]
       }

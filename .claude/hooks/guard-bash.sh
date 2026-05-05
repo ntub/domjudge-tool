@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 #
-# guard-bash.sh — PreToolUse guardrail for Bash commands.
+# guard-bash.sh - PreToolUse guardrail for Bash commands.
 #
 # Reads the proposed Bash command from stdin (Claude Code passes the tool
-# input as JSON on stdin) and rejects two specific footguns:
+# input as JSON on stdin) and rejects a few repository-level footguns:
 #
-#   1. Force-pushing to main / master (`git push --force[-with-lease] ... main|master`).
-#   2. Recursive deletion of repo-rooted absolute paths (`rm -rf /Users/.../domjudge-tool*`).
+#   1. Force-pushing to main/master.
+#   2. Hard resets and broad git clean operations.
+#   3. Recursive deletion of the repo root or broad repo globs.
 #
 # All other commands pass through. Exit 0 = allow, exit 2 = block.
 #
-# This is intentionally narrow — see .claude/settings.json for context.
+# This is intentionally narrow; see .claude/settings.json for context.
 
 set -uo pipefail
 
@@ -33,8 +34,8 @@ if [ -z "$cmd" ]; then
 fi
 
 block() {
-    # Stderr message is shown to the user; non-zero exit blocks the call.
-    printf 'guard-bash.sh: blocked — %s\n' "$1" >&2
+    # Stderr is shown to the user; non-zero exit blocks the call.
+    printf 'guard-bash.sh: blocked - %s\n' "$1" >&2
     printf 'command: %s\n' "$cmd" >&2
     exit 2
 }
@@ -46,10 +47,22 @@ if printf '%s' "$cmd" | grep -Eq 'git[[:space:]]+push([[:space:]]+[^|;&]*)?[[:sp
     fi
 fi
 
-# 2) rm -rf of any absolute path that points inside the project root or its parent.
+# 2) Destructive git state operations.
+if printf '%s' "$cmd" | grep -Eq '(^|[[:space:]|;&])git[[:space:]]+reset[[:space:]]+--hard([[:space:]]|$)'; then
+    block "git reset --hard is not allowed from Claude Code"
+fi
+
+if printf '%s' "$cmd" | grep -Eq '(^|[[:space:]|;&])git[[:space:]]+clean[[:space:]]+(-[a-zA-Z]*f[a-zA-Z]*d|-d[[:space:]]+-f|-f[[:space:]]+-d)'; then
+    block "git clean -fd style commands are not allowed from Claude Code"
+fi
+
+# 3) rm -rf of the repo root, broad repo globs, or repo-rooted absolute paths.
 if printf '%s' "$cmd" | grep -Eq 'rm[[:space:]]+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r|-rf|-fr|--recursive[[:space:]]+--force|--force[[:space:]]+--recursive)'; then
+    if printf '%s' "$cmd" | grep -Eq '(^|[[:space:]"'"'"'])(\.|\.\/|\*|\.\/\*|/|[$][{]?CLAUDE_PROJECT_DIR[}]?)([[:space:]"'"'"']|$)'; then
+        block "rm -rf against the repo root or broad globs is not allowed"
+    fi
     if printf '%s' "$cmd" | grep -Eq '(^|[[:space:]"'"'"'])/Users/[^[:space:]"'"'"']*domjudge-tool'; then
-        block "rm -rf against an absolute repo path is not allowed; use git clean or remove specific files"
+        block "rm -rf against an absolute repo path is not allowed"
     fi
 fi
 

@@ -7,7 +7,7 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 | File                 | Purpose                                                       |
 | -------------------- | ------------------------------------------------------------- |
 | `README.md`          | Front door for new users. Install + quick start.              |
-| `CLAUDE.md`          | Instructions for Claude Code. Short, concrete, actionable.    |
+| `CLAUDE.md`          | Shared coding-agent instructions. `AGENTS.md` symlinks here.  |
 | `CONTRIBUTING.md`    | How to set up and submit a change.                            |
 | `CHANGELOG.md`       | Release history. Generated from Conventional Commits.         |
 | `docs/ARCHITECTURE.md` | Layered design + package responsibilities.                  |
@@ -22,8 +22,9 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 
 - **README.md** — only when a user-visible feature ships, or when install /
   setup steps change. Don't dump architecture into it.
-- **CLAUDE.md** — when an agent should be told something it currently
-  guesses wrong. Keep it ≤ 150 lines; defer detail to `docs/`.
+- **CLAUDE.md** — when coding agents should be told something they currently
+  guess wrong. Keep it short; defer detail to `docs/`. Keep `AGENTS.md` as a
+  symlink to this file for Codex.
 - **`docs/ARCHITECTURE.md`** — when a package is added, removed, or
   significantly reshaped.
 - **`docs/CONVENTIONS.md`** — when a new style rule is agreed.

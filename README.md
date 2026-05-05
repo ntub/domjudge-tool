@@ -95,8 +95,8 @@ Run `just` (no args) to list every available task.
 
 ## Documentation
 
-- [`CLAUDE.md`](CLAUDE.md) — instructions for Claude Code working in
-  this repo.
+- [`CLAUDE.md`](CLAUDE.md) — shared instructions for Claude Code and Codex.
+  `AGENTS.md` is a symlink for Codex compatibility.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch / commit / PR workflow.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layered design and
   package responsibilities.

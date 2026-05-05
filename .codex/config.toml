@@ -1,0 +1,10 @@
+# Project-scoped Codex defaults for domjudge-tool.
+# User-level ~/.codex/config.toml still owns personal model/provider choices.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+project_doc_max_bytes = 24000
+project_doc_fallback_filenames = ["CLAUDE.md"]
+
+[sandbox_workspace_write]
+network_access = false

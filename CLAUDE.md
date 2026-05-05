@@ -1,150 +1,130 @@
-# CLAUDE.md
+# Project Agent Instructions
 
-Instructions for Claude Code working in this repository. This file is
-loaded into context for every session — keep it short, concrete, and
-actionable. Defer detail to `docs/`.
+Instructions for coding agents in this repository. `AGENTS.md` is a symlink to
+this file so Codex and Claude Code share one source of truth.
 
 ## Project
 
-`domjudge-tool` is a Go-based CLI (and, eventually, desktop app) for
-managing DOMjudge contest servers. It's a multi-phase rewrite of the
-Python `ntub-inc/domjudge-tool-cli` 0.3.0. **Phase 1 is feature parity
-with the Python CLI for DOMjudge 7.3.2.** See `docs/ROADMAP.md` for the
-full phase plan.
+- `domjudge-tool` is a Go CLI, and later a desktop app, for managing DOMjudge
+  contest servers.
+- Current shipped milestone: Phase 1.5 (`v1.1.0`), API-first for DOMjudge
+  7.3.x with scraper fallback. Phase 2 adds DOMjudge 8.3.1. Phase 3 adds the
+  desktop app.
+- Preserve Python CLI compatibility from Phase 1 unless the user explicitly
+  asks to change behavior.
 
-## Tech stack
+## First Reads
 
-- **Go 1.23+** (declared in `go.mod`; local dev on newer versions is fine).
-- **Cobra** (added in Phase 1) — CLI framework.
-- **goquery** (added in Phase 1) — HTML scraping for the web UI gateway.
-  **Pinned at v1.10.3** — v1.12+ bumps the Go directive to 1.25, breaking
-  the `go 1.23` module declaration.
-- **`net/http`**, **`encoding/json`**, **`encoding/csv`** — standard library.
-- **just** — task runner. **lefthook** — git hooks. **golangci-lint** —
-  linter. **git-cliff** — changelog from Conventional Commits.
+- Before adding, removing, or reshaping packages, read `docs/ARCHITECTURE.md`.
+- Before style, test, commit, or docs changes, read the matching file under
+  `docs/`: `CONVENTIONS.md`, `TESTING.md`, `COMMITS.md`, or
+  `DOCUMENTATION.md`.
+- For Phase 1.5 routing/API behavior, read
+  `docs/adr/0006-api-first-with-scraper-fallback.md` and
+  `docs/phase1.5/SPEC.md`.
 
-## Environment quirks
+## Workflow
 
-- `lefthook` prints "Can't find lefthook in PATH" on every commit — expected,
-  ignorable. Commits still succeed; hooks run where lefthook is installed.
-- `golangci-lint` lives at `/opt/homebrew/bin/golangci-lint` on the dev
-  machine (`just lint` also works).
+- Start by checking `git status --short`; do not overwrite or revert changes
+  you did not make.
+- Prefer `rg` and `rg --files` for search.
+- Keep edits narrow and aligned with existing package boundaries.
+- Use structured parsers/APIs when available instead of ad hoc string parsing.
+- When a third-party library, SDK, API, CLI, framework, or cloud service is
+  involved, fetch current docs with Context7:
+  `npx -y ctx7@latest library "<name>" "<question>"`, then
+  `npx -y ctx7@latest docs <library-id> "<question>"`.
+- Do not add dependencies unless they are necessary, compatible with Go 1.23,
+  and consistent with this repo's phase plan.
 
-## Common commands
+## Commands
 
-| Command                      | What it does                                      |
-| ---------------------------- | ------------------------------------------------- |
-| `just`                       | List all tasks.                                   |
-| `just setup`                 | `go mod download` + `lefthook install` + tool hints. |
-| `just build`                 | Build `./bin/domjudge-tool`.                      |
-| `just run -- <args>`         | Run the CLI from source.                          |
-| `just test` / `just test-race` | Tests; race detector variant.                   |
-| `just cover`                 | HTML coverage at `coverage.html`.                 |
-| `just fmt`                   | Format with gofumpt (fallback: gofmt -s).         |
-| `just vet` / `just lint`     | `go vet` / `golangci-lint run`.                   |
-| `just privacy-check`         | TruffleHog secrets scan + project PII gates.      |
-| `just check`                 | `fmt + vet + lint + privacy-check + test`. Used by CI. |
-| `just changelog-unreleased`  | Preview pending changelog entries.                |
+- `just` lists tasks.
+- `just setup` installs project dependencies and hooks.
+- `just build` builds `./bin/domjudge-tool`.
+- `just test` runs the test suite; use `just test-race` for concurrency work.
+- `just fmt` formats with gofumpt or `gofmt -s`.
+- `just vet` and `just lint` run static checks.
+- `just privacy-check` runs secret and PII gates.
+- `just check` runs the full local gate used by CI.
 
-## Code conventions
+## Architecture
 
-- Errors wrap with `%w`. Sentinel errors use `errors.Is` / `errors.As`.
-- I/O functions take `ctx context.Context` as the **first** parameter.
-- No `init()` outside registry wiring.
-- No `log.Fatal` in library code.
-- Imports are grouped by `gci`: stdlib → third-party → `github.com/ntub/...`.
-- Full rules: `docs/CONVENTIONS.md`.
+- `cmd/domjudge-tool` stays tiny: version wiring and handoff to `internal/cli`.
+- `internal/cli` owns Cobra command wiring, flag parsing, and user-facing
+  output.
+- Use-case packages (`internal/importer`, `internal/exporter`,
+  `internal/email`, `internal/scoreboard`) orchestrate behavior.
+- DOMjudge REST API code lives under `internal/client/api/v4`; HTML scraping
+  lives under `internal/client/web`.
+- `internal/client/httpx` is the shared place for HTTP transport concerns.
+- `internal/model`, `internal/config`, and `internal/util` are leaf packages.
+- Library packages return data/errors or use structured `slog`; they do not
+  print directly.
 
-## Testing
+## Go Rules
 
-- Standard library `testing` only. **Do not add testify or ginkgo.**
-- Table-driven, `t.Run(tc.name, ...)`.
-- Fixtures in `testdata/<package>/<case>.{html,json,csv}`.
-- `testdata/web/v7/` fixtures are sanitized snapshots from production DOMjudge
-  DOMjudge 7.3.4. Do NOT re-capture or edit without re-running the 8 PII
-  grep gates in `testdata/web/v7/CAPTURE.md`.
-- **Never** hit a real DOMjudge from a test — always `httptest.Server`.
-- Full rules: `docs/TESTING.md`.
+- Go 1.23+ is the module target. Do not upgrade the module directive casually.
+- `goquery` stays pinned at v1.10.3 unless an ADR changes the Go-version
+  tradeoff.
+- Wrap errors with `%w`; use `errors.Is` / `errors.As` for sentinel errors.
+- I/O functions take `ctx context.Context` as the first parameter.
+- Do not use `init()` except for registry wiring.
+- Imports follow `gci`: standard library, third-party, then
+  `github.com/ntub/domjudge-tool/...`.
+- Tests use only the standard library `testing` package. Do not add testify or
+  ginkgo.
+- Prefer table-driven tests with `t.Run(tc.name, ...)`.
 
-## Privacy and secrets
+## Compatibility Locks
 
-Hard rule: **PII, secrets, credentials, raw production captures, and
-environment-identifying details must not enter tracked files, docs,
-fixtures, commit messages, tag messages, branch names, or git history.**
+- Do not break `domserver.json` field names, types, or defaults.
+- Preserve existing CLI command names, flag names, and output file names.
+- Preserve `import-users-teams.csv` column order.
+- Do not silently fix locked v7 scraper quirks. In particular, `DeleteUsers`
+  and `DeleteTeams` preserve the known inverted-filter behavior; changing it
+  requires tests and an ADR.
+- Never hit a real DOMjudge, SMTP server, or production endpoint from tests.
+  Use `httptest.Server` and sanitized fixtures.
 
-- Before committing any docs, scripts, fixtures, live-validation notes, or
-  generated outputs, run `just privacy-check`.
-- TruffleHog covers generic secrets/API keys/tokens. The project PII gate
-  covers known DOMjudge hostnames, school/maintainer tokens, student ids,
-  course/cohort tokens, private IPs, non-example emails, and unsanitized
-  fixture content.
-- Use aliases and reserved examples in committed text: `example.org`,
+## Privacy
+
+- PII, secrets, raw production captures, credentials, real DOMjudge URLs,
+  private IPs, personal emails, student/course identifiers, cookies, and CSRF
+  values must not enter tracked files or git history.
+- Use reserved examples in committed text: `example.org`,
   `test-station.example.org`, `prod-station.example.org`, `192.0.2.1`,
-  `203.0.113.10`, `user1@example.org`, `/path/to/domjudge-tool`.
-- Keep raw captures, local configs, credentials, live-test outputs, and
-  production-derived files only under ignored local paths such as `tmp/`,
-  `tmp/raw_api_v4/`, or outside the repo.
-- Do not commit real DOMjudge URLs, real public IPs, local absolute paths,
-  personal usernames/emails in examples, passwords, API tokens, cookies,
-  CSRF/session values, student/course data, or production contest names.
-- `README.md` and `LICENSE` may retain the author's public attribution.
+  `203.0.113.10`, `user1@example.org`, and `/path/to/domjudge-tool`.
+- Keep raw captures, local configs, live-test outputs, and generated private
+  data in ignored locations such as `tmp/`, `tmp/raw_api_v4/`, or outside the
+  repo.
+- Before committing docs, scripts, fixtures, live-validation notes, or
+  generated outputs, run `just privacy-check`.
 
-## Commit messages
+## Documentation And Commits
 
-Conventional Commits, enforced by `commit-msg` hook and CI. Cheat sheet:
-`docs/COMMITS.md`. **Don't bypass the hook with `--no-verify`.**
+- Update `README.md` only for user-visible features or setup/install changes.
+- Update `docs/ARCHITECTURE.md` when packages are added, removed, or reshaped.
+- Add an ADR for decisions that are non-obvious, hard to reverse, or cross
+  package boundaries.
+- Use Conventional Commits. Do not bypass hooks with `--no-verify`.
 
-TDD commit triplet per issue: `test(<scope>): red — <desc>` →
-`feat(<scope>): green — <desc>` → optional `refactor(<scope>): <desc>`.
+## Claude Code
 
-## Merging a PR
+- Shared Claude Code settings live in `.claude/settings.json`; personal or
+  machine-specific permissions stay in `.claude/settings.local.json`.
+- Project hooks live under `.claude/hooks/` and should be referenced with
+  `$CLAUDE_PROJECT_DIR` for portability.
+- After changing `.claude/settings.json` or hook scripts, restart Claude Code
+  or review `/hooks` so the running session uses the new hook snapshot.
 
-1. Squash: `git reset --soft main && git commit -m "feat(...): ..."`
-2. Merge: `git checkout main && git merge --no-ff <branch> -m "Merge branch '<branch>' (PR-N)"`
+## Repository Map
 
-## Documentation
-
-- Update `README.md` only when user-visible features ship or install
-  changes.
-- Update `docs/ARCHITECTURE.md` when packages are added, removed, or
-  reshaped.
-- Add an ADR (`docs/adr/NNNN-...`) when a decision is non-obvious or
-  hard to reverse. Template is in `docs/adr/template.md`.
-- Meta-rules for docs: `docs/DOCUMENTATION.md`.
-
-## Things to avoid
-
-- **Don't add testify or ginkgo.** Standard library is enough.
-- **Don't put business logic in `cmd/`.** `cmd/domjudge-tool/main.go` is
-  intentionally tiny — version line and a hand-off to `internal/cli`.
-- **Don't break `domserver.json` backward compatibility.** Field names,
-  types, and defaults are user-facing. See `docs/ROADMAP.md` Phase 1
-  notes.
-- **Don't silently fix the v7 scraper quirks.** The Phase 1 plan locks
-  in some Python behaviour bit-for-bit; see ROADMAP for the list.
-- **Don't use `init()`** except for registry wiring.
-- **Don't print from library packages.** `cmd/` and `internal/cli/` print;
-  everything else returns data or logs via `slog`.
-- **Don't use bare `gofmt`**; use `gofmt -s` (simplify flag). `just fmt`
-  and CI both use `-s` — diverging causes a CI format failure.
-
-## External docs (use `ctx7`)
-
-Per the global `ctx7` rule: when working with any third-party library,
-framework, SDK, CLI tool, or cloud service — fetch current docs via the
-`ctx7` CLI rather than relying on training data. This matters most in
-Phase 3 (Wails, PocketBase, Tailwind v4, shadcn/ui, TanStack), where
-training data lags hardest, but the rule applies to Cobra and goquery in
-Phase 1 too.
-
-## Map of the repo
-
+```text
+cmd/domjudge-tool/   thin entry point
+internal/            business logic, clients, CLI wiring
+docs/                architecture, conventions, roadmap, ADRs
+testdata/            sanitized fixtures
+.claude/             Claude Code shared settings and hooks
+.codex/              Codex project settings
 ```
-cmd/domjudge-tool/   thin entry point — version line; hand off to internal/cli
-internal/            business logic; not importable outside this module
-docs/                architecture, conventions, testing, roadmap, ADRs
-testdata/            HTML / CSV / JSON fixtures (committed verbatim)
-.claude/             Claude Code project config (hooks + permissions)
-```
-
-When in doubt, read `docs/ARCHITECTURE.md` before adding a new package.
