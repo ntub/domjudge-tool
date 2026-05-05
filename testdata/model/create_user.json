@@ -1,0 +1,8 @@
+{
+    "username": "ntubuser",
+    "name": "Test User",
+    "email": "ntubuser@mail.com",
+    "password": "testpassword",
+    "affiliation": "ntub",
+    "is_exist": false
+}

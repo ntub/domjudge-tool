@@ -1,0 +1,73 @@
+# .golangci.yml — golangci-lint baseline for domjudge-tool (v2 schema).
+# Severity is error; lefthook + CI surface failures.
+
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck    # absorbs gosimple + stylecheck in v2
+    - unused
+    - revive
+    - gocritic
+    - misspell
+    - unconvert
+
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+        - name: error-return
+        - name: error-naming
+        - name: exported
+          disabled: true   # re-enable once packages stabilize in Phase 1+
+        - name: package-comments
+          disabled: true
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - ifElseChain
+        - hugeParam
+
+  exclusions:
+    paths:
+      - testdata
+      - bin
+      - dist
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gocritic
+          - revive
+      - path: cmd/
+        linters:
+          - revive
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/ntub/domjudge-tool)
+      custom-order: true
+    gofumpt:
+      extra-rules: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,6 @@
+username,name,email,affiliation,password,is_exist
+alice,Alice,alice@example.org,ACME,pw-alice,false
+bob,Bob,,ACME,pw-bob,false
+carol,Carol,carol@example.org,NTUB,pw-carol,false
+dave,Dave,,NTUB,pw-dave,false
+eve,Eve,eve@example.org,NTUB,pw-eve,false

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- DOMjudge version 7.3.4 -->
+    <meta charset="utf-8">
+    <title>Team 297 - DOMjudge</title>
+    <link rel="icon" href="/favicon.ico?v=7.3.4">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="/css/bootstrap.min.css?v=7.3.4">
+    <link rel="stylesheet" href="/css/fontawesome-all.min.css?v=7.3.4">
+    <script src="/js/jquery.min.js?v=7.3.4"></script>
+    <script src="/js/bootstrap.bundle.min.js?v=7.3.4"></script>
+
+    <script src="/js/domjudge.js?v=7.3.4"></script>
+                    <link rel="stylesheet" href="/style_domjudge.css?v=7.3.4">
+
+        
+    
+    <link rel="stylesheet" href="/style_jury.css?v=7.3.4">
+
+    
+    <link rel="stylesheet" href="/css/dataTables.bootstrap4.min.css?v=7.3.4">
+    <script src="/js/jquery.dataTables.min.js?v=7.3.4"></script>
+    <script src="/js/dataTables.bootstrap4.min.js?v=7.3.4"></script>
+    <style>
+        .data-table td a, .data-table td a:hover {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .data-table th {
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            white-space: nowrap;
+            padding-top: 1px;
+            padding-bottom: 1px;
+        }
+
+        .dataTables_filter {
+            text-align: inherit;
+        }
+
+        .table-wrapper {
+            display: inline-block;
+        }
+    </style>
+
+</head>
+<body style="padding-top: 4.5rem;">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand hidden-sm-down" href="/jury">DOMjudge</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#menuDefault" aria-controls="menuDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="menuDefault" data-update-url="/jury/updates">
+        <ul class="navbar-nav mr-auto">
+
+            
+                            <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownJudgehosts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-gavel"></i> judgehosts
+                        <span class="badge badge-warning" id="num-alerts-judgehosts"></span>
+                        <span class="badge badge-danger" id="num-alerts-internalerrors"></span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="/jury/judgehosts" id="menu_judgehosts">
+                            <i class="fas fa-server fa-fw"></i> judgehosts <span class="badge badge-warning" id="num-alerts-judgehosts-sub"></span>
+                        </a>
+                        <a class="dropdown-item dropdown-disabled" href="/jury/internal-errors" id="menu_internal_error">
+                            <i class="fas fa-bolt fa-fw"></i> internal error <span class="badge badge-danger" id="num-alerts-internalerrors-sub"></span>
+                        </a>
+                    </div>
+                </li>
+            
+                            <li class="nav-item">
+                    <a class="nav-link" href="/jury/clarifications" id="menu_clarifications"><i class="fas fa-comments"></i> clarifications <span class="badge badge-info" id="num-alerts-clarifications"></span></a>
+                </li>
+
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/jury/submissions"><i class="fas fa-file-code"></i> submissions</a>
+                </li>
+
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="/jury/rejudgings" id="menu_rejudgings"><i class="fas fa-sync"></i> rejudgings <span class="badge badge-info" id="num-alerts-rejudgings"></span></a>
+                </li>
+            
+                            <li class="nav-item">
+                    <a class="nav-link" href="/jury/scoreboard"><i class="fas fa-list-ol"></i> scoreboard</a>
+                </li>
+                                </ul>
+
+        <ul class="navbar-nav ml-auto">
+                                        <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user"></i> tester
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                                    <a class="dropdown-item disabled" href="#">developer</a>
+                        
+                        <a class="dropdown-item d-none" href="#" id="notify_disable">
+                            <i class="fas fa-bell-slash fa-fw"></i> Disable Notifications
+                        </a>
+                        <a class="dropdown-item d-none" href="#" id="notify_enable">
+                            <i class="fas fa-bell fa-fw"></i> Enable Notifications
+                        </a>
+
+                                                    <a class="dropdown-item" href="#" id="refresh-navitem">
+                                <i class="fas fa-sync-alt fa-fw"></i> <span id="refresh-toggle">
+                                        Disable Refresh
+                                  </span>
+                                                                    <span class="small text-muted">(30s)</span>
+                                                            </a>
+                        
+                        <a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt fa-fw"></i>Logout </a>
+                    </div>
+                </li>
+            
+            <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownContests" role="button" data-toggle="dropdown"
+       aria-haspopup="true" aria-expanded="false">
+        <i class="fas fa-trophy"></i> ContestX
+    </a>
+    <div class="dropdown-menu scrollable-menu" aria-labelledby="navbarDropdown"><div class="dropdown-divider"></div><a class="dropdown-item disabled" href="#">Change Contest</a><div class="dropdown-divider"></div><a class="dropdown-item" href="/jury/change-contest/-1">No contest</a><div class="dropdown-divider"></div><a class="dropdown-item"
+               href="/jury/change-contest/19">112_01</a><div class="dropdown-divider"></div><a class="dropdown-item"
+               href="/jury/change-contest/20">112_02</a></div>
+</li>
+        </ul>
+        <div class="navbar-text" style="white-space:nowrap;">
+    <span style="padding-left: 10px;">
+        <i class="fas fa-clock loading-indicator"></i>
+    </span>
+        <span id="timeleft">100d 00:00:00</span>
+</div>
+
+<script>
+    var initial = 0;
+    var localInitial = new Date().getTime();
+    var activatetime = 0.0;
+    var starttime = 0.0;
+    var endtime = 0.0;
+    var clientOffset = localInitial - new Date(initial * 1000).getTime();
+    var timeleftelt = document.getElementById("timeleft");
+
+    setInterval(function () {
+        updateClock();
+    }, 1000);
+    updateClock();
+</script>
+    </div>
+</nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                                                                        
+
+                    
+    <h1>Team Sample1</h1>
+
+    <div class="row">
+        <div class="col">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>ID</th>
+                    <td>297</td>
+                </tr>
+                <tr>
+                    <th>ICPC ID</th>
+                    <td>
+                                                    -
+                                            </td>
+                </tr>
+                <tr>
+                    <th>Name</th>
+                    <td>student001</td>
+                </tr>
+                <tr>
+                    <th>Display name</th>
+                    <td>
+                                                    Sample2
+                                            </td>
+                </tr>
+                <tr>
+                    <th>First login</th>
+                    <td>
+                                                    -
+                                            </td>
+                </tr>
+                <tr>
+                    <th>IP</th>
+                    <td>
+                                                    -
+                                            </td>
+                </tr>
+                                                <tr>
+                    <th>User</th>
+                    <td>
+                                                    <a href="/jury/users/1">student002</a>
+                                            </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="col">
+            <table class="table table-sm table-striped">
+                <tr>
+                    <th>Category</th>
+                    <td>
+                        <a href="/jury/categories/12">
+                            course001
+                        </a>
+                    </td>
+                </tr>
+                                    <tr>
+                        <th>Affiliation</th>
+                        <td>
+                                                                                                                                            <a href="/jury/affiliations/1">
+                                course002
+                            </a>
+                        </td>
+                    </tr>
+                                                    <tr>
+                        <th>Country</th>
+                        <td>
+                                                                                        <img src="/images/countries/TWN.png?v=7.3.4" alt="Taiwan"
+                                     title="Taiwan" class="countryflag"/>
+                                                        Taiwan
+                        </td>
+                    </tr>
+                                                                            </table>
+        </div>
+            </div>
+
+    <p><a href="/jury/teams/1/edit" class="btn btn-primary" title="Edit"><i class="fas fa-edit"></i>&nbsp;Edit</a>
+            <a href="/jury/teams/1/delete" class="btn btn-danger" title="Delete" data-ajax-modal><i class="fas fa-trash-alt"></i>&nbsp;Delete</a>
+                <a href="/jury/clarifications/send?teamto=297" class="btn btn-secondary" title="Send message"><i class="fas fa-envelope"></i>&nbsp;Send message</a>
+        
+
+<button type="button" class="btn btn-secondary" data-toggle="modal" data-target="#rejudge-modal">
+    <i class="fas fa-sync"></i> Rejudge
+</button>
+
+<!-- Modal -->
+<div class="modal fade" id="rejudge-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rejudge all for team 297</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="/jury/rejudgings/create" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="table" value="team"/>
+                    <input type="hidden" name="id" value="297"/>
+                        <div class="custom-control custom-checkbox form-group">
+                            <input type="checkbox" class="custom-control-input" id="include_all" name="include_all">
+                            <label class="custom-control-label" for="include_all">Include pending/correct
+                                submissions</label>
+                        </div>
+                                        <div class="custom-control custom-checkbox form-group">
+                        <input type="checkbox" class="custom-control-input" id="auto_apply" name="auto_apply">
+                        <label class="custom-control-label" for="auto_apply">Automatically apply judging(s) when ready</label>
+                    </div>
+                    <div id="rejudge-repeat" class="form-group">
+                        <label for="repeat">Number of times to repeat this rejudging</label>
+                        <input type="number" class="form-control" name="repeat" id="repeat" value="1" min="1" max="999" step="1">
+                    </div>
+                    <div id="rejudge-reason" class="form-group">
+                        <label for="reason">Reason</label>
+                        <input type="text" class="form-control" name="reason" id="reason" maxlength="255">
+                    </div>
+                                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <input type="submit" value="Rejudge all for team 297" class="btn btn-primary">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        $('#full_rejudge').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#rejudge-reason').removeClass('d-none');
+            } else {
+                $('#rejudge-reason').addClass('d-none');
+            }
+        });
+    });
+</script>
+    </p>
+
+    <div data-ajax-refresh-target>
+            <h2 class="mt-2">Score</h2>
+
+                            
+
+<table class="scoreboard center scoreboard_jury">
+
+        <colgroup>
+        <col id="scorerank"/>
+                    <col id="scoreflags"/>
+                        <col id="scoreteamname"/>
+    </colgroup>
+    <colgroup>
+        <col id="scoresolv"/>
+        <col id="scoretotal"/>
+    </colgroup>
+    <colgroup>
+                                    <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                            <col class="scoreprob"/>
+                        </colgroup>
+
+        
+    <thead>
+    <tr class="scoreheader">
+        <th title="rank" scope="col">rank</th>
+        <th title="team name" scope="col" colspan="2">team</th>
+        <th title="# solved / penalty time" colspan="2" scope="col">score</th>
+                                                                                                                                                                    <th title="problem PA: Simplified Genome Translation" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PA
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PB: Multi-Ladders" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PB
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PC: Distance Caculator" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PC
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PD: Tangle: A DAG for storing transactions" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PD
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PE: Printing Stickers" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PE
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PF: AA Country and King Dreamoon" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PF
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PG: Repetitive Elements" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PG
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PH: Meeting Places" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PH
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PI: Cell Nuclei Detection" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PI
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PJ: Traveling in Jade City" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PJ
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PL: Programmable Virus" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PL
+                                                                    </a>
+                </th>
+                                                                                                                                                            <th title="problem PM: Connectivity Problem" scope="col">
+                    <a href="/jury/problems/1" target="_self">
+                        PM
+                                                                    </a>
+                </th>
+                        </tr>
+    </thead>
+    <tbody>
+                
+            </tbody>
+</table>
+
+
+<style>
+            
+        .cl_FFFFFF {
+            background-color: #FFFFFF;
+        }
+
+                
+        .cl_FFFFFF .forceWidth.toolong:after {
+            background: linear-gradient(to right,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,1) 96%);
+        }
+    </style>
+<script>
+    document.querySelectorAll(".forceWidth:not(.toolong)").forEach(el => {
+        if (el instanceof Element && el.scrollWidth > el.offsetWidth) {
+            el.classList.add("toolong");
+        }
+    });
+</script>
+
+<h2 class="mt-2">
+    Submissions
+    </h2>
+    
+
+    <div class="alert alert-warning">No submissions</div>
+    </div>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+            var domjudge_base_url = "";
+        $(function () {
+        $('body').on('change', '.custom-file-input', function () {
+            var files = this.files;
+            var fileNames = [];
+            for (var i = 0; i < files.length; i++) {
+                fileNames.push(files.item(i).name);
+            }
+            $(this).next('.custom-file-label').html(fileNames.join(", "));
+            $(this).next('.custom-file-label').removeClass('text-muted');
+        });
+
+        /* toggle refresh if set */
+                $('#refresh-navitem').on('click', function () {
+            toggleRefresh('', 30, 1);
+        });
+                /* Enable page refresh if set if wanted by the page, and wanted by the user */
+                enableRefresh('', 30, 1);
+        
+        initializeAjaxModals();
+    });
+</script>
+    <script>
+        $(function () {
+            /* Show the notification options if the browser supports it */
+            if ('Notification' in window) {
+                $('#notify_disable').click(disableNotifications);
+                $('#notify_enable').click(enableNotifications);
+                if (getCookie('domjudge_notify') != 1) {
+                    $('#notify_enable').removeClass('d-none');
+                } else {
+                    $('#notify_disable').removeClass('d-none');
+                }
+            }
+
+            updateMenuAlerts();
+            setInterval(updateMenuAlerts, 20000);
+        });
+    </script>
+</body>
+</html>

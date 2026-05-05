@@ -1,0 +1,18 @@
+[
+    {
+        "last_login_time": "2023-05-01T10:00:00Z",
+        "first_login_time": "2023-01-01T08:00:00Z",
+        "team": "Team Sample University",
+        "roles": ["team"],
+        "id": "1",
+        "username": "testuser",
+        "name": "Test User",
+        "email": "testuser@example.org",
+        "last_ip": "192.0.2.1",
+        "ip": null,
+        "enabled": true,
+        "team_id": "1",
+        "affiliation": "Sample University",
+        "password": null
+    }
+]

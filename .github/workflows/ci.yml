@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gofumpt
+        run: go install mvdan.cc/gofumpt@latest
+
+      - name: gofumpt -l (no diffs)
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(gofumpt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::unformatted Go files (run 'just fmt'):"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # Project .golangci.yml uses the v2 schema; v6 of the action
+          # supports v2 — pin a recent v2 release rather than `latest` so
+          # behaviour stays reproducible across runs.
+          version: v2.1.6
+
+      - name: Install TruffleHog
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh |
+            sh -s -- -b /usr/local/bin
+
+      - name: Secret and PII gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts/check_secrets.sh
+          python3 -m unittest discover -s scripts -p '*_test.py'
+          python3 scripts/check_pii_api.py testdata/api/v4
+
+      - name: go test (race)
+        run: go test -race ./...
+
+  goreleaser-snapshot:
+    name: goreleaser snapshot
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: goreleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --snapshot --clean

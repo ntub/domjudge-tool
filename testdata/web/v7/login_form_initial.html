@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- DOMjudge version 7.3.4 -->
+    <meta charset="utf-8">
+    <title>DOMjudge Login</title>
+    <link rel="icon" href="/favicon.ico?v=7.3.4">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="/css/bootstrap.min.css?v=7.3.4">
+    <link rel="stylesheet" href="/css/fontawesome-all.min.css?v=7.3.4">
+    <script src="/js/jquery.min.js?v=7.3.4"></script>
+    <script src="/js/bootstrap.bundle.min.js?v=7.3.4"></script>
+
+    <script src="/js/domjudge.js?v=7.3.4"></script>
+        <link rel="stylesheet" href="/style_login.css?v=7.3.4">
+</head>
+<body style="padding-top: 4.5rem;">
+
+        
+    <div class="form-signin" id="loginform">
+        <img class="mb-4" src="/images/DOMjudgelogo.png?v=7.3.4" alt="DOMjudge" width="72">
+                                
+        <br class="clearfix">
+
+        
+        <div class="main-login ml-2 regularLoginform ">
+            <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+            <form action="/login" method="post">
+                <input type="hidden" name="_csrf_token" value="TEST_CSRF_TOKEN">
+                <div class="login-content">
+                    
+                    <div class="form-group">
+                        <label for="username" class="sr-only">Username</label>
+                        <input type="text" id="username" name="_username" class="form-control"
+                               placeholder="Username" required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputPassword" class="sr-only">Password</label>
+                        <input type="password" id="inputPassword" name="_password"
+                               class="form-control"
+                               placeholder="Password" required autocomplete="current-password">
+                    </div>
+                </div>
+                <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+                            </form>
+        </div>
+
+        <p class="mt-5 mb-3 small text-muted">DOMjudge 7.3.4</p>
+    </div>
+
+
+<script>
+            var domjudge_base_url = "";
+        $(function () {
+        $('body').on('change', '.custom-file-input', function () {
+            var files = this.files;
+            var fileNames = [];
+            for (var i = 0; i < files.length; i++) {
+                fileNames.push(files.item(i).name);
+            }
+            $(this).next('.custom-file-label').html(fileNames.join(", "));
+            $(this).next('.custom-file-label').removeClass('text-muted');
+        });
+
+        /* toggle refresh if set */
+                /* Enable page refresh if set if wanted by the page, and wanted by the user */
+        
+        initializeAjaxModals();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+    "host": "https://example.com",
+    "username": "user",
+    "password": "pass",
+    "disable_ssl": false,
+    "timeout": 60,
+    "max_connections": null,
+    "max_keepalive_connections": null,
+    "category_id": 21,
+    "affiliation_id": 285,
+    "affiliation_country": "TWN",
+    "user_roles": [
+        3
+    ],
+    "version": "7.3.2",
+    "api_version": "v4"
+}

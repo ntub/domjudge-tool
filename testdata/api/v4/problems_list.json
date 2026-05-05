@@ -1,0 +1,14 @@
+[
+    {
+        "ordinal": 1,
+        "id": "1",
+        "short_name": "A",
+        "label": "A",
+        "time_limit": 1,
+        "externalid": "problem-A",
+        "name": "Problem A",
+        "rgb": null,
+        "color": null,
+        "test_data_count": 5
+    }
+]

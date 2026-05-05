@@ -1,0 +1,7 @@
+{
+    "id": "p1",
+    "time_limit": 5,
+    "test_data_count": 3,
+    "name": "Hello World",
+    "export_file_path": "/api/v4/contests/1/problems/p1/zip"
+}

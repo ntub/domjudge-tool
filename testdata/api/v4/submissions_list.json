@@ -1,0 +1,16 @@
+[
+    {
+        "language_id": "cpp",
+        "time": "2023-05-01T10:00:00Z",
+        "contest_time": "1:00:00",
+        "id": "1",
+        "externalid": null,
+        "team_id": "1",
+        "problem_id": "1",
+        "entry_point": null,
+        "files": [{"href": "submissions/1/files", "mime": "application/zip"}],
+        "submission_id": null,
+        "filename": null,
+        "source": null
+    }
+]

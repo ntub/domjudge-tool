@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- DOMjudge version 7.3.4 -->
+    <meta charset="utf-8">
+    <title>Add affiliation - DOMjudge</title>
+    <link rel="icon" href="/favicon.ico?v=7.3.4">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="/css/bootstrap.min.css?v=7.3.4">
+    <link rel="stylesheet" href="/css/fontawesome-all.min.css?v=7.3.4">
+    <script src="/js/jquery.min.js?v=7.3.4"></script>
+    <script src="/js/bootstrap.bundle.min.js?v=7.3.4"></script>
+
+    <script src="/js/domjudge.js?v=7.3.4"></script>
+                    <link rel="stylesheet" href="/style_domjudge.css?v=7.3.4">
+
+        
+    
+    <link rel="stylesheet" href="/style_jury.css?v=7.3.4">
+
+    
+    <link rel="stylesheet" href="/css/select2.min.css?v=7.3.4">
+    <link rel="stylesheet" href="/css/select2-bootstrap.min.css?v=7.3.4">
+    <script src="/js/select2.min.js?v=7.3.4"></script>
+    <script>
+        $(function () {
+            $.fn.select2.defaults.set("theme", "bootstrap");
+
+            $('select[multiple]').select2();
+        });
+    </script>
+
+</head>
+<body style="padding-top: 4.5rem;">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand hidden-sm-down" href="/jury">DOMjudge</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#menuDefault" aria-controls="menuDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="menuDefault" data-update-url="/jury/updates">
+        <ul class="navbar-nav mr-auto">
+
+            
+                            <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownJudgehosts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-gavel"></i> judgehosts
+                        <span class="badge badge-warning" id="num-alerts-judgehosts"></span>
+                        <span class="badge badge-danger" id="num-alerts-internalerrors"></span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="/jury/judgehosts" id="menu_judgehosts">
+                            <i class="fas fa-server fa-fw"></i> judgehosts <span class="badge badge-warning" id="num-alerts-judgehosts-sub"></span>
+                        </a>
+                        <a class="dropdown-item dropdown-disabled" href="/jury/internal-errors" id="menu_internal_error">
+                            <i class="fas fa-bolt fa-fw"></i> internal error <span class="badge badge-danger" id="num-alerts-internalerrors-sub"></span>
+                        </a>
+                    </div>
+                </li>
+            
+                            <li class="nav-item">
+                    <a class="nav-link" href="/jury/clarifications" id="menu_clarifications"><i class="fas fa-comments"></i> clarifications <span class="badge badge-info" id="num-alerts-clarifications"></span></a>
+                </li>
+
+
+                <li class="nav-item">
+                    <a class="nav-link" href="/jury/submissions"><i class="fas fa-file-code"></i> submissions</a>
+                </li>
+
+                
+                <li class="nav-item">
+                    <a class="nav-link" href="/jury/rejudgings" id="menu_rejudgings"><i class="fas fa-sync"></i> rejudgings <span class="badge badge-info" id="num-alerts-rejudgings"></span></a>
+                </li>
+            
+                            <li class="nav-item">
+                    <a class="nav-link" href="/jury/scoreboard"><i class="fas fa-list-ol"></i> scoreboard</a>
+                </li>
+                                </ul>
+
+        <ul class="navbar-nav ml-auto">
+                                        <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user"></i> tester
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                                    <a class="dropdown-item disabled" href="#">developer</a>
+                        
+                        <a class="dropdown-item d-none" href="#" id="notify_disable">
+                            <i class="fas fa-bell-slash fa-fw"></i> Disable Notifications
+                        </a>
+                        <a class="dropdown-item d-none" href="#" id="notify_enable">
+                            <i class="fas fa-bell fa-fw"></i> Enable Notifications
+                        </a>
+
+                        
+                        <a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt fa-fw"></i>Logout </a>
+                    </div>
+                </li>
+            
+            <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownContests" role="button" data-toggle="dropdown"
+       aria-haspopup="true" aria-expanded="false">
+        <i class="fas fa-trophy"></i> ContestX
+    </a>
+    <div class="dropdown-menu scrollable-menu" aria-labelledby="navbarDropdown"><div class="dropdown-divider"></div><a class="dropdown-item disabled" href="#">Change Contest</a><div class="dropdown-divider"></div><a class="dropdown-item" href="/jury/change-contest/-1">No contest</a><div class="dropdown-divider"></div><a class="dropdown-item"
+               href="/jury/change-contest/19">112_01</a><div class="dropdown-divider"></div><a class="dropdown-item"
+               href="/jury/change-contest/20">112_02</a></div>
+</li>
+        </ul>
+        <div class="navbar-text" style="white-space:nowrap;">
+    <span style="padding-left: 10px;">
+        <i class="fas fa-clock loading-indicator"></i>
+    </span>
+        <span id="timeleft">100d 00:00:00</span>
+</div>
+
+<script>
+    var initial = 0;
+    var localInitial = new Date().getTime();
+    var activatetime = 0.0;
+    var starttime = 0.0;
+    var endtime = 0.0;
+    var clientOffset = localInitial - new Date(initial * 1000).getTime();
+    var timeleftelt = document.getElementById("timeleft");
+
+    setInterval(function () {
+        updateClock();
+    }, 1000);
+    updateClock();
+</script>
+    </div>
+</nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                                                                        
+
+                    
+    <h1>Add affiliation</h1>
+
+    <div class="row col-lg-4">
+    <form name="team_affiliation" method="post"><div id="team_affiliation"><div class="form-group"><label for="team_affiliation_shortname" class="required">Shortname</label><input type="text" id="team_affiliation_shortname" name="team_affiliation[shortname]" required="required" maxlength="32" class="form-control" /></div><div class="form-group"><label for="team_affiliation_name" class="required">Name</label><input type="text" id="team_affiliation_name" name="team_affiliation[name]" required="required" maxlength="255" class="form-control" /></div><div class="form-group"><label class="" for="team_affiliation_country">Country</label><select id="team_affiliation_country" name="team_affiliation[country]" class="form-control custom-select form-control"><option value="">No country</option><option value="AFG">Afghanistan (AFG)</option><option value="ALB">Albania (ALB)</option><option value="DZA">Algeria (DZA)</option></select></div><div class="form-group"><label for="team_affiliation_comments">Comments</label><textarea id="team_affiliation_comments" name="team_affiliation[comments]" rows="6" class="form-control"></textarea></div><div class="form-group"><button type="submit" id="team_affiliation_save" name="team_affiliation[save]" class="btn-primary btn">Save</button></div></div></form>
+</div>
+
+<script>
+    var template = function(element) {
+        var imgBase = '';
+                        // Use a country flag we know exists to automatically determine base path and asset version
+        imgBase = "/images/countries/NLD.png?v=7.3.4";
+        
+        var img = element.id == undefined || element.id == "" || imgBase == ""
+            ? ''
+            : '<img src="' + imgBase.replace("NLD.png", element.id + ".png", 1) + '" class="countryflag">&nbsp;';
+
+        return img + element.text;
+    };
+
+    $('#team_affiliation_country').select2({
+        templateResult: template,
+        templateSelection: template,
+
+        // Prevent escaping
+        escapeMarkup: function(t) {
+            return t;
+        },
+        theme: "bootstrap"
+    });
+
+</script>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+            var domjudge_base_url = "";
+        $(function () {
+        $('body').on('change', '.custom-file-input', function () {
+            var files = this.files;
+            var fileNames = [];
+            for (var i = 0; i < files.length; i++) {
+                fileNames.push(files.item(i).name);
+            }
+            $(this).next('.custom-file-label').html(fileNames.join(", "));
+            $(this).next('.custom-file-label').removeClass('text-muted');
+        });
+
+        /* toggle refresh if set */
+                /* Enable page refresh if set if wanted by the page, and wanted by the user */
+        
+        initializeAjaxModals();
+    });
+</script>
+    <script>
+        $(function () {
+            /* Show the notification options if the browser supports it */
+            if ('Notification' in window) {
+                $('#notify_disable').click(disableNotifications);
+                $('#notify_enable').click(enableNotifications);
+                if (getCookie('domjudge_notify') != 1) {
+                    $('#notify_enable').removeClass('d-none');
+                } else {
+                    $('#notify_disable').removeClass('d-none');
+                }
+            }
+
+            updateMenuAlerts();
+            setInterval(updateMenuAlerts, 20000);
+        });
+    </script>
+</body>
+</html>

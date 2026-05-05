@@ -1,0 +1,19 @@
+{
+    "language_id": "java",
+    "time": "2024-01-15T08:30:00+08:00",
+    "contest_time": "0:30:00.000",
+    "id": "s1",
+    "externalid": null,
+    "team_id": "t1",
+    "problem_id": "p1",
+    "entry_point": "Main",
+    "files": [
+        {
+            "href": "/api/v4/contests/1/submissions/s1/files",
+            "mime": "application/zip"
+        }
+    ],
+    "submission_id": null,
+    "filename": null,
+    "source": null
+}

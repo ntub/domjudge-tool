@@ -1,0 +1,28 @@
+# Default: normalize line endings on commit, native on checkout.
+* text=auto eol=lf
+
+# Go files always LF, no autocrlf surprises.
+*.go        text eol=lf
+go.mod      text eol=lf
+go.sum      text eol=lf
+
+# Shell scripts must be LF and executable on checkout.
+*.sh        text eol=lf
+
+# YAML / TOML / JSON: enforce LF.
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.json      text eol=lf
+
+# Markdown / docs: LF, but preserve trailing whitespace (hard breaks).
+*.md        text eol=lf
+
+# Generated files (linguist hides these in GitHub diffs).
+go.sum                  linguist-generated=true
+testdata/**             linguist-vendored=true
+*.html                  linguist-detectable=false
+
+# Treat HTML/CSV fixtures as binary-ish: don't munge whitespace.
+testdata/**/*.html      -text
+testdata/**/*.csv       -text

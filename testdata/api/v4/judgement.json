@@ -1,0 +1,12 @@
+{
+    "judgement_type_id": "AC",
+    "judgehost": "judge1",
+    "valid": true,
+    "submission_id": "1",
+    "id": "1",
+    "end_contest_time": "1:00:05",
+    "end_time": "2023-05-01T10:00:05Z",
+    "start_contest_time": "1:00:01",
+    "start_time": "2023-05-01T10:00:01Z",
+    "max_run_time": 0.123
+}

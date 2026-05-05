@@ -1,0 +1,33 @@
+version: 2
+project_name: domjudge-tool
+
+builds:
+  - id: domjudge-tool
+    main: ./cmd/domjudge-tool
+    binary: domjudge-tool
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/ntub/domjudge-tool/internal/cli/general.Version={{.Version}}
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  draft: true

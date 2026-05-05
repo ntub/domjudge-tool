@@ -1,0 +1,7 @@
+{
+    "host": "https://example.com",
+    "username": "user",
+    "password": "pass",
+    "disable_ssl": false,
+    "future_field": "ignored"
+}
