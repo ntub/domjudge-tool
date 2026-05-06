@@ -26,4 +26,11 @@ var (
 
 	// ErrServerError maps to HTTP 5xx from any /jury fetch.
 	ErrServerError = errors.New("web: server error")
+
+	// ErrTeamIDMissing is returned by importer paths when a user exists
+	// on the server but the API snapshot's team_id is nil and the
+	// fallback lookup (singular /users/{id} + team-list-by-name)
+	// failed to recover one. Wrap to surface the username at the
+	// importer layer.
+	ErrTeamIDMissing = errors.New("web: team_id missing on snapshot")
 )
