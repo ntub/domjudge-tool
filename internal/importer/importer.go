@@ -139,6 +139,23 @@ func ImportUsersTeams(
 	out = append(out, created...)
 
 	for i := range updateRows {
+		// Phase 1.5 follow-up (PR-8): if the API list snapshot left
+		// team_id == nil for an existing user, recover it via a two-
+		// step lookup before handing the row to gw.UpdateTeam, which
+		// rejects rows with no TeamID. Lazy: only fires on the rows
+		// that actually need recovery.
+		if updateRows[i].existing.TeamID == nil || *updateRows[i].existing.TeamID == "" {
+			var teamsRes *apiv4.TeamsResource
+			if opts.API != nil {
+				teamsRes = opts.API.Teams
+			}
+			tid, err := resolveTeamID(ctx, users, teamsRes, opts.ContestHint, updateRows[i].existing)
+			if err != nil {
+				return out, fmt.Errorf("importer: update team %s: %w", updateRows[i].row.Username, err)
+			}
+			updateRows[i].existing.TeamID = &tid
+		}
+
 		processed, err := processRowScraper(ctx, gw, updateRows[i].row, true, updateRows[i].existing, categoryID, fallbackAffID, opts)
 		if err != nil {
 			return out, err
