@@ -97,6 +97,7 @@ func NewImportUsersTeamsCmd(deps Deps) *cobra.Command {
 				Router:             deps.routerFor(cfg),
 				API:                api,
 				ContestHint:        derefString(cfg.ContestID),
+				Reporter:           cli.ReporterFromContext(ctx),
 			}
 
 			created, err := importUsersTeamsFn(ctx, gw, api.Users, file, opts)

@@ -73,6 +73,10 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 				return fmt.Errorf("download-problems: mkdir %s: %w", out, err)
 			}
 
+			rep := cli.ReporterFromContext(ctx)
+			rep.Start(len(items), "downloading")
+			defer rep.Finish()
+
 			for _, p := range items {
 				if err := ctx.Err(); err != nil {
 					return fmt.Errorf("download-problems: %w", err)
@@ -83,6 +87,7 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 				if err := writeProblemZip(ctx, gw, out, p); err != nil {
 					return err
 				}
+				rep.Tick()
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Processed %d problems.\n", len(items))
 			return nil

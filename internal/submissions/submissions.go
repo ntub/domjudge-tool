@@ -8,6 +8,8 @@
 // post-download rename, optional zip extraction).
 package submissions
 
+import "github.com/ntub/domjudge-tool/internal/util/progress"
+
 // Options configures a Download call.
 type Options struct {
 	// Mode picks the per-submission folder layout, mirroring the Python
@@ -33,4 +35,11 @@ type Options struct {
 	// `<judgement>_<id><ext>` beside the zip, and removes the zip.
 	// Mirrors Python `is_extract`.
 	Extract bool
+
+	// Reporter is the optional progress sink. Library code never
+	// constructs a Reporter; the CLI root PreRunE is the only
+	// production construct site. Nil is treated as [progress.Nop] so
+	// existing callers (and Phase 1 tests that pre-date PR-9) need no
+	// change.
+	Reporter progress.Reporter
 }
