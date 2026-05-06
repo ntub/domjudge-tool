@@ -64,6 +64,9 @@ func NewRenderUserAccountsCmd() *cobra.Command {
 
 			opts := email.SendOptions{FromEmail: fromEmail}
 			for _, user := range users {
+				if err := ctx.Err(); err != nil {
+					return fmt.Errorf("render-user-accounts: %w", err)
+				}
 				name := pathx.SafeFilename(user.Username)
 				if name == "" {
 					name = "unknown"

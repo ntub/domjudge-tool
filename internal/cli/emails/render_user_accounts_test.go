@@ -3,6 +3,7 @@ package emails_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/mail"
 	"os"
 	"path/filepath"
@@ -196,5 +197,59 @@ func TestRenderUserAccountsCmd_GoldenByteIdentical(t *testing.T) {
 	}
 	if !bytes.Equal(got, golden) {
 		t.Errorf("output not byte-identical to golden\ngot:\n%s\nwant:\n%s", got, golden)
+	}
+}
+
+// TestRenderUserAccounts_CtxCancelled_AbortsBeforeNextRow exercises the
+// `if err := ctx.Err(); err != nil` guard at the top of the per-user
+// render loop. With a pre-cancelled ctx the loop must abort before any
+// .eml is written and surface a context.Canceled-wrapped error.
+func TestRenderUserAccounts_CtxCancelled_AbortsBeforeNextRow(t *testing.T) {
+	dir := t.TempDir()
+	csvPath := filepath.Join(dir, "users.csv")
+	if err := os.WriteFile(csvPath, []byte(
+		"username,name,email,affiliation,password\n"+
+			"alice,Alice,alice@example.org,NTUB,passA\n"+
+			"bob,Bob,bob@example.org,NTUB,passB\n"+
+			"carol,Carol,carol@example.org,NTUB,passC\n",
+	), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outDir := t.TempDir()
+	tmplDir := validTemplateDir(t)
+
+	cmd := emails.NewRenderUserAccountsCmd()
+	root := cli.NewRootCmd(cli.Deps{})
+	root.AddCommand(cmd)
+	root.SetArgs([]string{
+		"render-user-accounts", csvPath, tmplDir,
+		"--output-dir", outDir,
+	})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+
+	cfg := &config.DomServerClient{Host: "http://example.test"}
+	ctx, cancel := context.WithCancel(cli.WithConfig(context.Background(), cfg))
+	cancel()
+	err := root.ExecuteContext(ctx)
+	if err == nil {
+		t.Fatal("expected ctx-cancelled error, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("errors.Is(err, context.Canceled) = false; err = %v", err)
+	}
+
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		t.Fatalf("read outDir: %v", err)
+	}
+	emlCount := 0
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".eml") {
+			emlCount++
+		}
+	}
+	if emlCount != 0 {
+		t.Errorf("got %d .eml files written before/after ctx-cancel; want 0", emlCount)
 	}
 }
