@@ -8,6 +8,7 @@ four phases. Each phase is a stand-alone milestone.
 | ----- | ----- | ---- | ------ |
 | **0** | Project bootstrap (this repo's foundation) | Git, Just, lefthook, git-cliff, golangci-lint | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | Go 1.23+, Cobra, goquery, net/http | **Done** — `v1.0.0-rc1`. See [`phase1/README.md`](phase1/README.md). |
+| **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand` | **Done** — `v1.2.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling) |
 | **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | Planned |
 | **3** | Cross-platform desktop app | PocketBase + Wails + Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui + TanStack | Planned |
 
@@ -147,3 +148,11 @@ fast-moving APIs that training data lags hardest on.
   Query + Router + Table for this domain.
 - **Reuse strategy**: import `internal/` Go packages from Phases 1–2
   directly via Wails bindings; avoid duplicating business logic in TS.
+
+## Phase 1.5 — completion log
+
+| Tag | Date | Scope |
+| --- | ---- | ----- |
+| `v1.1.0` | 2026-05-05 | API-first refactor with scraper fallback (PRs 1–5). |
+| `v1.1.1` | 2026-05-05 | Hot-fix after live validation against the production v7 station. |
+| `v1.2.0` | 2026-05-06 | Email template tooling — offline scaffold, validate, and render-to-disk (PR-6); release PR-7. |
