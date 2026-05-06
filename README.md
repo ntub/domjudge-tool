@@ -11,7 +11,7 @@
 | ----- | ----- | ------ |
 | **0** | Project bootstrap | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | **Done** — `v1.0.0-rc1` |
-| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.1.0` |
+| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.2.0` |
 | **2** | Add **DOMjudge 8.3.1** support to the CLI | Planned |
 | **3** | Cross-platform desktop app (PocketBase + Wails + React) | Planned |
 
@@ -49,6 +49,36 @@ domjudge-tool --help
 
 All commands support `--config` (`-c`) to point at a non-default
 `domserver.json` and `--verbose` (`-v`) for debug output.
+
+## Commands
+
+Run `domjudge-tool --help` to list every command grouped by domain. The
+command tree mirrors the Python CLI's; commands added in v1.2.0 are
+flagged below.
+
+### Email
+
+The email subtree handles credential delivery for newly imported users.
+Two of the four commands are offline (no network); `send-user-accounts`
+is the SMTP path.
+
+- `email-template-example [-o <dir>] [--force]` *(v1.2.0)* — scaffold a
+  template directory containing `subject.txt`, `body.txt`, and
+  `body.html` with the six supported placeholders (`$username`,
+  `$name`, `$email`, `$affiliation`, `$password`, `$server_host`).
+  Round-trips through `email-template-validate` with no edits.
+- `email-template-validate <dir>` *(v1.2.0)* — verify a template
+  directory loads and references only the fixed placeholder set.
+- `render-user-accounts <csv> <template-dir> [-d <output-dir>]
+  [--from-email <addr>] [--force]` *(v1.2.0)* — render per-recipient
+  RFC 5322 `.eml` files to disk, parallel to `send-user-accounts` but
+  never touches SMTP. Useful for review, batch, and mailmerge workflows.
+- `send-user-accounts <csv> <template-dir> [SMTP flags]` — mail the
+  rendered messages directly via SMTP. Reuses the same template loader
+  and message builder as `render-user-accounts`.
+
+For the full flag list of any command, run
+`domjudge-tool <command> --help`.
 
 ## Phase 1.5 architecture (since v1.1.0)
 

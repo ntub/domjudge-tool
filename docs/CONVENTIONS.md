@@ -96,3 +96,23 @@ data. Two house rules apply:
   `encoding/csv` with `Comma = '\t'` — `encoding/csv` writes CRLF on
   Windows builds and quotes fields containing tabs, both of which break
   the import endpoints.
+
+## Test seams (since v1.2.0)
+
+Production code in `internal/email/send.go` reads time and randomness
+through unexported package-level vars (`nowFn = time.Now`, `randRead =
+rand.Read`) so cross-package golden tests in `internal/cli/emails` can
+make RFC 5322 output deterministic. Tests must call the exported
+`email.SetDeterministicSeams(now, rnd)` helper, which returns a
+`func()` restore closure that the test runs in `t.Cleanup`. Direct
+assignment to the unexported vars from another package is impossible
+by design; the helper is the only public API.
+
+Apply this pattern when a leaf package needs to expose deterministic
+control of `time.Now` / `crypto/rand.Read` to a higher-layer test:
+
+- Default the seam to the production callable (`var nowFn = time.Now`).
+- Read the seam through the unexported var inside the package.
+- Add an exported `SetDeterministicSeams(...)` returning a closure that
+  restores the previous value. Tests own the closure via `t.Cleanup`.
+- Do NOT export the var itself — keep the only public API the helper.

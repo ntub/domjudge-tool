@@ -44,6 +44,7 @@ linters:
       - testdata
       - bin
       - dist
+      - tmp
     rules:
       - path: _test\.go
         linters:
