@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/ntub/domjudge-tool/internal/config"
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // ctxKey is an unexported key type so these context values cannot
@@ -20,6 +21,7 @@ type ctxKey int
 const (
 	ctxConfigKey ctxKey = iota
 	ctxLoggerKey
+	ctxReporterKey
 )
 
 // WithConfig stashes cfg on ctx so a subcommand's RunE can fetch it
@@ -46,4 +48,24 @@ func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
 func LoggerFromContext(ctx context.Context) (*slog.Logger, bool) {
 	l, ok := ctx.Value(ctxLoggerKey).(*slog.Logger)
 	return l, ok
+}
+
+// WithReporter stashes a [progress.Reporter] on ctx for downstream
+// RunEs and the library packages they invoke. The PreRunE attached by
+// NewRootCmd is the canonical writer; it consults the persistent
+// `--no-progress` flag plus the TTY/env gate baked into [progress.New]
+// and stashes either a real bar or [progress.Nop].
+func WithReporter(ctx context.Context, r progress.Reporter) context.Context {
+	return context.WithValue(ctx, ctxReporterKey, r)
+}
+
+// ReporterFromContext returns the Reporter installed by WithReporter,
+// falling back to [progress.Nop] so library callers can call Tick
+// unconditionally without nil-checking. The fallback also covers tests
+// that build a context without going through the root PreRunE.
+func ReporterFromContext(ctx context.Context) progress.Reporter {
+	if r, ok := ctx.Value(ctxReporterKey).(progress.Reporter); ok && r != nil {
+		return r
+	}
+	return progress.Nop()
 }
