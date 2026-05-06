@@ -70,10 +70,17 @@ func NewDownloadScoreboardCmd(deps Deps) *cobra.Command {
 			if err := cw.Write(header); err != nil {
 				return fmt.Errorf("download-scoreboard: write header: %w", err)
 			}
+			rep := cli.ReporterFromContext(ctx)
+			rep.Start(len(rows), "writing scoreboard")
+			defer rep.Finish()
 			for _, row := range rows {
+				if err := ctx.Err(); err != nil {
+					return fmt.Errorf("download-scoreboard: %w", err)
+				}
 				if err := cw.Write(row); err != nil {
 					return fmt.Errorf("download-scoreboard: write row: %w", err)
 				}
+				rep.Tick()
 			}
 			cw.Flush()
 			if err := cw.Error(); err != nil {

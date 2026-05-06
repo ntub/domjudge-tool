@@ -9,6 +9,7 @@ import (
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
 	"github.com/ntub/domjudge-tool/internal/model"
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // Download fetches every submission's source files for contest cid
@@ -43,6 +44,13 @@ func Download(ctx context.Context, api *apiv4.Client, cid string, opts Options) 
 	if err != nil {
 		return 0, fmt.Errorf("submissions: list: %w", err)
 	}
+
+	rep := opts.Reporter
+	if rep == nil {
+		rep = progress.Nop()
+	}
+	rep.Start(len(subs), "downloading")
+	defer rep.Finish()
 
 	count := 0
 	for i := range subs {
@@ -88,6 +96,7 @@ func Download(ctx context.Context, api *apiv4.Client, cid string, opts Options) 
 			}
 		}
 		count++
+		rep.Tick()
 	}
 	return count, nil
 }

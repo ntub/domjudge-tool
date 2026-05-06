@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ntub/domjudge-tool/internal/cli"
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // stubDeps returns a Deps with no preconfigured config/logger so
@@ -94,7 +95,7 @@ func TestRoot_PinsHelpAndCompletionToGeneral(t *testing.T) {
 func TestRoot_PersistentFlags_BindAtRoot(t *testing.T) {
 	t.Parallel()
 	root := cli.NewRootCmd(stubDeps())
-	for _, name := range []string{"config", "verbose", "disable-ssl"} {
+	for _, name := range []string{"config", "verbose", "disable-ssl", "no-progress"} {
 		if root.PersistentFlags().Lookup(name) == nil {
 			t.Errorf("persistent flag %q not registered", name)
 		}
@@ -105,6 +106,88 @@ func TestRoot_PersistentFlags_BindAtRoot(t *testing.T) {
 	}
 	if root.PersistentFlags().ShorthandLookup("v") == nil {
 		t.Errorf("persistent flag -v not registered")
+	}
+}
+
+// TestRootCmd_NoProgressFlag_Registered locks the persistent
+// `--no-progress` flag added in PR-9: the flag must exist on the
+// root, default to false, and bind no shorthand (only long form is
+// part of the public CLI contract).
+func TestRootCmd_NoProgressFlag_Registered(t *testing.T) {
+	t.Parallel()
+	root := cli.NewRootCmd(stubDeps())
+
+	flag := root.PersistentFlags().Lookup("no-progress")
+	if flag == nil {
+		t.Fatalf("persistent flag --no-progress not registered")
+	}
+	if flag.DefValue != "false" {
+		t.Errorf("--no-progress DefValue = %q, want %q", flag.DefValue, "false")
+	}
+	if flag.Shorthand != "" {
+		t.Errorf("--no-progress Shorthand = %q, want empty (long form only)", flag.Shorthand)
+	}
+}
+
+// TestRootCmd_PreRunE_InstallsReporter confirms the root PreRunE
+// stashes a non-nil Reporter on ctx so cli/{group} subcommands and
+// the libraries they call can pull it via ReporterFromContext without
+// nil-checking. The probe subcommand RunE is the read site, mirroring
+// TestRoot_VerboseSetsSlogLevel.
+func TestRootCmd_PreRunE_InstallsReporter(t *testing.T) {
+	t.Parallel()
+	root := cli.NewRootCmd(stubDeps())
+
+	var captured progress.Reporter
+	probe := &cobra.Command{
+		Use: "probe",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			captured = cli.ReporterFromContext(cmd.Context())
+			return nil
+		},
+	}
+	root.AddCommand(probe)
+	root.SetArgs([]string{"probe"})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured == nil {
+		t.Fatalf("Reporter not stashed on ctx")
+	}
+	// Stderr is bound to a *bytes.Buffer in this test, which is not
+	// a *os.File — progress.New must therefore return Nop, and the
+	// Reporter must be safe to drive end-to-end without panicking.
+	captured.Start(2, "probe")
+	captured.Tick()
+	captured.Finish()
+}
+
+// TestRootCmd_PreRunE_InstallsReporter_NoProgress confirms passing
+// --no-progress still results in a non-nil Reporter on ctx (Nop), so
+// downstream callers can always Tick.
+func TestRootCmd_PreRunE_InstallsReporter_NoProgress(t *testing.T) {
+	t.Parallel()
+	root := cli.NewRootCmd(stubDeps())
+
+	var captured progress.Reporter
+	probe := &cobra.Command{
+		Use: "probe",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			captured = cli.ReporterFromContext(cmd.Context())
+			return nil
+		},
+	}
+	root.AddCommand(probe)
+	root.SetArgs([]string{"probe", "--no-progress"})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if captured == nil {
+		t.Fatalf("Reporter not stashed on ctx with --no-progress")
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ntub/domjudge-tool/internal/cli"
@@ -162,6 +163,72 @@ func TestDownloadScoreboard_RequiresCid(t *testing.T) {
 	err := runWithStub(t, captured) // no --cid
 	if err == nil {
 		t.Fatal("expected MarkFlagRequired error, got nil")
+	}
+}
+
+// TestDownloadScoreboard_CtxCancelled_AbortsBeforeNextRow exercises
+// the `if err := ctx.Err(); err != nil` guard at the top of the CSV
+// row-write loop. With a pre-cancelled ctx the cmd must surface a
+// context.Canceled-wrapped error and the resulting CSV must not
+// contain any data rows (header-only, empty, or absent are all OK).
+func TestDownloadScoreboard_CtxCancelled_AbortsBeforeNextRow(t *testing.T) {
+	pwd, _ := os.Getwd()
+	t.Cleanup(func() { _ = os.Chdir(pwd) })
+	tmp := t.TempDir()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	deps := cliscb.Deps{
+		Download: func(_ context.Context, _ *apiv4.Client, _ string) ([]string, [][]string, error) {
+			return []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score"},
+				[][]string{
+					{"1", "NTUB", "Alpha", "2", "100"},
+					{"2", "NTUB", "Beta", "1", "50"},
+					{"3", "NTUB", "Gamma", "0", "0"},
+				}, nil
+		},
+		NewAPI: func(cfg *config.DomServerClient) *apiv4.Client {
+			return apiv4.New(apiv4.Options{BaseURL: cfg.Host})
+		},
+	}
+	cmd := cliscb.NewDownloadScoreboardCmd(deps)
+	root := cli.NewRootCmd(cli.Deps{})
+	root.AddCommand(cmd)
+	root.SetArgs([]string{"download-scoreboard", "--cid", "1"})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+
+	cfg := &config.DomServerClient{Host: "https://judge.example.test"}
+	ctx, cancel := context.WithCancel(cli.WithConfig(context.Background(), cfg))
+	cancel()
+	err := root.ExecuteContext(ctx)
+	if err == nil {
+		t.Fatal("expected ctx-cancelled error, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("errors.Is(err, context.Canceled) = false; err = %v", err)
+	}
+
+	// The CSV may not exist, may be empty, or may contain just the
+	// header (the loop's ctx.Err() guard runs after the writer is
+	// created and the header is written but before any data rows).
+	// Any data row would prove cancellation was missed.
+	body, readErr := os.ReadFile(filepath.Join(tmp, "export.csv"))
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+		t.Fatalf("read export.csv: %v", readErr)
+	}
+	if readErr == nil {
+		// File exists; ensure no data row was written. Header is fine.
+		// Data rows in this fixture all start with a digit; reject any
+		// line beyond the header that contains "Alpha", "Beta", or
+		// "Gamma" team names.
+		text := string(body)
+		for _, marker := range []string{"Alpha", "Beta", "Gamma"} {
+			if strings.Contains(text, marker) {
+				t.Errorf("export.csv contains data row %q after ctx-cancel; body:\n%s", marker, text)
+			}
+		}
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ntub/domjudge-tool/internal/config"
 	"github.com/ntub/domjudge-tool/internal/model"
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // nowFn and randRead are package-level seams replaced by tests via
@@ -31,6 +32,13 @@ func SetDeterministicSeams(now func() time.Time, rnd func([]byte) (int, error)) 
 // SendOptions configures a SendUserAccounts call.
 type SendOptions struct {
 	FromEmail string // From: header value and recipient-fallback domain source
+
+	// Reporter is the optional progress sink. Library code never
+	// constructs a Reporter; the CLI root PreRunE is the only
+	// production construct site. Nil is treated as [progress.Nop] so
+	// existing callers (and Phase 1 tests that pre-date PR-9) need no
+	// change.
+	Reporter progress.Reporter
 }
 
 // SendUserAccounts sends a templated credential email to each user in users.
@@ -59,6 +67,12 @@ func SendUserAccounts(
 	if err := tmpl.Validate(); err != nil {
 		return err
 	}
+	rep := opts.Reporter
+	if rep == nil {
+		rep = progress.Nop()
+	}
+	rep.Start(len(users), "sending")
+	defer rep.Finish()
 	for _, user := range users {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("email: send: %w", err)
@@ -70,6 +84,7 @@ func SendUserAccounts(
 		if err := sender.Send(ctx, opts.FromEmail, []string{recipient}, msg); err != nil {
 			return fmt.Errorf("email: send to %s: %w", user.Username, err)
 		}
+		rep.Tick()
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/client/web"
 	"github.com/ntub/domjudge-tool/internal/model"
 	"github.com/ntub/domjudge-tool/internal/util/password"
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // ImportOptions configures a single ImportUsersTeams call.
@@ -41,6 +42,14 @@ type ImportOptions struct {
 	// flow's resolveContestID. Empty triggers single-active-contest
 	// auto-detection (PR-3 §"邊界").
 	ContestHint string
+
+	// Reporter is the optional progress sink. Library code never
+	// constructs a Reporter; the CLI root PreRunE is the only
+	// production construct site, and it passes the Reporter through
+	// context so the call chain reaches this struct via the CLI
+	// command. Nil is treated as [progress.Nop] so existing callers
+	// (and Phase 1 tests that pre-date PR-9) need no change.
+	Reporter progress.Reporter
 }
 
 // ImportUsersTeams reconciles a CSV against the live API user list and
@@ -84,6 +93,19 @@ func ImportUsersTeams(
 	if err != nil {
 		return nil, err
 	}
+
+	// Step 3.5 — start the optional progress bar over the parsed row
+	// count. opts is taken by value, so writing back the Nop fallback
+	// here is local to this call; the create / update sub-loops below
+	// can call opts.Reporter.Tick() unconditionally without nil-checks.
+	// One bar covers create + update phases; the split into two cohorts
+	// is an internal optimisation, not part of the operator's mental
+	// model.
+	if opts.Reporter == nil {
+		opts.Reporter = progress.Nop()
+	}
+	opts.Reporter.Start(len(rows), "importing")
+	defer opts.Reporter.Finish()
 
 	existingByName := indexByUsername(snapshot)
 
@@ -161,6 +183,7 @@ func ImportUsersTeams(
 			return out, err
 		}
 		out = append(out, processed)
+		opts.Reporter.Tick()
 	}
 	return out, nil
 }
@@ -181,7 +204,19 @@ func processCreateCohort(
 		return nil, nil
 	}
 	if useAPICreateFlow(ctx, opts) {
-		return apiCreateFlow(ctx, opts.API, gw, rows, opts.ContestHint, opts)
+		created, err := apiCreateFlow(ctx, opts.API, gw, rows, opts.ContestHint, opts)
+		if err != nil {
+			return created, err
+		}
+		// API bulk path has no per-row loop — the bulk endpoints handle
+		// the cohort in one shot. To keep the bar honest the cohort is
+		// ticked en bloc; the bar jumps to its final count when the
+		// bulk call returns, which the spec acknowledges as an accepted
+		// trade-off (PR-9 §"7 條 batch 指令 wire-in" footnote).
+		for range created {
+			opts.Reporter.Tick()
+		}
+		return created, nil
 	}
 	out := make([]model.CreateUser, 0, len(rows))
 	for _, cu := range rows {
@@ -190,6 +225,7 @@ func processCreateCohort(
 			return out, err
 		}
 		out = append(out, processed)
+		opts.Reporter.Tick()
 	}
 	return out, nil
 }

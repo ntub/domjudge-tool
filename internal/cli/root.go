@@ -6,6 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/spf13/cobra"
+
+	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
 // Deps groups injectable dependencies the command tree needs.
@@ -50,6 +52,8 @@ func NewRootCmd(_ Deps) *cobra.Command {
 	cmd.PersistentFlags().StringP("config", "c", "domserver.json", "path to domserver.json")
 	cmd.PersistentFlags().CountP("verbose", "v", "increase log verbosity (-v info, -vv debug)")
 	cmd.PersistentFlags().Bool("disable-ssl", false, "disable TLS verification (overrides config)")
+	cmd.PersistentFlags().Bool("no-progress", false,
+		"disable the progress bar (auto-disabled when stderr is not a TTY)")
 
 	cmd.PersistentPreRunE = func(c *cobra.Command, _ []string) error {
 		count, err := c.Flags().GetCount("verbose")
@@ -64,6 +68,15 @@ func NewRootCmd(_ Deps) *cobra.Command {
 		// importer dedup debug lines) read slog.Default(); rebind here
 		// so -v / -vv reaches them. Closes #5 of v1.1.1 hotfix.
 		slog.SetDefault(logger)
+
+		// Construct a Reporter once, here, so library packages can
+		// pull it from ctx without re-implementing the TTY / env /
+		// flag gate at every call site. progress.New returns Nop
+		// when stderr isn't a TTY, NO_COLOR is set, TERM=dumb, or
+		// --no-progress is true.
+		noProg, _ := c.Flags().GetBool("no-progress")
+		rep := progress.New(c.ErrOrStderr(), noProg)
+		c.SetContext(WithReporter(c.Context(), rep))
 		return nil
 	}
 

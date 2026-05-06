@@ -45,6 +45,7 @@ func NewDownloadSubmissionsCmd(deps Deps) *cobra.Command {
 				Mode:       mode,
 				OutputPath: path,
 				Extract:    extract,
+				Reporter:   cli.ReporterFromContext(ctx),
 			}
 			if cmd.Flags().Changed("strict") {
 				v := strict

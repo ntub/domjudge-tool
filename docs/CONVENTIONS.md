@@ -38,6 +38,13 @@ a registry keyed by version.
 - Diagnostic logs use `log/slog` with structured key-value pairs.
 - Library packages (`internal/client/...`, `internal/importer/...`) **do
   not** print directly. They return data; `cmd/` and `internal/cli/` print.
+- Progress bars write to **stderr** via `cmd.ErrOrStderr()`; stdout is
+  reserved for data so `2>/dev/null` and `| ...` pipelines stay byte-
+  identical. Library packages accept a `progress.Reporter` field on
+  their option structs but never construct one — only the `internal/cli`
+  root PreRunE constructs the real `Reporter`, via `progress.New`, and
+  passes it through ctx + opts. See `docs/ARCHITECTURE.md`
+  `internal/util/progress` and v1.3.0 release notes.
 
 ## Tests
 

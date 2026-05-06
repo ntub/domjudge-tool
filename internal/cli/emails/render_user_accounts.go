@@ -62,8 +62,15 @@ func NewRenderUserAccountsCmd() *cobra.Command {
 				return fmt.Errorf("render-user-accounts: mkdir: %w", err)
 			}
 
+			rep := cli.ReporterFromContext(ctx)
+			rep.Start(len(users), "rendering")
+			defer rep.Finish()
+
 			opts := email.SendOptions{FromEmail: fromEmail}
 			for _, user := range users {
+				if err := ctx.Err(); err != nil {
+					return fmt.Errorf("render-user-accounts: %w", err)
+				}
 				name := pathx.SafeFilename(user.Username)
 				if name == "" {
 					name = "unknown"
@@ -81,6 +88,7 @@ func NewRenderUserAccountsCmd() *cobra.Command {
 				if err := os.WriteFile(destPath, msg, 0o644); err != nil {
 					return fmt.Errorf("render-user-accounts: write %s: %w", destPath, err)
 				}
+				rep.Tick()
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Rendered %d emails to %s.\n", len(users), outputDir)
 			return err

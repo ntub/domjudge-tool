@@ -11,7 +11,7 @@
 | ----- | ----- | ------ |
 | **0** | Project bootstrap | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | **Done** — `v1.0.0-rc1` |
-| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.2.0` |
+| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.3.0` |
 | **2** | Add **DOMjudge 8.3.1** support to the CLI | Planned |
 | **3** | Cross-platform desktop app (PocketBase + Wails + React) | Planned |
 
@@ -48,13 +48,21 @@ domjudge-tool --help
 ```
 
 All commands support `--config` (`-c`) to point at a non-default
-`domserver.json` and `--verbose` (`-v`) for debug output.
+`domserver.json`, `--verbose` (`-v`) for debug output, and
+`--no-progress` *(v1.3.0)* to suppress the per-row progress bar on
+batch commands. The bar is also auto-disabled when stderr is not a
+TTY, when `NO_COLOR` is set, or when `TERM=dumb` — so piped
+invocations like `domjudge-tool import-users-teams ... 2>/dev/null`
+stay byte-identical to pre-v1.3.0 output.
 
 ## Commands
 
 Run `domjudge-tool --help` to list every command grouped by domain. The
 command tree mirrors the Python CLI's; commands added in v1.2.0 are
-flagged below.
+flagged below. Long-running batch commands (`import-users-teams`,
+`send-user-accounts`, `render-user-accounts`, `download-problems`,
+`download-submissions`, `download-scoreboard`) print a per-row
+progress bar to stderr on a TTY since v1.3.0.
 
 ### Email
 

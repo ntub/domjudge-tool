@@ -84,6 +84,7 @@ func NewSendUserAccountsCmd(deps Deps) *cobra.Command {
 
 			if err := email.SendUserAccounts(ctx, sender, tmpl, users, cfg, email.SendOptions{
 				FromEmail: fromEmail,
+				Reporter:  cli.ReporterFromContext(ctx),
 			}); err != nil {
 				return fmt.Errorf("send-user-accounts: %w", err)
 			}
