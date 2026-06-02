@@ -2,6 +2,7 @@
 
 Instructions for coding agents in this repository. `AGENTS.md` is a symlink to
 this file so Codex and Claude Code share one source of truth.
+Reply in zh-TW; the rest in en-US.
 
 ## Project
 

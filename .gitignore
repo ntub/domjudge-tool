@@ -31,3 +31,6 @@ tmp/raw_api_v4/
 .claude/settings.local.json
 .claude/worktrees/
 tmp/
+email-template
+*.csv
+!testdata/**/*.csv
