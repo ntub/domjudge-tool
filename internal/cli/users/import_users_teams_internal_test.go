@@ -14,7 +14,6 @@ import (
 	"github.com/ntub/domjudge-tool/internal/client/web"
 	"github.com/ntub/domjudge-tool/internal/config"
 	"github.com/ntub/domjudge-tool/internal/importer"
-	"github.com/ntub/domjudge-tool/internal/model"
 )
 
 // stubImporter swaps importUsersTeamsFn for the duration of the test
@@ -28,9 +27,9 @@ func stubImporter(t *testing.T, capture *importer.ImportOptions) {
 		_ *apiv4.UsersResource,
 		_ io.Reader,
 		opts importer.ImportOptions,
-	) ([]model.CreateUser, error) {
+	) (importer.ImportUsersTeamsResult, error) {
 		*capture = opts
-		return nil, nil
+		return importer.ImportUsersTeamsResult{}, nil
 	}
 	t.Cleanup(func() { importUsersTeamsFn = prev })
 }

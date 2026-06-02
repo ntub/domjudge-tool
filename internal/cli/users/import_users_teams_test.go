@@ -107,11 +107,21 @@ func TestImportUsersTeams_HappyPath(t *testing.T) {
 	// v1.1.1 #6: success summary on stdout. sampleCSV has 2 rows, both
 	// new (snapshot starts empty) so created=2, updated=0, skipped=0.
 	got := stdout.String()
-	if !strings.Contains(got, "Imported 2 users") ||
-		!strings.Contains(got, "created 2") ||
-		!strings.Contains(got, "updated 0") ||
-		!strings.Contains(got, "skipped 0") {
-		t.Errorf("stdout %q should contain summary 'Imported 2 users (created 2, updated 0, skipped 0)'", got)
+	for _, want := range []string{
+		"Import summary:",
+		"  Input rows: 2",
+		"  Processed rows: 2",
+		"  Created users: 2",
+		"  Updated users: 0",
+		"  Skipped existing users: 0",
+		"  Affiliations created: 0 (none)",
+		"  Affiliations reused: 0 unique / 0 rows",
+		"  Fallback affiliation-id rows: 2 (id=0)",
+		"  Output file: import-users-teams-out.csv",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("stdout %q should contain %q", got, want)
+		}
 	}
 }
 

@@ -308,6 +308,186 @@ func TestImportUsersTeams_AffiliationLookupNotFound(t *testing.T) {
 	}
 }
 
+func TestImportUsersTeamsWithReport_AffiliationMissingCreatesOnceAndCaches(t *testing.T) {
+	users := usersAPIServer(t, []model.User{})
+	gw := &mockGateway{
+		getAffiliationResult:    nil,
+		createAffiliationResult: &model.Affiliation{ID: strPtr("77"), Name: "ntub", ShortName: "ntub", Country: "TWN"},
+	}
+
+	body := importCSVHeader +
+		"\nalice,Alice,alice@example.org,ntub,pw1" +
+		"\nbob,Bob,bob@example.org,ntub,pw2\n"
+	result, err := importer.ImportUsersTeamsWithReport(context.Background(), gw, users, strings.NewReader(body), importer.ImportOptions{
+		AffiliationCountry: "TWN",
+	})
+	if err != nil {
+		t.Fatalf("ImportUsersTeamsWithReport: %v", err)
+	}
+
+	if len(gw.getAffiliationCalls) != 1 {
+		t.Fatalf("GetAffiliation calls = %d, want 1 (cached duplicate affiliation)", len(gw.getAffiliationCalls))
+	}
+	if len(gw.createAffiliationCalls) != 1 {
+		t.Fatalf("CreateAffiliation calls = %d, want 1", len(gw.createAffiliationCalls))
+	}
+	if len(gw.createTeamAndUserCalls) != 2 {
+		t.Fatalf("CreateTeamAndUser calls = %d, want 2", len(gw.createTeamAndUserCalls))
+	}
+	for i, call := range gw.createTeamAndUserCalls {
+		if call.AffiliationID != 77 {
+			t.Errorf("CreateTeamAndUser call %d AffiliationID = %d, want 77", i, call.AffiliationID)
+		}
+	}
+	if result.Summary.AffiliationsCreated != 1 {
+		t.Errorf("AffiliationsCreated = %d, want 1", result.Summary.AffiliationsCreated)
+	}
+	if len(result.Summary.AffiliationsCreatedNames) != 1 || result.Summary.AffiliationsCreatedNames[0] != "ntub" {
+		t.Errorf("AffiliationsCreatedNames = %v, want [ntub]", result.Summary.AffiliationsCreatedNames)
+	}
+}
+
+func TestImportUsersTeamsWithReport_AffiliationFoundReportsReusedCounts(t *testing.T) {
+	users := usersAPIServer(t, []model.User{})
+	gw := &mockGateway{
+		getAffiliationResult: &model.Affiliation{ID: strPtr("42"), Name: "ntub", ShortName: "ntub", Country: "TWN"},
+	}
+
+	body := importCSVHeader +
+		"\nalice,Alice,alice@example.org,ntub,pw1" +
+		"\nbob,Bob,bob@example.org,ntub,pw2\n"
+	result, err := importer.ImportUsersTeamsWithReport(context.Background(), gw, users, strings.NewReader(body), importer.ImportOptions{
+		AffiliationCountry: "TWN",
+	})
+	if err != nil {
+		t.Fatalf("ImportUsersTeamsWithReport: %v", err)
+	}
+
+	if len(gw.getAffiliationCalls) != 1 {
+		t.Fatalf("GetAffiliation calls = %d, want 1", len(gw.getAffiliationCalls))
+	}
+	if len(gw.createAffiliationCalls) != 0 {
+		t.Fatalf("CreateAffiliation calls = %d, want 0", len(gw.createAffiliationCalls))
+	}
+	if result.Summary.AffiliationsReusedUnique != 1 {
+		t.Errorf("AffiliationsReusedUnique = %d, want 1", result.Summary.AffiliationsReusedUnique)
+	}
+	if result.Summary.AffiliationsReusedRows != 2 {
+		t.Errorf("AffiliationsReusedRows = %d, want 2", result.Summary.AffiliationsReusedRows)
+	}
+}
+
+func TestImportUsersTeamsWithReport_BlankAffiliationUsesFallbackWithoutLookup(t *testing.T) {
+	users := usersAPIServer(t, []model.User{})
+	gw := &mockGateway{}
+	fallbackAffID := 285
+
+	body := importCSVHeader +
+		"\nalice,Alice,alice@example.org,,pw1" +
+		"\nbob,Bob,bob@example.org,   ,pw2\n"
+	result, err := importer.ImportUsersTeamsWithReport(context.Background(), gw, users, strings.NewReader(body), importer.ImportOptions{
+		AffiliationID:      &fallbackAffID,
+		AffiliationCountry: "TWN",
+	})
+	if err != nil {
+		t.Fatalf("ImportUsersTeamsWithReport: %v", err)
+	}
+
+	if len(gw.getAffiliationCalls) != 0 {
+		t.Fatalf("GetAffiliation calls = %d, want 0", len(gw.getAffiliationCalls))
+	}
+	if len(gw.createAffiliationCalls) != 0 {
+		t.Fatalf("CreateAffiliation calls = %d, want 0", len(gw.createAffiliationCalls))
+	}
+	if len(gw.createTeamAndUserCalls) != 2 {
+		t.Fatalf("CreateTeamAndUser calls = %d, want 2", len(gw.createTeamAndUserCalls))
+	}
+	for i, call := range gw.createTeamAndUserCalls {
+		if call.AffiliationID != fallbackAffID {
+			t.Errorf("CreateTeamAndUser call %d AffiliationID = %d, want %d", i, call.AffiliationID, fallbackAffID)
+		}
+		if call.User.Affiliation != nil {
+			t.Errorf("CreateTeamAndUser call %d Affiliation = %v, want nil for blank/whitespace CSV field", i, call.User.Affiliation)
+		}
+	}
+	if result.Summary.FallbackAffiliationIDRows != 2 {
+		t.Errorf("FallbackAffiliationIDRows = %d, want 2", result.Summary.FallbackAffiliationIDRows)
+	}
+	if result.Summary.FallbackAffiliationID != fallbackAffID {
+		t.Errorf("FallbackAffiliationID = %d, want %d", result.Summary.FallbackAffiliationID, fallbackAffID)
+	}
+}
+
+func TestImportUsersTeamsWithReport_UserSummaryCounts(t *testing.T) {
+	teamID := "3"
+	existing := model.User{ID: "7", Username: "alice", Name: "Old Alice", TeamID: &teamID}
+
+	tests := []struct {
+		name        string
+		opts        importer.ImportOptions
+		wantCreated int
+		wantUpdated int
+		wantSkipped int
+		wantRows    int
+	}{
+		{
+			name:        "created and updated",
+			opts:        importer.ImportOptions{AffiliationCountry: "TWN"},
+			wantCreated: 1,
+			wantUpdated: 1,
+			wantSkipped: 0,
+			wantRows:    2,
+		},
+		{
+			name:        "skipped existing",
+			opts:        importer.ImportOptions{AffiliationCountry: "TWN", IgnoreExisting: true},
+			wantCreated: 1,
+			wantUpdated: 0,
+			wantSkipped: 1,
+			wantRows:    1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			users := usersAPIServer(t, []model.User{existing})
+			gw := &mockGateway{
+				createTeamID: "55",
+				createUserID: "99",
+				updateTeamID: teamID,
+				updateUserID: "7",
+			}
+
+			body := importCSVHeader +
+				"\nalice,Alice,alice@example.org,,pw1" +
+				"\nbob,Bob,bob@example.org,,pw2\n"
+			result, err := importer.ImportUsersTeamsWithReport(context.Background(), gw, users, strings.NewReader(body), tc.opts)
+			if err != nil {
+				t.Fatalf("ImportUsersTeamsWithReport: %v", err)
+			}
+
+			if result.Summary.InputRows != 2 {
+				t.Errorf("InputRows = %d, want 2", result.Summary.InputRows)
+			}
+			if result.Summary.ProcessedRows != tc.wantRows {
+				t.Errorf("ProcessedRows = %d, want %d", result.Summary.ProcessedRows, tc.wantRows)
+			}
+			if result.Summary.CreatedUsers != tc.wantCreated {
+				t.Errorf("CreatedUsers = %d, want %d", result.Summary.CreatedUsers, tc.wantCreated)
+			}
+			if result.Summary.UpdatedUsers != tc.wantUpdated {
+				t.Errorf("UpdatedUsers = %d, want %d", result.Summary.UpdatedUsers, tc.wantUpdated)
+			}
+			if result.Summary.SkippedExistingUsers != tc.wantSkipped {
+				t.Errorf("SkippedExistingUsers = %d, want %d", result.Summary.SkippedExistingUsers, tc.wantSkipped)
+			}
+			if len(result.Users) != tc.wantRows {
+				t.Errorf("Users len = %d, want %d", len(result.Users), tc.wantRows)
+			}
+		})
+	}
+}
+
 func TestImportUsersTeams_EmptyEmail_BecomesNil(t *testing.T) {
 	users := usersAPIServer(t, []model.User{})
 	gw := &mockGateway{}

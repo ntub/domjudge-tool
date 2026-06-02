@@ -109,6 +109,59 @@ func TestImportUsersTeams_API_DeleteExisting_CallsScraperFirst(t *testing.T) {
 	}
 }
 
+func TestImportUsersTeamsWithReport_API_CreatePopulatesAffiliationSummary(t *testing.T) {
+	cap := &branchCapture{}
+	srv := newBranchServer(t, cap, branchServerOpts{
+		usersFirstPage: `[]`,
+		organizations:  `[{"id":"1","shortname":"NTUB","name":"NTUB","country":"TWN"}]`,
+	})
+	t.Cleanup(srv.Close)
+
+	api := apiv4.New(apiv4.Options{BaseURL: srv.URL})
+	gw := &mockGateway{}
+	fallbackAffID := 285
+	categoryID := 13337
+	body := importCSVHeader +
+		"\nalice,Alice,,ACME,pw1" +
+		"\nbob,Bob,,ACME,pw2" +
+		"\ncarol,Carol,,NTUB,pw3" +
+		"\ndave,Dave,,,pw4\n"
+
+	result, err := importer.ImportUsersTeamsWithReport(context.Background(), gw, api.Users, strings.NewReader(body), importer.ImportOptions{
+		CategoryID:         &categoryID,
+		AffiliationID:      &fallbackAffID,
+		AffiliationCountry: "TWN",
+		Router:             pinnedRouter{path: importer.PathAPI, reason: "test: api mode"},
+		API:                api,
+		ContestHint:        "13337",
+	})
+	if err != nil {
+		t.Fatalf("ImportUsersTeamsWithReport: %v", err)
+	}
+
+	if result.Summary.AffiliationsCreated != 1 {
+		t.Errorf("AffiliationsCreated = %d, want 1", result.Summary.AffiliationsCreated)
+	}
+	if len(result.Summary.AffiliationsCreatedNames) != 1 || result.Summary.AffiliationsCreatedNames[0] != "ACME" {
+		t.Errorf("AffiliationsCreatedNames = %v, want [ACME]", result.Summary.AffiliationsCreatedNames)
+	}
+	if result.Summary.AffiliationsReusedUnique != 1 {
+		t.Errorf("AffiliationsReusedUnique = %d, want 1", result.Summary.AffiliationsReusedUnique)
+	}
+	if result.Summary.AffiliationsReusedRows != 1 {
+		t.Errorf("AffiliationsReusedRows = %d, want 1", result.Summary.AffiliationsReusedRows)
+	}
+	if result.Summary.FallbackAffiliationIDRows != 1 {
+		t.Errorf("FallbackAffiliationIDRows = %d, want 1", result.Summary.FallbackAffiliationIDRows)
+	}
+	if result.Summary.FallbackAffiliationID != fallbackAffID {
+		t.Errorf("FallbackAffiliationID = %d, want %d", result.Summary.FallbackAffiliationID, fallbackAffID)
+	}
+	if result.Summary.CreatedUsers != 4 || result.Summary.ProcessedRows != 4 {
+		t.Errorf("created/processed summary = %d/%d, want 4/4", result.Summary.CreatedUsers, result.Summary.ProcessedRows)
+	}
+}
+
 // indexOf returns the position of name in xs, or -1 when absent.
 func indexOf(xs []string, name string) int {
 	for i, s := range xs {
@@ -124,6 +177,7 @@ func indexOf(xs []string, name string) int {
 type branchServerOpts struct {
 	usersFirstPage  string
 	usersSecondPage string
+	organizations   string
 }
 
 type branchCapture struct {
@@ -157,16 +211,16 @@ func newBranchServer(t *testing.T, cap *branchCapture, opts branchServerOpts) *h
 			usersCount++
 			w.Header().Set("Content-Type", "application/json")
 			if usersCount == 1 {
-				_, _ = w.Write([]byte(opts.usersFirstPage))
+				writeJSONFallback(w, opts.usersFirstPage, "[]")
 				return
 			}
-			_, _ = w.Write([]byte(opts.usersSecondPage))
+			writeJSONFallback(w, opts.usersSecondPage, "[]")
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v4/contests":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`[{"id":"13337","shortname":"main","name":"Main","state":{"started":"2026-01-01T00:00:00+00:00"}}]`))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v4/contests/") && strings.HasSuffix(r.URL.Path, "/organizations"):
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`[]`))
+			writeJSONFallback(w, opts.organizations, "[]")
 		case r.Method == http.MethodPost && r.URL.Path == "/api/v4/users/accounts":
 			_ = r.ParseMultipartForm(1 << 20)
 			f, _, _ := r.FormFile("tsv")
@@ -186,4 +240,12 @@ func newBranchServer(t *testing.T, cap *branchCapture, opts branchServerOpts) *h
 			http.NotFound(w, r)
 		}
 	}))
+}
+
+func writeJSONFallback(w http.ResponseWriter, body, fallback string) {
+	if body == "" {
+		_, _ = w.Write([]byte(fallback))
+		return
+	}
+	_, _ = w.Write([]byte(body))
 }

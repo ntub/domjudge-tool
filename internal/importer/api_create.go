@@ -147,6 +147,18 @@ func apiCreateFlow(
 	contestHint string,
 	opts ImportOptions,
 ) ([]model.CreateUser, error) {
+	return apiCreateFlowWithSummary(ctx, api, gw, rows, contestHint, opts, nil)
+}
+
+func apiCreateFlowWithSummary(
+	ctx context.Context,
+	api *apiv4.Client,
+	gw web.Gateway,
+	rows []model.CreateUser,
+	contestHint string,
+	opts ImportOptions,
+	summary *ImportUsersTeamsSummary,
+) ([]model.CreateUser, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -174,6 +186,7 @@ func apiCreateFlow(
 	orgsByName := indexOrganizationsByName(existingOrgs)
 
 	missing := dedupeMissingAffiliations(rows, orgsByName)
+	affiliationSummary := summarizeAPIAffiliations(rows, orgsByName, missing)
 	if len(missing) > 0 {
 		payload := buildOrganizationsPayload(missing, opts.AffiliationCountry)
 		if _, err := api.Imports.Organizations(ctx, payload); err != nil {
@@ -188,6 +201,7 @@ func apiCreateFlow(
 			orgsByName[org.Name] = org
 		}
 	}
+	affiliationSummary.apply(summary)
 
 	// Materialise per-row password before we render TSVs so the same
 	// derived password ends up in accounts.tsv and the returned slice.
@@ -262,7 +276,11 @@ func apiCreateFlow(
 func dedupeMissingAffiliations(rows []model.CreateUser, orgsByName map[string]model.Organization) []string {
 	trimmedKnown := make(map[string]struct{}, len(orgsByName))
 	for name := range orgsByName {
-		trimmedKnown[strings.TrimSpace(name)] = struct{}{}
+		key := strings.TrimSpace(name)
+		if key == "" {
+			continue
+		}
+		trimmedKnown[key] = struct{}{}
 	}
 	seen := make(map[string]struct{}, len(rows))
 	var out []string
@@ -292,6 +310,65 @@ func dedupeMissingAffiliations(rows []model.CreateUser, orgsByName map[string]mo
 		out = append(out, original)
 	}
 	return out
+}
+
+type apiAffiliationSummary struct {
+	createdNames []string
+	reusedUnique int
+	reusedRows   int
+	fallbackRows int
+}
+
+func summarizeAPIAffiliations(
+	rows []model.CreateUser,
+	orgsByName map[string]model.Organization,
+	missing []string,
+) apiAffiliationSummary {
+	trimmedKnown := make(map[string]struct{}, len(orgsByName))
+	for name := range orgsByName {
+		key := strings.TrimSpace(name)
+		if key == "" {
+			continue
+		}
+		trimmedKnown[key] = struct{}{}
+	}
+
+	out := apiAffiliationSummary{
+		createdNames: append([]string(nil), missing...),
+	}
+	reusedSeen := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		if row.Affiliation == nil {
+			out.fallbackRows++
+			continue
+		}
+		key := strings.TrimSpace(*row.Affiliation)
+		if key == "" {
+			out.fallbackRows++
+			continue
+		}
+		if _, ok := trimmedKnown[key]; !ok {
+			continue
+		}
+		out.reusedRows++
+		if _, seen := reusedSeen[key]; seen {
+			continue
+		}
+		reusedSeen[key] = struct{}{}
+		out.reusedUnique++
+	}
+	return out
+}
+
+func (s apiAffiliationSummary) apply(summary *ImportUsersTeamsSummary) {
+	if summary == nil {
+		return
+	}
+	summary.AffiliationsCreated += len(s.createdNames)
+	summary.AffiliationsCreatedNames = append(summary.AffiliationsCreatedNames, s.createdNames...)
+	summary.AffiliationsReusedUnique += s.reusedUnique
+	summary.AffiliationsReusedRows += s.reusedRows
+	summary.FallbackAffiliationIDRows += s.fallbackRows
 }
 
 func contains(m map[string]struct{}, k string) bool {

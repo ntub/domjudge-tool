@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
 	"github.com/ntub/domjudge-tool/internal/client/web"
@@ -52,6 +53,29 @@ type ImportOptions struct {
 	Reporter progress.Reporter
 }
 
+// ImportUsersTeamsResult is the detailed return value for
+// ImportUsersTeamsWithReport.
+type ImportUsersTeamsResult struct {
+	Users   []model.CreateUser
+	Summary ImportUsersTeamsSummary
+}
+
+// ImportUsersTeamsSummary records the operator-facing outcome of one
+// import-users-teams run.
+type ImportUsersTeamsSummary struct {
+	InputRows                 int
+	ProcessedRows             int
+	CreatedUsers              int
+	UpdatedUsers              int
+	SkippedExistingUsers      int
+	AffiliationsCreated       int
+	AffiliationsCreatedNames  []string
+	AffiliationsReusedUnique  int
+	AffiliationsReusedRows    int
+	FallbackAffiliationIDRows int
+	FallbackAffiliationID     int
+}
+
 // ImportUsersTeams reconciles a CSV against the live API user list and
 // drives gw to create, update, or delete teams and users.
 //
@@ -62,7 +86,7 @@ type ImportOptions struct {
 // Returns []model.CreateUser with Password fields populated (either
 // from the CSV column or freshly generated). The CLI layer is
 // responsible for writing the output CSV from this slice using
-// exporter.Users — this function never writes files.
+// exporter.CreateUsers — this function never writes files.
 //
 // Per-row error policy: on the first error from any gateway call this
 // function aborts and returns the slice accumulated so far together
@@ -75,24 +99,40 @@ func ImportUsersTeams(
 	r io.Reader,
 	opts ImportOptions,
 ) ([]model.CreateUser, error) {
+	result, err := ImportUsersTeamsWithReport(ctx, gw, users, r, opts)
+	return result.Users, err
+}
+
+// ImportUsersTeamsWithReport is ImportUsersTeams plus a structured
+// summary suitable for CLI output.
+func ImportUsersTeamsWithReport(
+	ctx context.Context,
+	gw web.Gateway,
+	users *apiv4.UsersResource,
+	r io.Reader,
+	opts ImportOptions,
+) (ImportUsersTeamsResult, error) {
+	var result ImportUsersTeamsResult
+
 	// Step 1 — login first so a stale or invalid session fails before
 	// any state is changed.
 	if err := gw.Login(ctx); err != nil {
-		return nil, fmt.Errorf("importer: login: %w", err)
+		return result, fmt.Errorf("importer: login: %w", err)
 	}
 
 	// Step 2 — snapshot the current users so we can dispatch
 	// create-vs-update.
 	snapshot, err := users.List(ctx, apiv4.UsersListOpts{})
 	if err != nil {
-		return nil, fmt.Errorf("importer: list users: %w", err)
+		return result, fmt.Errorf("importer: list users: %w", err)
 	}
 
 	// Step 3 — parse the CSV (BOM-tolerant, field-name driven).
 	rows, err := ParseUsersCSV(r)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
+	result.Summary.InputRows = len(rows)
 
 	// Step 3.5 — start the optional progress bar over the parsed row
 	// count. opts is taken by value, so writing back the Nop fallback
@@ -114,13 +154,15 @@ func ImportUsersTeams(
 	// surprised by half-deleted entries.
 	if opts.DeleteExisting {
 		if err := preDelete(ctx, gw, rows, existingByName); err != nil {
-			return nil, err
+			return result, err
 		}
 	}
 
 	// Resolve category-id / fallback affiliation-id from opts.
 	categoryID := derefIntOr(opts.CategoryID, 0)
 	fallbackAffID := derefIntOr(opts.AffiliationID, 0)
+	result.Summary.FallbackAffiliationID = fallbackAffID
+	affiliations := newAffiliationResolver(gw, opts.AffiliationCountry, &result.Summary)
 
 	// Step 5 — split rows into create candidates vs update candidates.
 	// DeleteExisting flips every row into a create candidate because
@@ -139,6 +181,7 @@ func ImportUsersTeams(
 		}
 		if isExisting {
 			if opts.IgnoreExisting {
+				result.Summary.SkippedExistingUsers++
 				continue
 			}
 			updateRows = append(updateRows, updateCandidate{row: cu, existing: existingByName[cu.Username]})
@@ -154,9 +197,12 @@ func ImportUsersTeams(
 	// and an api client is wired, dispatch the whole cohort through one
 	// apiCreateFlow call so the bulk endpoints see one TSV per kind.
 	out := make([]model.CreateUser, 0, len(rows))
-	created, err := processCreateCohort(ctx, gw, createRows, categoryID, fallbackAffID, opts)
+	created, err := processCreateCohort(ctx, gw, createRows, categoryID, fallbackAffID, opts, affiliations)
+	result.Summary.CreatedUsers += len(created)
+	result.Summary.ProcessedRows += len(created)
+	result.Users = append(result.Users, created...)
 	if err != nil {
-		return out, err
+		return result, err
 	}
 	out = append(out, created...)
 
@@ -173,19 +219,25 @@ func ImportUsersTeams(
 			}
 			tid, err := resolveTeamID(ctx, users, teamsRes, opts.ContestHint, updateRows[i].existing)
 			if err != nil {
-				return out, fmt.Errorf("importer: update team %s: %w", updateRows[i].row.Username, err)
+				result.Users = out
+				return result, fmt.Errorf("importer: update team %s: %w", updateRows[i].row.Username, err)
 			}
 			updateRows[i].existing.TeamID = &tid
 		}
 
-		processed, err := processRowScraper(ctx, gw, updateRows[i].row, true, updateRows[i].existing, categoryID, fallbackAffID, opts)
+		processed, err := processRowScraper(ctx, gw, updateRows[i].row, true, updateRows[i].existing, categoryID, fallbackAffID, opts, affiliations)
 		if err != nil {
-			return out, err
+			result.Users = out
+			return result, err
 		}
 		out = append(out, processed)
+		result.Users = append(result.Users, processed)
+		result.Summary.UpdatedUsers++
+		result.Summary.ProcessedRows++
 		opts.Reporter.Tick()
 	}
-	return out, nil
+	result.Users = out
+	return result, nil
 }
 
 // processCreateCohort drives every row that needs a fresh team + user
@@ -199,12 +251,17 @@ func processCreateCohort(
 	rows []model.CreateUser,
 	categoryID, fallbackAffID int,
 	opts ImportOptions,
+	affiliations *affiliationResolver,
 ) ([]model.CreateUser, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
 	if useAPICreateFlow(ctx, opts) {
-		created, err := apiCreateFlow(ctx, opts.API, gw, rows, opts.ContestHint, opts)
+		var summary *ImportUsersTeamsSummary
+		if affiliations != nil {
+			summary = affiliations.summary
+		}
+		created, err := apiCreateFlowWithSummary(ctx, opts.API, gw, rows, opts.ContestHint, opts, summary)
 		if err != nil {
 			return created, err
 		}
@@ -220,7 +277,7 @@ func processCreateCohort(
 	}
 	out := make([]model.CreateUser, 0, len(rows))
 	for _, cu := range rows {
-		processed, err := processRowScraper(ctx, gw, cu, false, model.User{}, categoryID, fallbackAffID, opts)
+		processed, err := processRowScraper(ctx, gw, cu, false, model.User{}, categoryID, fallbackAffID, opts, affiliations)
 		if err != nil {
 			return out, err
 		}
@@ -257,20 +314,24 @@ func processRowScraper(
 	existing model.User,
 	categoryID, fallbackAffID int,
 	opts ImportOptions,
+	affiliations *affiliationResolver,
 ) (model.CreateUser, error) {
 	var err error
-	// TODO(team-lead): confirm AffiliationID + CSV affiliation column
-	// interaction. The spec is internally inconsistent on this point;
-	// the current reading treats an empty CSV affiliation as "use
-	// opts.AffiliationID, skip GetAffiliation" and a non-empty CSV
-	// affiliation as "look up; on miss CreateAffiliation; ignore
-	// opts.AffiliationID".
 	affID := fallbackAffID
 	if cu.Affiliation != nil {
-		affID, err = resolveAffiliation(ctx, gw, *cu.Affiliation, opts.AffiliationCountry)
-		if err != nil {
-			return model.CreateUser{}, err
+		name := strings.TrimSpace(*cu.Affiliation)
+		if name == "" {
+			cu.Affiliation = nil
+			affiliations.recordFallback()
+		} else {
+			cu.Affiliation = &name
+			affID, err = affiliations.resolve(ctx, name)
+			if err != nil {
+				return model.CreateUser{}, err
+			}
 		}
+	} else {
+		affiliations.recordFallback()
 	}
 
 	pw, err := derivePassword(valueOrEmpty(cu.Password), opts)
@@ -360,20 +421,61 @@ func valueOrEmpty(p *string) string {
 	return *p
 }
 
-// resolveAffiliation looks up an affiliation by name; on miss it
-// creates one with the given country and returns the numeric ID parsed
-// from the resource. A nil return from GetAffiliation is the "not
-// found" signal — that contract is documented on web.Gateway.
-func resolveAffiliation(ctx context.Context, gw web.Gateway, name, country string) (int, error) {
-	aff, err := gw.GetAffiliation(ctx, name)
+type affiliationResolution int
+
+const (
+	affiliationResolutionCreated affiliationResolution = iota
+	affiliationResolutionReused
+)
+
+type affiliationCacheEntry struct {
+	id         int
+	resolution affiliationResolution
+}
+
+type affiliationResolver struct {
+	gw      web.Gateway
+	country string
+	cache   map[string]affiliationCacheEntry
+	summary *ImportUsersTeamsSummary
+}
+
+func newAffiliationResolver(gw web.Gateway, country string, summary *ImportUsersTeamsSummary) *affiliationResolver {
+	return &affiliationResolver{
+		gw:      gw,
+		country: country,
+		cache:   make(map[string]affiliationCacheEntry),
+		summary: summary,
+	}
+}
+
+func (r *affiliationResolver) recordFallback() {
+	if r == nil || r.summary == nil {
+		return
+	}
+	r.summary.FallbackAffiliationIDRows++
+}
+
+func (r *affiliationResolver) resolve(ctx context.Context, name string) (int, error) {
+	if r == nil {
+		return 0, fmt.Errorf("importer: affiliation resolver unavailable")
+	}
+	if entry, ok := r.cache[name]; ok {
+		r.recordCacheHit(entry)
+		return entry.id, nil
+	}
+
+	aff, err := r.gw.GetAffiliation(ctx, name)
 	if err != nil {
 		return 0, fmt.Errorf("importer: get affiliation %q: %w", name, err)
 	}
+	resolution := affiliationResolutionReused
 	if aff == nil {
-		aff, err = gw.CreateAffiliation(ctx, name, name, country)
+		aff, err = r.gw.CreateAffiliation(ctx, name, name, r.country)
 		if err != nil {
 			return 0, fmt.Errorf("importer: create affiliation %q: %w", name, err)
 		}
+		resolution = affiliationResolutionCreated
 	}
 	if aff == nil || aff.ID == nil {
 		return 0, fmt.Errorf("importer: affiliation %q has no id", name)
@@ -382,7 +484,33 @@ func resolveAffiliation(ctx context.Context, gw web.Gateway, name, country strin
 	if err != nil {
 		return 0, fmt.Errorf("importer: affiliation %q id %q is not numeric: %w", name, *aff.ID, err)
 	}
+	entry := affiliationCacheEntry{id: id, resolution: resolution}
+	r.cache[name] = entry
+	r.recordFirstResolution(name, entry)
 	return id, nil
+}
+
+func (r *affiliationResolver) recordFirstResolution(name string, entry affiliationCacheEntry) {
+	if r.summary == nil {
+		return
+	}
+	switch entry.resolution {
+	case affiliationResolutionCreated:
+		r.summary.AffiliationsCreated++
+		r.summary.AffiliationsCreatedNames = append(r.summary.AffiliationsCreatedNames, name)
+	case affiliationResolutionReused:
+		r.summary.AffiliationsReusedUnique++
+		r.summary.AffiliationsReusedRows++
+	}
+}
+
+func (r *affiliationResolver) recordCacheHit(entry affiliationCacheEntry) {
+	if r == nil || r.summary == nil {
+		return
+	}
+	if entry.resolution == affiliationResolutionReused {
+		r.summary.AffiliationsReusedRows++
+	}
 }
 
 // indexByUsername maps a snapshot of users by username so the

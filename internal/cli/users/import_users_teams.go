@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,10 +14,9 @@ import (
 	"github.com/ntub/domjudge-tool/internal/client/web"
 	"github.com/ntub/domjudge-tool/internal/exporter"
 	"github.com/ntub/domjudge-tool/internal/importer"
-	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-// importFn matches importer.ImportUsersTeams's signature so tests can
+// importFn matches importer.ImportUsersTeamsWithReport's signature so tests can
 // stub the call without an HTTP server. The compile-time check below
 // guards against signature drift.
 type importFn = func(
@@ -25,15 +25,15 @@ type importFn = func(
 	*apiv4.UsersResource,
 	io.Reader,
 	importer.ImportOptions,
-) ([]model.CreateUser, error)
+) (importer.ImportUsersTeamsResult, error)
 
 // importUsersTeamsFn is the package-level seam: production points at
 // the real importer; tests in package users replace it.
-var importUsersTeamsFn importFn = importer.ImportUsersTeams
+var importUsersTeamsFn importFn = importer.ImportUsersTeamsWithReport
 
 // NewImportUsersTeamsCmd builds the `import-users-teams <file>`
-// subcommand: drives importer.ImportUsersTeams against the supplied
-// CSV, writing the resulting CreateUser slice to
+// subcommand: drives importer.ImportUsersTeamsWithReport against the
+// supplied CSV, writing the resulting CreateUser slice to
 // ./import-users-teams-out.csv (Python parity).
 //
 // Deviation from Python: --ignore-existing and --delete-existing are
@@ -100,20 +100,21 @@ func NewImportUsersTeamsCmd(deps Deps) *cobra.Command {
 				Reporter:           cli.ReporterFromContext(ctx),
 			}
 
-			created, err := importUsersTeamsFn(ctx, gw, api.Users, file, opts)
+			result, err := importUsersTeamsFn(ctx, gw, api.Users, file, opts)
 			if err != nil {
 				return fmt.Errorf("import-users-teams: %w", err)
 			}
 
-			out, err := os.Create("import-users-teams-out.csv")
+			const outputFile = "import-users-teams-out.csv"
+			out, err := os.Create(outputFile)
 			if err != nil {
 				return fmt.Errorf("import-users-teams: create output: %w", err)
 			}
 			defer func() { _ = out.Close() }()
-			if err := exporter.CreateUsers(created, exporter.FormatCSV, out); err != nil {
+			if err := exporter.CreateUsers(result.Users, exporter.FormatCSV, out); err != nil {
 				return fmt.Errorf("import-users-teams: write output: %w", err)
 			}
-			printImportSummary(cmd, created, ignoreExisting)
+			printImportSummary(cmd, result.Summary, outputFile)
 			return nil
 		},
 	}
@@ -134,24 +135,37 @@ func NewImportUsersTeamsCmd(deps Deps) *cobra.Command {
 	return cmd
 }
 
-// printImportSummary writes a single line to stdout describing the
-// import outcome. created/updated are derived from each row's IsExist
-// pointer (set by the importer). skipped is unknown without an input
-// row count and the importer drops --ignore-existing rows before
-// returning; we surface 0 today and revisit if operators ask. Closes
-// #6 of v1.1.1 hotfix.
-func printImportSummary(cmd *cobra.Command, rows []model.CreateUser, _ bool) {
-	var createdN, updatedN int
-	for i := range rows {
-		if rows[i].IsExist != nil && *rows[i].IsExist {
-			updatedN++
-		} else {
-			createdN++
-		}
+// printImportSummary writes a multiline stdout summary for successful
+// imports. Keep stdout user-facing and machine-readable enough for
+// shell logs; progress and diagnostics stay on stderr.
+func printImportSummary(cmd *cobra.Command, summary importer.ImportUsersTeamsSummary, outputFile string) {
+	createdNames := "none"
+	if len(summary.AffiliationsCreatedNames) > 0 {
+		createdNames = strings.Join(summary.AffiliationsCreatedNames, ", ")
 	}
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(),
-		"Imported %d users (created %d, updated %d, skipped %d).\n",
-		len(rows), createdN, updatedN, 0,
+		"Import summary:\n"+
+			"  Input rows: %d\n"+
+			"  Processed rows: %d\n"+
+			"  Created users: %d\n"+
+			"  Updated users: %d\n"+
+			"  Skipped existing users: %d\n"+
+			"  Affiliations created: %d (%s)\n"+
+			"  Affiliations reused: %d unique / %d rows\n"+
+			"  Fallback affiliation-id rows: %d (id=%d)\n"+
+			"  Output file: %s\n",
+		summary.InputRows,
+		summary.ProcessedRows,
+		summary.CreatedUsers,
+		summary.UpdatedUsers,
+		summary.SkippedExistingUsers,
+		summary.AffiliationsCreated,
+		createdNames,
+		summary.AffiliationsReusedUnique,
+		summary.AffiliationsReusedRows,
+		summary.FallbackAffiliationIDRows,
+		summary.FallbackAffiliationID,
+		outputFile,
 	)
 }
 
