@@ -15,9 +15,8 @@ import (
 	"time"
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
-	"github.com/ntub/domjudge-tool/internal/client/httpx"
 	"github.com/ntub/domjudge-tool/internal/client/web"
-	v7 "github.com/ntub/domjudge-tool/internal/client/web/v7"
+	"github.com/ntub/domjudge-tool/internal/client/web/gatewayfactory"
 	"github.com/ntub/domjudge-tool/internal/config"
 	"github.com/ntub/domjudge-tool/internal/importer"
 )
@@ -35,8 +34,8 @@ type AccountsImporter interface {
 }
 
 // Deps groups the factories users-subtree commands need. The default
-// implementation builds real apiv4 and web/v7 clients; tests provide
-// stubs returning the same interfaces.
+// implementation builds real apiv4 and version-aware web clients; tests
+// provide stubs returning the same interfaces.
 type Deps struct {
 	// NewAPI constructs an apiv4 client for cfg. Returning a *Client
 	// (rather than a sub-resource pointer) lets each command pick the
@@ -54,7 +53,7 @@ type Deps struct {
 }
 
 // DefaultDeps returns a Deps wired against the production apiv4 and
-// web/v7 clients. cmd/domjudge-tool/main.go's blank import calls
+// gateway clients. cmd/domjudge-tool/main.go's blank import calls
 // register(), which wires every command with these defaults.
 func DefaultDeps() Deps {
 	return Deps{
@@ -75,20 +74,8 @@ func defaultNewAPI(cfg *config.DomServerClient) *apiv4.Client {
 	})
 }
 
-func defaultNewGateway(_ context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
-	session, err := httpx.NewSession(httpx.SessionOptions{
-		BaseURL:    cfg.Host,
-		DisableSSL: cfg.DisableSSL,
-		Timeout:    derefSecondsDuration(cfg.Timeout),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return v7.New(v7.Options{
-		Session:  session,
-		Username: cfg.Username,
-		Password: cfg.Password,
-	})
+func defaultNewGateway(ctx context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
+	return gatewayfactory.New(ctx, cfg)
 }
 
 func defaultNewAccountsImporter(api *apiv4.Client) AccountsImporter {

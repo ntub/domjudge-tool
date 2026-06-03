@@ -38,12 +38,14 @@ internal/client/api/v4     REST client for DOMjudge JSON API
                              Scoreboard — added in Phase 1.5)
 internal/client/web        HTML scraper Gateway (v7 in Phase 1, v8 in Phase 2)
                             — 5 active methods + 6 deprecated since v1.1.0
+internal/client/web/gatewayfactory
+                            config.Version-driven factory for web.Gateway
         │
         ▼
 internal/client/httpx      shared HTTP transports — two parallel clients:
                             • Client (Basic Auth, no redirects) for api/v4
                             • SessionClient (cookie jar, follows redirects,
-                              path-relative resolution) for web/v7
+                              path-relative resolution) for web scrapers
         │
         ▼
 internal/model/            domain types (Team, Affiliation, Problem, …)
@@ -66,9 +68,10 @@ place.
 | `internal/cli`             | Cobra commands; flag parsing; printing.                              |
 | `internal/config`          | Loading, saving, and migrating `domserver.json`.                     |
 | `internal/model`           | Plain data types shared across packages. No I/O.                     |
-| `internal/client/httpx`    | Shared HTTP transports. `Client` (Basic Auth, no redirects) used by `client/api/v4`; `SessionClient` (cookie jar, follows redirects, BaseURL-relative path resolution) used by `client/web/v7`. Both honour optional TLS-skip and configurable timeout. |
+| `internal/client/httpx`    | Shared HTTP transports. `Client` (Basic Auth, no redirects) used by `client/api/v4`; `SessionClient` (cookie jar, follows redirects, BaseURL-relative path resolution) used by versioned web scrapers through `client/web/gatewayfactory`. Both honour optional TLS-skip and configurable timeout. |
 | `internal/client/api/v4`   | Typed wrapper around the DOMjudge v4 REST API. Sub-resources: general, users, teams, problems, submissions, judgements, judgement-types (Phase 1) plus `ImportsResource` (bulk-import multipart POSTs to `/users/{groups,organizations,teams,accounts}`, `/contests`, `/contests/{cid}/problems`), `OrganizationsResource`, `GroupsResource`, `ContestsResource`, `ScoreboardResource` (Phase 1.5). Multipart bodies are built via the package-private `postMultipart` helper. |
 | `internal/client/web`      | Version-agnostic `Gateway` interface (11 ops total). Phase 1.5 marks 6 as `// Deprecated:` (`GetAffiliations`, `GetAffiliation`, `CreateAffiliation`, `CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`) — implementations stay in `web/v7` for `cfg.PreferScraper` rollback but no caller drives them in the default code path. The remaining 5 are active: `Login`, `GetProblems`, `Download` (problem ZIP), `DeleteUsers`, `DeleteTeams`. Plus shared `ParseFormFields` helper and gateway-level sentinel errors. Version-specific scrapers live in subpackages — `web/v7` in Phase 1, `web/v8` in Phase 2 (5 active methods only). |
+| `internal/client/web/gatewayfactory` | Shared factory that reads `config.DomServerClient.Version`, builds the `httpx.SessionClient`, and returns `web/v7` for supported `7.3.x` configs or `web/v8` for supported `8.3.x` configs. It lives outside `internal/client/web` because the factory imports both version packages, while those packages import the base `web` interface. |
 | `internal/importer`        | Use-case functions plus the Phase 1.5 router. `TemplateCSV` writes the `import-users-teams.csv` template (byte-identical to the Python golden). `ImportUsersTeams` reconciles a CSV against the live API user list and drives `Router` (added Phase 1.5) which dispatches each row to either `internal/client/api/v4.ImportsResource` (default) or `web.Gateway` (when `cfg.PreferScraper=true` or the row needs a feature the API can't express, e.g. role-aware password). Returns `[]model.CreateUser` with passwords populated. `DeleteTeamsAndUsers` lists API users, applies the default-protect list (`admin`, `judgehost`, config username) plus caller-supplied include/exclude filters, then calls `gw.DeleteUsers` followed by `gw.DeleteTeams` (always scraper — no API equivalent). The router emits `slog` decisions (`router decision op=… path=… reason=…`) for incident triage. |
 | `internal/scoreboard`      | `Download` (Phase 1.5: drives `api/v4` `Scoreboard.Get` + `Contests.Get` + `Teams.List` + `Organizations.List`) and `Build` (Phase 1.5: joins those four JSON responses into a CSV row stream byte-identical to v1.0.0-rc1's HTML-parser output). The legacy HTML parser (`parse.go`) stays compiled and tested as a fallback path but is no longer wired into `Download`. |
 | `internal/exporter`        | `Users([]model.User, Format, io.Writer) error` and `CreateUsers([]model.CreateUser, Format, io.Writer) error` — serialise user data to CSV or JSON. `Format` is a string constant (`"csv"` / `"json"`); both functions emit `[]` for nil slices and treat unknown formats as errors. Used by the CLI layer (PR-6) to write `export_users.*` and `import-users-teams-out.csv`. |
