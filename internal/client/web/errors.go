@@ -27,6 +27,11 @@ var (
 	// ErrServerError maps to HTTP 5xx from any /jury fetch.
 	ErrServerError = errors.New("web: server error")
 
+	// ErrUnsupportedOnV8 marks Gateway methods that the v8 scraper
+	// intentionally does not implement because the v4 API owns those
+	// operations in Phase 2.
+	ErrUnsupportedOnV8 = errors.New("web: unsupported on v8 scraper")
+
 	// ErrTeamIDMissing is returned by importer paths when a user exists
 	// on the server but the API snapshot's team_id is nil and the
 	// fallback lookup (singular /users/{id} + team-list-by-name)
