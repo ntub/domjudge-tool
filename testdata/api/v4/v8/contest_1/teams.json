@@ -1,0 +1,50 @@
+[
+  {
+    "location": null,
+    "organization_id": "1",
+    "hidden": false,
+    "group_ids": [
+      "7"
+    ],
+    "affiliation": "Taiwan",
+    "nationality": "TWN",
+    "id": "4",
+    "icpc_id": null,
+    "label": "4",
+    "name": "Sample name 10",
+    "display_name": null,
+    "public_description": null
+  },
+  {
+    "location": null,
+    "organization_id": "1",
+    "hidden": false,
+    "group_ids": [
+      "7"
+    ],
+    "affiliation": "Taiwan",
+    "nationality": "TWN",
+    "id": "5",
+    "icpc_id": null,
+    "label": "5",
+    "name": "Sample name 11",
+    "display_name": null,
+    "public_description": null
+  },
+  {
+    "location": null,
+    "organization_id": "1",
+    "hidden": false,
+    "group_ids": [
+      "7"
+    ],
+    "affiliation": "Taiwan",
+    "nationality": "TWN",
+    "id": "6",
+    "icpc_id": null,
+    "label": "6",
+    "name": "Sample name 12",
+    "display_name": null,
+    "public_description": null
+  }
+]

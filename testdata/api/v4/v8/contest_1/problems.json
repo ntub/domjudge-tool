@@ -1,0 +1,59 @@
+[
+  {
+    "ordinal": 0,
+    "id": "54",
+    "short_name": "s5",
+    "rgb": "#2d98da",
+    "color": "dodgerblue",
+    "label": "L01",
+    "time_limit": 5.0,
+    "statement": [
+      {
+        "href": "contests/8/problems/54/statement",
+        "mime": "application/pdf",
+        "filename": "L01.pdf"
+      }
+    ],
+    "externalid": "L01",
+    "name": "Sample name 7",
+    "test_data_count": 5
+  },
+  {
+    "ordinal": 1,
+    "id": "55",
+    "short_name": "s6",
+    "rgb": "#eb3b5a",
+    "color": "indianred",
+    "label": "L02",
+    "time_limit": 5.0,
+    "statement": [
+      {
+        "href": "contests/8/problems/55/statement",
+        "mime": "application/pdf",
+        "filename": "L02.pdf"
+      }
+    ],
+    "externalid": "L02",
+    "name": "Sample name 8",
+    "test_data_count": 5
+  },
+  {
+    "ordinal": 2,
+    "id": "56",
+    "short_name": "s7",
+    "rgb": "#45aaf2",
+    "color": "cornflowerblue",
+    "label": "L03",
+    "time_limit": 5.0,
+    "statement": [
+      {
+        "href": "contests/8/problems/56/statement",
+        "mime": "application/pdf",
+        "filename": "L03.pdf"
+      }
+    ],
+    "externalid": "L03",
+    "name": "Sample name 9",
+    "test_data_count": 5
+  }
+]

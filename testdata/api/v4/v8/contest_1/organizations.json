@@ -1,0 +1,26 @@
+[
+  {
+    "shortname": "s8",
+    "id": "1",
+    "icpc_id": null,
+    "name": "Sample name 13",
+    "formal_name": "Sample formal_name 5",
+    "country": "TWN",
+    "country_flag": [
+      {
+        "href": "country-flags/TWN/4x3",
+        "mime": "image/svg+xml",
+        "filename": "country-flag-4x3.svg",
+        "width": 640,
+        "height": 480
+      },
+      {
+        "href": "country-flags/TWN/1x1",
+        "mime": "image/svg+xml",
+        "filename": "country-flag-1x1.svg",
+        "width": 512,
+        "height": 512
+      }
+    ]
+  }
+]

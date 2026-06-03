@@ -1,0 +1,56 @@
+[
+  {
+    "language_id": "python3",
+    "time": "2026-04-12T13:55:47.870+08:00",
+    "contest_time": "2001:db8::1.870",
+    "team_id": "27",
+    "problem_id": "54",
+    "files": [
+      {
+        "href": "contests/8/submissions/748/files",
+        "mime": "application/zip",
+        "filename": "submission.zip"
+      }
+    ],
+    "id": "748",
+    "external_id": null,
+    "entry_point": "L01.py",
+    "import_error": null
+  },
+  {
+    "language_id": "python3",
+    "time": "2026-04-12T14:25:16.585+08:00",
+    "contest_time": "2001:db8::1.585",
+    "team_id": "27",
+    "problem_id": "55",
+    "files": [
+      {
+        "href": "contests/8/submissions/750/files",
+        "mime": "application/zip",
+        "filename": "submission.zip"
+      }
+    ],
+    "id": "750",
+    "external_id": null,
+    "entry_point": "L02.py",
+    "import_error": null
+  },
+  {
+    "language_id": "python3",
+    "time": "2026-04-12T14:29:23.935+08:00",
+    "contest_time": "2001:db8::1.935",
+    "team_id": "21",
+    "problem_id": "54",
+    "files": [
+      {
+        "href": "contests/8/submissions/751/files",
+        "mime": "application/zip",
+        "filename": "submission.zip"
+      }
+    ],
+    "id": "751",
+    "external_id": null,
+    "entry_point": "L01.py",
+    "import_error": null
+  }
+]
