@@ -64,6 +64,12 @@ flagged below. Long-running batch commands (`import-users-teams`,
 `download-submissions`, `download-scoreboard`) print a per-row
 progress bar to stderr on a TTY since v1.3.0.
 
+`download-scoreboard` writes columns `Rank, TeamAffiliation, TeamName,
+SolvedCount, Score, Category, <problem labels…>`. Since v1.4.0 it spans
+every team category (one ranked section per sortorder, so `Rank` restarts
+at 1 per section) and records each row's category; pass `--exclude-hidden`
+to drop rows whose category group is hidden.
+
 ### Email
 
 The email subtree handles credential delivery for newly imported users.

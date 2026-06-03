@@ -1,6 +1,6 @@
 # 0007. Scoreboard API export matches Python cell format and spans all categories
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-02
 - **Deciders:** @project-maintainer
 

@@ -8,7 +8,7 @@ four phases. Each phase is a stand-alone milestone.
 | ----- | ----- | ---- | ------ |
 | **0** | Project bootstrap (this repo's foundation) | Git, Just, lefthook, git-cliff, golangci-lint | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | Go 1.23+, Cobra, goquery, net/http | **Done** — `v1.0.0-rc1`. See [`phase1/README.md`](phase1/README.md). |
-| **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling + operator UX | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand`, `schollz/progressbar/v3` | **Done** — `v1.3.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling; `v1.2.1` import auto-recovery; `v1.3.0` progress bars) |
+| **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling + operator UX | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand`, `schollz/progressbar/v3` | **Done** — `v1.4.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling; `v1.2.1` import auto-recovery; `v1.3.0` progress bars; `v1.4.0` scoreboard categories + import report) |
 | **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | Planned |
 | **3** | Cross-platform desktop app | PocketBase + Wails + Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui + TanStack | Planned |
 
@@ -158,3 +158,4 @@ fast-moving APIs that training data lags hardest on.
 | `v1.2.0` | 2026-05-06 | Email template tooling — offline scaffold, validate, and render-to-disk (PR-6); release PR-7. |
 | `v1.2.1` | 2026-05-07 | Patch — `import-users-teams` UPDATE auto-recovers when the v7 API list snapshot returns `team_id == nil` (PR-8). |
 | `v1.3.0` | 2026-05-07 | Operator UX — per-row stderr progress bar on the seven batch commands; persistent `--no-progress` flag; bundled ctx-cancel parity for `render-user-accounts` / `download-scoreboard` (PR-9). |
+| `v1.4.0` | 2026-06-03 | Live-validation hardening — `download-scoreboard` matches the Python cell format, spans all team categories with a new `Category` column and `--exclude-hidden` opt-out, and drops the summary row (ADR 0007); `import-users-teams` caches affiliation lookups and returns a structured import report. |
