@@ -305,6 +305,24 @@ API JSON shape（已實測）：
 display_name → team_id 的對照表，再 join。`internal/scoreboard/build.go`
 （新檔）負責這個 transform 並對 Phase 1 的 CSV 做 byte-identical 比對。
 
+> **更新（ADR 0007，取代上述 byte-identical 目標）**
+>
+> 實測對照真實 Python 輸出後，scoreboard 匯出做了刻意的行為變更，詳見
+> `docs/adr/0007-scoreboard-cell-format-and-categories.md`：
+>
+> - 實際固定欄位為 title-case，且新增 `Category` 欄（在 `Score` 之後）：
+>   `Rank,TeamAffiliation,TeamName,SolvedCount,Score,Category,<problem…>`。
+> - 題目 cell 格式對齊 Python/`parse.go`：已解題 `"<time>/<tries> try(ies)"`
+>   （例 `91/1 try`、`143/4 tries`）、試過未解 `"<tries> try(ies)"`、
+>   未嘗試為空字串。
+> - `Download` 依 team-category `sortorder` 分段，逐段以
+>   `?sortorder=N&allteams=true` 抓取後合併，納入所有 category（含 hidden
+>   的內建群組）；`--exclude-hidden` 可排除 hidden category。多 group 的
+>   team 依「與該 section 相符的 group」標註 `Category` 與做 hidden 過濾。
+> - 不再輸出 Python 版的 summary row。
+> - 因此「與 Phase 1 byte-identical」不再成立（屬刻意變更，release note
+>   需標註）。
+
 ### 4.6 cid 從 int 變成 string
 
 Phase 1 `download-scoreboard --cid 2` 的 `cid` 是 int，因為它最終只是
