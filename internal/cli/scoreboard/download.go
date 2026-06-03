@@ -18,10 +18,11 @@ import (
 // contest via deps.Download, then writes a CSV to disk.
 func NewDownloadScoreboardCmd(deps Deps) *cobra.Command {
 	var (
-		cid         int
-		filename    string
-		path        string
-		urlOverride string
+		cid           int
+		filename      string
+		excludeHidden bool
+		path          string
+		urlOverride   string
 	)
 	cmd := &cobra.Command{
 		Use:     "download-scoreboard",
@@ -50,7 +51,7 @@ func NewDownloadScoreboardCmd(deps Deps) *cobra.Command {
 			if download == nil {
 				download = scorecore.Download
 			}
-			header, rows, err := download(ctx, newAPI(&apiCfg), strconv.Itoa(cid))
+			header, rows, err := download(ctx, newAPI(&apiCfg), strconv.Itoa(cid), excludeHidden)
 			if err != nil {
 				return fmt.Errorf("download-scoreboard: %w", err)
 			}
@@ -93,6 +94,7 @@ func NewDownloadScoreboardCmd(deps Deps) *cobra.Command {
 	flags := cmd.Flags()
 	flags.IntVar(&cid, "cid", 0, "DOMjudge contest id (required)")
 	flags.StringVar(&filename, "filename", "export", "output filename without extension (`.csv` is appended)")
+	flags.BoolVar(&excludeHidden, "exclude-hidden", false, "exclude hidden team categories (e.g. System) from the scoreboard")
 	flags.StringVar(&path, "path", "", "directory to write the CSV under (default: cwd)")
 	flags.StringVar(&urlOverride, "url", "", "override the scoreboard host (default: cfg.Host)")
 	_ = cmd.MarkFlagRequired("cid")

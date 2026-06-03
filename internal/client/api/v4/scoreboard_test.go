@@ -69,13 +69,14 @@ func TestScoreboardResource_Get_DecodesContractFixture_WithFreeze(t *testing.T) 
 	allTeams := true
 	public := false
 	category := "2"
+	sortOrder := 9
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		vals, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
 			t.Fatalf("ParseQuery: %v", err)
 		}
-		if vals.Get("allteams") != "true" || vals.Get("public") != "false" || vals.Get("category") != "2" {
-			t.Fatalf("query = %q, want allteams=true&category=2&public=false", r.URL.RawQuery)
+		if vals.Get("allteams") != "true" || vals.Get("public") != "false" || vals.Get("category") != "2" || vals.Get("sortorder") != "9" {
+			t.Fatalf("query = %q, want allteams=true&category=2&public=false&sortorder=9", r.URL.RawQuery)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(scoreboardWithFreezeFixture))
@@ -84,9 +85,10 @@ func TestScoreboardResource_Get_DecodesContractFixture_WithFreeze(t *testing.T) 
 
 	c := New(Options{BaseURL: srv.URL})
 	snap, err := c.Scoreboard.Get(context.Background(), "2", ScoreboardListOpts{
-		AllTeams: &allTeams,
-		Category: &category,
-		Public:   &public,
+		AllTeams:  &allTeams,
+		Category:  &category,
+		Public:    &public,
+		SortOrder: &sortOrder,
 	})
 	if err != nil {
 		t.Fatalf("Get: %v", err)

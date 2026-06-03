@@ -14,9 +14,10 @@ type ScoreboardResource struct{ c *Client }
 
 // ScoreboardListOpts holds optional query parameters for Get.
 type ScoreboardListOpts struct {
-	AllTeams *bool
-	Category *string
-	Public   *bool
+	AllTeams  *bool
+	Category  *string
+	Public    *bool
+	SortOrder *int
 }
 
 // Get returns the JSON scoreboard snapshot for contest cid.
@@ -30,6 +31,9 @@ func (r *ScoreboardResource) Get(ctx context.Context, cid string, opts Scoreboar
 	}
 	if opts.Public != nil {
 		q.Set("public", strconv.FormatBool(*opts.Public))
+	}
+	if opts.SortOrder != nil {
+		q.Set("sortorder", strconv.Itoa(*opts.SortOrder))
 	}
 	var out model.ScoreboardSnapshot
 	if err := r.c.getJSON(ctx, fmt.Sprintf("/contests/%s/scoreboard", cid)+buildQuery(q), &out); err != nil {

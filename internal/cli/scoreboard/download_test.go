@@ -16,15 +16,32 @@ import (
 )
 
 type capturedDownload struct {
-	Host string
-	Cid  string
+	Host          string
+	Cid           string
+	ExcludeHidden bool
 }
 
 func stubFn(captured *capturedDownload) cliscb.DownloadFn {
-	return func(_ context.Context, _ *apiv4.Client, cid string) ([]string, [][]string, error) {
+	return func(_ context.Context, _ *apiv4.Client, cid string, excludeHidden bool) ([]string, [][]string, error) {
 		captured.Cid = cid
+		captured.ExcludeHidden = excludeHidden
 		return []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score"},
 			[][]string{{"1", "NTUB", "Alpha", "2", "100"}}, nil
+	}
+}
+
+func TestDownloadScoreboard_ExcludeHiddenFlag(t *testing.T) {
+	pwd, _ := os.Getwd()
+	t.Cleanup(func() { _ = os.Chdir(pwd) })
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	captured := &capturedDownload{}
+	if err := runWithStub(t, captured, "--cid", "1", "--exclude-hidden"); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if !captured.ExcludeHidden {
+		t.Fatal("ExcludeHidden = false, want true")
 	}
 }
 
@@ -180,7 +197,7 @@ func TestDownloadScoreboard_CtxCancelled_AbortsBeforeNextRow(t *testing.T) {
 	}
 
 	deps := cliscb.Deps{
-		Download: func(_ context.Context, _ *apiv4.Client, _ string) ([]string, [][]string, error) {
+		Download: func(_ context.Context, _ *apiv4.Client, _ string, _ bool) ([]string, [][]string, error) {
 			return []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score"},
 				[][]string{
 					{"1", "NTUB", "Alpha", "2", "100"},
@@ -239,7 +256,7 @@ func TestDownloadScoreboard_DownloadError(t *testing.T) {
 		t.Fatalf("chdir: %v", err)
 	}
 	deps := cliscb.Deps{
-		Download: func(_ context.Context, _ *apiv4.Client, _ string) ([]string, [][]string, error) {
+		Download: func(_ context.Context, _ *apiv4.Client, _ string, _ bool) ([]string, [][]string, error) {
 			return nil, nil, errors.New("upstream 500")
 		},
 		NewAPI: func(cfg *config.DomServerClient) *apiv4.Client {

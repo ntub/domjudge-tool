@@ -18,7 +18,7 @@ import (
 const groupID = "scoreboard"
 
 // DownloadFn is the seam tests inject to bypass the live HTTP fetch.
-type DownloadFn = func(ctx context.Context, api *apiv4.Client, cid string) ([]string, [][]string, error)
+type DownloadFn = func(ctx context.Context, api *apiv4.Client, cid string, excludeHidden bool) ([]string, [][]string, error)
 
 // Deps groups the dependencies the scoreboard subcommand needs.
 type Deps struct {

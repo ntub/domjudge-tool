@@ -14,9 +14,22 @@ import (
 var ErrMalformedSnapshot = errors.New("scoreboard: malformed API snapshot")
 
 // Build converts a DOMjudge API scoreboard snapshot plus team/organization
-// lookup data into the Phase 1 CSV shape produced by Parse.
-func Build(snap model.ScoreboardSnapshot, teams []model.Team, orgs []model.Organization) (header []string, rows [][]string, err error) {
+// lookup data into the Phase 1 CSV shape produced by Parse. The Category
+// column is resolved from each team's first group.
+func Build(snap model.ScoreboardSnapshot, teams []model.Team, orgs []model.Organization, groups []model.Group) (header []string, rows [][]string, err error) {
+	return buildWithCategories(snap, teams, orgs, groups, nil)
+}
+
+// buildWithCategories is Build with an optional per-row Category override.
+// When categoryByRow is non-nil it must be index-aligned with snap.Rows and
+// supplies the Category cell for each row. Download uses this because it knows
+// the exact group that produced each row when merging multiple sortorder
+// sections — a team in several groups appears once per section and must be
+// labelled by the matching group, not blindly by team.GroupIDs[0]. When
+// categoryByRow is nil the category falls back to the team's first group.
+func buildWithCategories(snap model.ScoreboardSnapshot, teams []model.Team, orgs []model.Organization, groups []model.Group, categoryByRow []string) (header []string, rows [][]string, err error) {
 	header = append([]string{}, fixedHeader...)
+	header = append(header, "Category")
 	if len(snap.Rows) == 0 {
 		return header, nil, nil
 	}
@@ -29,33 +42,32 @@ func Build(snap model.ScoreboardSnapshot, teams []model.Team, orgs []model.Organ
 
 	teamByID := indexTeams(teams)
 	orgByID := indexOrganizations(orgs)
-	solvedByProblem := make([]int, len(labels))
-	totalSolved := 0
+	groupByID := indexGroups(groups)
 
-	rows = make([][]string, 0, len(snap.Rows)+1)
-	for _, row := range snap.Rows {
+	rows = make([][]string, 0, len(snap.Rows))
+	for i, row := range snap.Rows {
 		if err := validateProblemLabels(row, labels); err != nil {
 			return header, nil, err
 		}
 		team := teamByID[row.TeamID]
+		category := categoryName(team, groupByID)
+		if categoryByRow != nil && i < len(categoryByRow) {
+			category = categoryByRow[i]
+		}
 		record := []string{
 			strconv.Itoa(row.Rank),
 			affiliationName(team, orgByID),
 			phase1TeamName(displayName(team)),
 			strconv.Itoa(row.Score.NumSolved),
 			strconv.Itoa(row.Score.TotalTime),
+			category,
 		}
-		totalSolved += row.Score.NumSolved
-		for i, problem := range row.Problems {
-			if problem.Solved {
-				solvedByProblem[i]++
-			}
+		for _, problem := range row.Problems {
 			record = append(record, formatScoreCell(problem))
 		}
 		rows = append(rows, record)
 	}
 
-	rows = append(rows, buildSummaryRow(totalSolved, solvedByProblem, len(snap.Rows)))
 	return header, rows, nil
 }
 
@@ -87,6 +99,14 @@ func indexOrganizations(orgs []model.Organization) map[string]model.Organization
 	return out
 }
 
+func indexGroups(groups []model.Group) map[string]model.Group {
+	out := make(map[string]model.Group, len(groups))
+	for i := range groups {
+		out[groups[i].ID] = groups[i]
+	}
+	return out
+}
+
 func affiliationName(team model.Team, orgByID map[string]model.Organization) string {
 	if team.OrganizationID != nil {
 		if org, ok := orgByID[*team.OrganizationID]; ok {
@@ -106,6 +126,17 @@ func displayName(team model.Team) string {
 	return team.Name
 }
 
+func categoryName(team model.Team, groupByID map[string]model.Group) string {
+	if len(team.GroupIDs) == 0 {
+		return ""
+	}
+	group, ok := groupByID[team.GroupIDs[0]]
+	if !ok {
+		return ""
+	}
+	return group.Name
+}
+
 // phase1TeamName preserves Parse's locked Python quirk: emit only the last
 // whitespace-separated token of the rendered team name.
 func phase1TeamName(name string) string {
@@ -117,32 +148,31 @@ func phase1TeamName(name string) string {
 }
 
 func formatScoreCell(problem model.ScoreboardProblem) string {
+	// tries counts every submission for the problem — judged plus still
+	// pending — matching DOMjudge's scoreboard cell count for both solved
+	// and unsolved problems. Keeping the count identical across branches
+	// avoids under-reporting attempts on a solved problem that still has a
+	// pending submission (e.g. during freeze).
+	tries := problem.NumJudged + problem.NumPending
 	switch {
 	case problem.Solved:
-		judged := problem.NumJudged
-		if judged == 0 {
-			judged = 1
+		if tries == 0 {
+			tries = 1
 		}
 		if problem.Time != nil {
-			return fmt.Sprintf("%d %d", judged, *problem.Time)
+			return fmt.Sprintf("%d/%s", *problem.Time, triesPhrase(tries))
 		}
-		return strconv.Itoa(judged)
-	case problem.NumPending > 0:
-		if problem.NumJudged > 0 {
-			return fmt.Sprintf("%d/%d", problem.NumJudged, problem.NumPending)
-		}
-		return "?" + strconv.Itoa(problem.NumPending)
-	case problem.NumJudged > 0:
-		return strconv.Itoa(problem.NumJudged)
+		return triesPhrase(tries)
+	case tries > 0:
+		return triesPhrase(tries)
 	default:
 		return ""
 	}
 }
 
-func buildSummaryRow(totalSolved int, solvedByProblem []int, teamCount int) []string {
-	row := []string{"", "", "", strconv.Itoa(totalSolved), ""}
-	for _, solved := range solvedByProblem {
-		row = append(row, fmt.Sprintf("%d///%d", solved, teamCount))
+func triesPhrase(n int) string {
+	if n == 1 {
+		return "1 try"
 	}
-	return row
+	return fmt.Sprintf("%d tries", n)
 }

@@ -31,24 +31,27 @@ func TestBuild_HappyPathMatchesPhase1Shape(t *testing.T) {
 		},
 	}}
 	teams := []model.Team{
-		{ID: "1", Name: "Team Alpha", OrganizationID: strPtr("1")},
-		{ID: "2", Name: "Team Beta One", OrganizationID: strPtr("2")},
+		{ID: "1", Name: "Team Alpha", OrganizationID: strPtr("1"), GroupIDs: []string{"10"}},
+		{ID: "2", Name: "Team Beta One", OrganizationID: strPtr("2"), GroupIDs: []string{"20"}},
 	}
 	orgs := []model.Organization{
 		{ID: "1", Name: "NTUB"},
 		{ID: "2", Name: "SampleU"},
 	}
+	groups := []model.Group{
+		{ID: "10", Name: "Category One"},
+		{ID: "20", Name: "Category Two"},
+	}
 
-	header, rows, err := scoreboard.Build(snap, teams, orgs)
+	header, rows, err := scoreboard.Build(snap, teams, orgs, groups)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	wantHeader := []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score", "A", "B"}
+	wantHeader := []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score", "Category", "A", "B"}
 	assertStringSlice(t, header, wantHeader)
 	wantRows := [][]string{
-		{"1", "NTUB", "Alpha", "2", "100", "1 30", "1 70"},
-		{"2", "SampleU", "One", "1", "42", "1 42", ""},
-		{"", "", "", "3", "", "2///2", "1///2"},
+		{"1", "NTUB", "Alpha", "2", "100", "Category One", "30/1 try", "70/1 try"},
+		{"2", "SampleU", "One", "1", "42", "Category Two", "42/1 try", ""},
 	}
 	if len(rows) != len(wantRows) {
 		t.Fatalf("rows = %d, want %d: %v", len(rows), len(wantRows), rows)
@@ -59,11 +62,11 @@ func TestBuild_HappyPathMatchesPhase1Shape(t *testing.T) {
 }
 
 func TestBuild_EmptyScoreboard_HeaderOnly(t *testing.T) {
-	header, rows, err := scoreboard.Build(model.ScoreboardSnapshot{}, nil, nil)
+	header, rows, err := scoreboard.Build(model.ScoreboardSnapshot{}, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	assertStringSlice(t, header, []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score"})
+	assertStringSlice(t, header, []string{"Rank", "TeamAffiliation", "TeamName", "SolvedCount", "Score", "Category"})
 	if rows != nil {
 		t.Fatalf("rows = %v, want nil", rows)
 	}
@@ -73,11 +76,11 @@ func TestBuild_TeamMissingFromMap_FallsBackToEmptyName(t *testing.T) {
 	snap := model.ScoreboardSnapshot{Rows: []model.ScoreboardRow{{
 		Rank: 1, TeamID: "missing", Score: model.ScoreboardScore{}, Problems: []model.ScoreboardProblem{{Label: "A"}},
 	}}}
-	_, rows, err := scoreboard.Build(snap, nil, nil)
+	_, rows, err := scoreboard.Build(snap, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	assertStringSlice(t, rows[0], []string{"1", "", "", "0", "0", ""})
+	assertStringSlice(t, rows[0], []string{"1", "", "", "0", "0", "", ""})
 }
 
 func TestBuild_OrgMissing_FallsBackToTeamAffiliation(t *testing.T) {
@@ -85,7 +88,7 @@ func TestBuild_OrgMissing_FallsBackToTeamAffiliation(t *testing.T) {
 		Rank: 1, TeamID: "1", Score: model.ScoreboardScore{}, Problems: []model.ScoreboardProblem{{Label: "A"}},
 	}}}
 	teams := []model.Team{{ID: "1", Name: "Team Alpha", OrganizationID: strPtr("404"), Affiliation: strPtr("FallbackU")}}
-	_, rows, err := scoreboard.Build(snap, teams, nil)
+	_, rows, err := scoreboard.Build(snap, teams, nil, nil)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -99,7 +102,7 @@ func TestBuild_MalformedRow_ReturnsErr(t *testing.T) {
 		{TeamID: "1", Problems: []model.ScoreboardProblem{{Label: "A"}}},
 		{TeamID: "2", Problems: []model.ScoreboardProblem{{Label: "B"}}},
 	}}
-	_, _, err := scoreboard.Build(snap, nil, nil)
+	_, _, err := scoreboard.Build(snap, nil, nil, nil)
 	if !errors.Is(err, scoreboard.ErrMalformedSnapshot) {
 		t.Fatalf("err = %v, want ErrMalformedSnapshot", err)
 	}
