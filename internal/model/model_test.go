@@ -64,6 +64,24 @@ func TestProblemItem_RoundTripGoldenJSON(t *testing.T) {
 	roundTripGoldenJSON(t, "problem_item.json", &v)
 }
 
+func TestProblemItem_DecodesIntegralFloatTimeLimit(t *testing.T) {
+	var item model.ProblemItem
+	if err := json.Unmarshal([]byte(`{"id":"1","time_limit":5.0,"test_data_count":1,"name":"A","export_file_path":null}`), &item); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if item.TimeLimit != 5 {
+		t.Fatalf("TimeLimit = %d, want 5", item.TimeLimit)
+	}
+}
+
+func TestProblemItem_RejectsNonIntegralFloatTimeLimit(t *testing.T) {
+	var item model.ProblemItem
+	err := json.Unmarshal([]byte(`{"id":"1","time_limit":1.5,"test_data_count":1,"name":"A","export_file_path":null}`), &item)
+	if err == nil {
+		t.Fatal("unmarshal returned nil error, want time_limit error")
+	}
+}
+
 func TestSubmission_RoundTripGoldenJSON(t *testing.T) {
 	var v model.Submission
 	roundTripGoldenJSON(t, "submission.json", &v)
