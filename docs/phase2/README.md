@@ -42,8 +42,9 @@ CLI。真正需要做的是：
 - **`domserver.json` 欄位名 / 型別 / 預設值不變**。Phase 2 只使用既有
   `version` 欄位，把值設成 `"8.3.1"`；不新增 schema 欄位。
 - **CLI 子指令名、flag 名、輸出檔名不變**。
-- **`import-users-teams.csv` 欄位順序不變**：
-  `username,name,email,affiliation,password`。
+- **`import-users-teams.csv` 既有欄位順序不變**：
+  `username,name,email,affiliation,password`。可追加 optional 欄位，但舊
+  CSV 必須維持可用。
 - **`v7.py:161` inverted-filter quirk 保留 bit-for-bit**。`DeleteUsers` /
   `DeleteTeams` 的 v7 scraper 行為不能順手修；任何改變都需要 regression
   test 與新的 ADR。

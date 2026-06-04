@@ -240,10 +240,14 @@ contest 自動選用、多個則明確報錯**」。這是 Phase 1.5 唯一的�
 
 - `cfg.CategoryID`（int，已存在）= DOMjudge "team category id" =
   API 的 `group.id`。
+- `import-users-teams.csv` 可帶可選欄位 `category_id`。該欄位是 per-row
+  override；空值或整欄不存在時，維持既有 `cfg.CategoryID` / CLI
+  `--category-id` fallback。
 - `POST /users/groups` 接受 `groups.tsv`，欄位 `id\tname`。
 - importer create-flow 在送 teams 之前要確保對應 group 存在；不存在時
-  POST 一行 TSV 帶上 cfg.CategoryID + 預設名 `Phase1.5 created`（Phase
-  1 並不會自己建立 category，這是「順便建好」的容錯）。
+  POST TSV 帶上本次匯入會用到的 category id + 預設名
+  `p1.5-imported`（Phase 1 並不會自己建立 category，這是「順便建好」
+  的容錯）。
 
 ### 4.4 password 處理
 

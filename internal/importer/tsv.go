@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/ntub/domjudge-tool/internal/model"
@@ -46,9 +47,22 @@ func formatGroupsTSV(groups []model.Group) string {
 // rows whose affiliation is nil or absent from the map degrade to blank
 // instName / instShortName / country fields.
 func formatTeamsTSV(rows []model.CreateUser, categoryID string, orgs map[string]model.Organization) string {
+	importRows := make([]importRow, 0, len(rows))
+	for _, row := range rows {
+		importRows = append(importRows, importRow{user: row})
+	}
+	fallback, _ := strconv.Atoi(categoryID)
+	return formatImportRowsTeamsTSV(importRows, rows, fallback, orgs)
+}
+
+func formatImportRowsTeamsTSV(importRows []importRow, rows []model.CreateUser, fallbackCategoryID int, orgs map[string]model.Organization) string {
 	var b strings.Builder
 	b.WriteString("File_Version\t2\n")
-	for _, row := range rows {
+	for i, row := range rows {
+		categoryID := fallbackCategoryID
+		if i < len(importRows) && importRows[i].categoryID != nil {
+			categoryID = *importRows[i].categoryID
+		}
 		var instName, instShortName, country string
 		if row.Affiliation != nil {
 			if org, ok := orgs[*row.Affiliation]; ok {
@@ -60,7 +74,7 @@ func formatTeamsTSV(rows []model.CreateUser, categoryID string, orgs map[string]
 		b.WriteString(row.Username) // teamID
 		b.WriteByte('\t')
 		b.WriteByte('\t') // externalID — left blank
-		b.WriteString(categoryID)
+		b.WriteString(strconv.Itoa(categoryID))
 		b.WriteByte('\t')
 		b.WriteString(row.Name) // teamName
 		b.WriteByte('\t')

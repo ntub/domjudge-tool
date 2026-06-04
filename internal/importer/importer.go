@@ -128,7 +128,7 @@ func ImportUsersTeamsWithReport(
 	}
 
 	// Step 3 — parse the CSV (BOM-tolerant, field-name driven).
-	rows, err := ParseUsersCSV(r)
+	rows, err := readImportRows(r)
 	if err != nil {
 		return result, err
 	}
@@ -168,14 +168,14 @@ func ImportUsersTeamsWithReport(
 	// DeleteExisting flips every row into a create candidate because
 	// preDelete just removed the existing copy. IgnoreExisting drops
 	// existing rows entirely.
-	createRows := make([]model.CreateUser, 0, len(rows))
+	createRows := make([]importRow, 0, len(rows))
 	type updateCandidate struct {
-		row      model.CreateUser
+		row      importRow
 		existing model.User
 	}
 	updateRows := make([]updateCandidate, 0, len(rows))
-	for _, cu := range rows {
-		_, isExisting := existingByName[cu.Username]
+	for _, row := range rows {
+		_, isExisting := existingByName[row.user.Username]
 		if opts.DeleteExisting {
 			isExisting = false
 		}
@@ -184,10 +184,10 @@ func ImportUsersTeamsWithReport(
 				result.Summary.SkippedExistingUsers++
 				continue
 			}
-			updateRows = append(updateRows, updateCandidate{row: cu, existing: existingByName[cu.Username]})
+			updateRows = append(updateRows, updateCandidate{row: row, existing: existingByName[row.user.Username]})
 			continue
 		}
-		createRows = append(createRows, cu)
+		createRows = append(createRows, row)
 	}
 
 	// Step 6 — route the create cohort. Phase 1.5 only migrates the
@@ -220,12 +220,13 @@ func ImportUsersTeamsWithReport(
 			tid, err := resolveTeamID(ctx, users, teamsRes, opts.ContestHint, updateRows[i].existing)
 			if err != nil {
 				result.Users = out
-				return result, fmt.Errorf("importer: update team %s: %w", updateRows[i].row.Username, err)
+				return result, fmt.Errorf("importer: update team %s: %w", updateRows[i].row.user.Username, err)
 			}
 			updateRows[i].existing.TeamID = &tid
 		}
 
-		processed, err := processRowScraper(ctx, gw, updateRows[i].row, true, updateRows[i].existing, categoryID, fallbackAffID, opts, affiliations)
+		rowCategoryID := effectiveCategoryID(updateRows[i].row, categoryID)
+		processed, err := processRowScraper(ctx, gw, updateRows[i].row.user, true, updateRows[i].existing, rowCategoryID, fallbackAffID, opts, affiliations)
 		if err != nil {
 			result.Users = out
 			return result, err
@@ -248,7 +249,7 @@ func ImportUsersTeamsWithReport(
 func processCreateCohort(
 	ctx context.Context,
 	gw web.Gateway,
-	rows []model.CreateUser,
+	rows []importRow,
 	categoryID, fallbackAffID int,
 	opts ImportOptions,
 	affiliations *affiliationResolver,
@@ -261,7 +262,7 @@ func processCreateCohort(
 		if affiliations != nil {
 			summary = affiliations.summary
 		}
-		created, err := apiCreateFlowWithSummary(ctx, opts.API, gw, rows, opts.ContestHint, opts, summary)
+		created, err := apiCreateFlowRowsWithSummary(ctx, opts.API, gw, rows, opts.ContestHint, opts, summary)
 		if err != nil {
 			return created, err
 		}
@@ -276,8 +277,9 @@ func processCreateCohort(
 		return created, nil
 	}
 	out := make([]model.CreateUser, 0, len(rows))
-	for _, cu := range rows {
-		processed, err := processRowScraper(ctx, gw, cu, false, model.User{}, categoryID, fallbackAffID, opts, affiliations)
+	for _, row := range rows {
+		rowCategoryID := effectiveCategoryID(row, categoryID)
+		processed, err := processRowScraper(ctx, gw, row.user, false, model.User{}, rowCategoryID, fallbackAffID, opts, affiliations)
 		if err != nil {
 			return out, err
 		}
@@ -373,10 +375,10 @@ func processRowScraper(
 // username exists in the snapshot, and drives the gateway to delete
 // the corresponding users + teams. The skipped (not-in-snapshot) rows
 // are left for the regular create path.
-func preDelete(ctx context.Context, gw web.Gateway, rows []model.CreateUser, existing map[string]model.User) error {
+func preDelete(ctx context.Context, gw web.Gateway, rows []importRow, existing map[string]model.User) error {
 	var deleteUsers, deleteTeams []string
 	for _, row := range rows {
-		username := row.Username
+		username := row.user.Username
 		ex, ok := existing[username]
 		if !ok {
 			continue
@@ -396,6 +398,13 @@ func preDelete(ctx context.Context, gw web.Gateway, rows []model.CreateUser, exi
 		return fmt.Errorf("importer: delete existing teams: %w", err)
 	}
 	return nil
+}
+
+func effectiveCategoryID(row importRow, fallback int) int {
+	if row.categoryID != nil {
+		return *row.categoryID
+	}
+	return fallback
 }
 
 // derivePassword returns the effective password for a row: the CSV

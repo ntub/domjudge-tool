@@ -1,2 +1,2 @@
-username,name,email,affiliation,password
-ntubuser,test,ntubuser@mail.com,ntub,testpassword
+username,name,email,affiliation,password,category_id
+ntubuser,test,ntubuser@mail.com,ntub,testpassword,

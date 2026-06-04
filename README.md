@@ -51,6 +51,10 @@ domjudge-tool import-users-teams import-users-teams.csv
 domjudge-tool --help
 ```
 
+`import-users-teams.csv` includes an optional `category_id` column.
+Leave it blank, or omit the column in older CSVs, to use the existing
+`--category-id` / `domserver.json` default.
+
 All commands support `--config` (`-c`) to point at a non-default
 `domserver.json`, `--verbose` (`-v`) for debug output, and
 `--no-progress` *(v1.3.0)* to suppress the per-row progress bar on

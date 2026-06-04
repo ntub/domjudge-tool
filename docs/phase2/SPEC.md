@@ -225,7 +225,8 @@ Phase 2 所有 PR 都必須保持：
 - `domserver.json` field names / types / defaults unchanged。只允許既有
   `version` 值設為 `"8.3.1"`。
 - CLI command names、flag names、output file names unchanged。
-- `import-users-teams.csv` column order unchanged。
+- `import-users-teams.csv` existing column order unchanged；optional
+  appended columns must preserve old CSV compatibility。
 - `v7.py:161` inverted-filter quirk in `DeleteUsers` / `DeleteTeams`
   preserved bit-for-bit；任何改變需要 regression test + ADR。
 - Tests use only stdlib `testing` + `httptest`；never hit a real DOMjudge /

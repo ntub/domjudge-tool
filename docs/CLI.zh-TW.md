@@ -96,6 +96,8 @@ domjudge-tool version
 #### `import-users-teams-example`
 
 將標準 CSV 範本寫入磁碟。填寫完畢後傳入 `import-users-teams`。
+範本包含可選的 `category_id` 欄位；留空時會使用 `--category-id`
+或 `domserver.json` 的預設值。
 
 ```bash
 domjudge-tool import-users-teams-example
@@ -110,6 +112,8 @@ domjudge-tool import-users-teams-example -o my-contest.csv
 
 將 CSV 檔案與伺服器上的使用者清單進行比對，建立缺少的使用者與隊伍；
 可選擇更新或刪除現有資料列。
+CSV 可包含可選的 `category_id` 欄位。若該列留空，或整份 CSV 省略此欄，
+該列會使用既有的 `--category-id` / 設定檔備援機制。
 
 ```bash
 domjudge-tool import-users-teams import-users-teams.csv

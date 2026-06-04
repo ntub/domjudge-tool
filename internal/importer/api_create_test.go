@@ -336,6 +336,33 @@ func TestApiCreateFlow_NoCategoryID_SkipsGroupsImport(t *testing.T) {
 	}
 }
 
+func TestApiCreateFlow_CategoryIDColumnOverridesFallback(t *testing.T) {
+	rows := []importRow{
+		{user: model.CreateUser{Username: "alice", Name: "Alice", Password: stringPtr("pw-alice")}, categoryID: intPtr(7)},
+		{user: model.CreateUser{Username: "bob", Name: "Bob", Password: stringPtr("pw-bob")}},
+	}
+	cap := newAPICapture()
+	srv := newAPIFakeServer(t, cap, apiFakeOpts{
+		organizations: `[]`,
+		users:         `[]`,
+	})
+	t.Cleanup(srv.Close)
+
+	c := apiv4.New(apiv4.Options{BaseURL: srv.URL})
+	gw := &mockGW{}
+	fallbackCategoryID := 21
+	if _, err := apiCreateFlowRows(context.Background(), c, gw, rows, "2", ImportOptions{CategoryID: &fallbackCategoryID}); err != nil {
+		t.Fatalf("apiCreateFlowRows: %v", err)
+	}
+
+	if got := cap.groupsTSV(); !strings.Contains(got, "7\tp1.5-imported\n") || !strings.Contains(got, "21\tp1.5-imported\n") {
+		t.Errorf("groups.tsv = %q, want rows for category 7 and fallback 21", got)
+	}
+	if got := cap.teamsTSV(); !strings.Contains(got, "alice\t\t7\tAlice") || !strings.Contains(got, "bob\t\t21\tBob") {
+		t.Errorf("teams2.tsv = %q, want per-row category ids 7 and 21", got)
+	}
+}
+
 // TestApiCreateFlow_NoDuplicateOrgsOnReimport is the v1.1.1 #4
 // regression: re-importing a CSV whose affiliations already exist in
 // the contest must not call the bulk POST /users/organizations
@@ -677,3 +704,5 @@ func (m *mockGW) DeleteTeams(context.Context, []string, []string) error { return
 func (m *mockGW) Download(context.Context, string) (io.ReadCloser, error) {
 	return nil, nil
 }
+
+func intPtr(v int) *int { return &v }

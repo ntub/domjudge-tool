@@ -16,6 +16,7 @@ import (
 //
 // Supported headers are:
 // - username,name,email,affiliation,password
+// - username,name,email,affiliation,password,category_id
 // - username,email,affiliation,name
 // - username,name,email,affiliation,password,is_exist
 //
@@ -23,16 +24,27 @@ import (
 // order can vary as long as the names are present. Empty optional
 // cells (email / affiliation / password) become nil pointers. The
 // optional is_exist column, when present, is parsed into the returned
-// model.CreateUser values.
+// model.CreateUser values. The optional category_id column is consumed
+// by ImportUsersTeams as per-row metadata and is not represented in the
+// returned model.CreateUser values.
 func ParseUsersCSV(r io.Reader) ([]model.CreateUser, error) {
-	rows, err := readUsersCSV(r)
+	rows, err := readImportRows(r)
 	if err != nil {
 		return nil, err
 	}
-	return rows, nil
+	out := make([]model.CreateUser, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.user)
+	}
+	return out, nil
 }
 
-func readUsersCSV(r io.Reader) ([]model.CreateUser, error) {
+type importRow struct {
+	user       model.CreateUser
+	categoryID *int
+}
+
+func readImportRows(r io.Reader) ([]importRow, error) {
 	cr := csvio.NewReader(r)
 	header, err := cr.Read()
 	if err != nil {
@@ -46,18 +58,18 @@ func readUsersCSV(r io.Reader) ([]model.CreateUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("importer: parse csv: %w", err)
 	}
-	out := make([]model.CreateUser, 0, len(records))
+	out := make([]importRow, 0, len(records))
 	seen := make(map[string]struct{}, len(records))
 	for i, row := range records {
-		cu, err := buildCreateUserFromRow(row, index, i+1)
+		ir, err := buildImportRowFromCSV(row, index, i+1)
 		if err != nil {
 			return nil, err
 		}
-		if _, dup := seen[cu.Username]; dup {
-			return nil, fmt.Errorf("importer: validate csv: row %d: duplicate username %q", i+1, cu.Username)
+		if _, dup := seen[ir.user.Username]; dup {
+			return nil, fmt.Errorf("importer: validate csv: row %d: duplicate username %q", i+1, ir.user.Username)
 		}
-		seen[cu.Username] = struct{}{}
-		out = append(out, cu)
+		seen[ir.user.Username] = struct{}{}
+		out = append(out, ir)
 	}
 	return out, nil
 }
@@ -79,6 +91,7 @@ type usersCSVIndex struct {
 	affiliation int
 	password    int
 	isExist     int
+	categoryID  int
 }
 
 func usersCSVColumns(header []string) (usersCSVIndex, error) {
@@ -89,10 +102,11 @@ func usersCSVColumns(header []string) (usersCSVIndex, error) {
 		colAffiliation = "affiliation"
 		colPassword    = "password"
 		colIsExist     = "is_exist"
+		colCategoryID  = "category_id"
 	)
 
 	allowed := map[string]struct{}{
-		colUsername: {}, colName: {}, colEmail: {}, colAffiliation: {}, colPassword: {}, colIsExist: {},
+		colUsername: {}, colName: {}, colEmail: {}, colAffiliation: {}, colPassword: {}, colIsExist: {}, colCategoryID: {},
 	}
 	index := usersCSVIndex{
 		username:    -1,
@@ -101,6 +115,7 @@ func usersCSVColumns(header []string) (usersCSVIndex, error) {
 		affiliation: -1,
 		password:    -1,
 		isExist:     -1,
+		categoryID:  -1,
 	}
 	seen := make(map[string]struct{}, len(header))
 	for i, raw := range header {
@@ -125,6 +140,8 @@ func usersCSVColumns(header []string) (usersCSVIndex, error) {
 			index.password = i
 		case colIsExist:
 			index.isExist = i
+		case colCategoryID:
+			index.categoryID = i
 		}
 	}
 	if index.username < 0 || index.name < 0 {
@@ -133,7 +150,7 @@ func usersCSVColumns(header []string) (usersCSVIndex, error) {
 	return index, nil
 }
 
-func buildCreateUserFromRow(row []string, index usersCSVIndex, rowNum int) (model.CreateUser, error) {
+func buildImportRowFromCSV(row []string, index usersCSVIndex, rowNum int) (importRow, error) {
 	if len(row) != 0 {
 		// Accept rows whose length matches the header or omits only the
 		// trailing optional fields. A shorter row that drops a middle
@@ -141,7 +158,7 @@ func buildCreateUserFromRow(row []string, index usersCSVIndex, rowNum int) (mode
 		// ambiguous.
 		want := maxIndex(index) + 1
 		if len(row) != want {
-			return model.CreateUser{}, fmt.Errorf("importer: validate csv: row %d has %d columns, want %d", rowNum, len(row), want)
+			return importRow{}, fmt.Errorf("importer: validate csv: row %d has %d columns, want %d", rowNum, len(row), want)
 		}
 	}
 
@@ -150,10 +167,10 @@ func buildCreateUserFromRow(row []string, index usersCSVIndex, rowNum int) (mode
 		Name:     valueAt(row, index.name),
 	}
 	if cu.Username == "" {
-		return model.CreateUser{}, fmt.Errorf("importer: validate csv: row %d: username is required", rowNum)
+		return importRow{}, fmt.Errorf("importer: validate csv: row %d: username is required", rowNum)
 	}
 	if cu.Name == "" {
-		return model.CreateUser{}, fmt.Errorf("importer: validate csv: row %d: name is required", rowNum)
+		return importRow{}, fmt.Errorf("importer: validate csv: row %d: name is required", rowNum)
 	}
 	if v := valueAt(row, index.email); v != "" {
 		cu.Email = stringPtr(v)
@@ -169,12 +186,23 @@ func buildCreateUserFromRow(row []string, index usersCSVIndex, rowNum int) (mode
 		if v != "" {
 			b, err := strconv.ParseBool(v)
 			if err != nil {
-				return model.CreateUser{}, fmt.Errorf("importer: validate csv: row %d: invalid is_exist %q: %w", rowNum, v, err)
+				return importRow{}, fmt.Errorf("importer: validate csv: row %d: invalid is_exist %q: %w", rowNum, v, err)
 			}
 			cu.IsExist = &b
 		}
 	}
-	return cu, nil
+	out := importRow{user: cu}
+	if index.categoryID >= 0 {
+		v := strings.TrimSpace(valueAt(row, index.categoryID))
+		if v != "" {
+			categoryID, err := strconv.Atoi(v)
+			if err != nil {
+				return importRow{}, fmt.Errorf("importer: validate csv: row %d: invalid category_id %q: %w", rowNum, v, err)
+			}
+			out.categoryID = &categoryID
+		}
+	}
+	return out, nil
 }
 
 func maxIndex(index usersCSVIndex) int {
@@ -193,6 +221,9 @@ func maxIndex(index usersCSVIndex) int {
 	}
 	if index.isExist > highest {
 		highest = index.isExist
+	}
+	if index.categoryID > highest {
+		highest = index.categoryID
 	}
 	return highest
 }

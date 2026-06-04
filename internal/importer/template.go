@@ -8,28 +8,21 @@ import (
 	"github.com/ntub/domjudge-tool/internal/util/csvio"
 )
 
-// csvHeaders is the canonical column order for both the import template
-// and the import_users_teams CSV input. Column drift is locked by
-// `TestCSVImport_HeadersByteIdentical` and the
-// `template_python_golden.csv` fixture.
-var csvHeaders = []string{"username", "name", "email", "affiliation", "password"}
+// csvHeaders is the canonical column order for the import template.
+// The first five columns keep the Phase 1 Python-compatible order;
+// category_id is an optional per-row override appended for operators
+// that need mixed team categories in one CSV.
+var csvHeaders = []string{"username", "name", "email", "affiliation", "password", "category_id"}
 
 // templateSampleRow is the single demonstration row written by
-// [TemplateCSV]. The Python reference uses the same values; keep them
-// in lock-step so the byte-identical assertion in
-// `TestTemplateCSV_MatchesGolden` continues to hold.
-var templateSampleRow = []string{"ntubuser", "test", "ntubuser@mail.com", "ntub", "testpassword"}
+// [TemplateCSV]. Keep it in lock-step with
+// `testdata/importer/template_python_golden.csv`.
+var templateSampleRow = []string{"ntubuser", "test", "ntubuser@mail.com", "ntub", "testpassword", ""}
 
 // TemplateCSV writes the import template CSV to w.
 //
-// The output must be byte-identical to the Python template at
-// domjudge_tool_cli/templates/csv/import-users-teams.csv. That file
-// terminates with the last column of the sample row (no trailing
-// newline), which the Go csv writer would normally emit; the trailing
-// newline is stripped before the bytes hit w.
-//
-// PHASE1.md DoD #5: ./bin/domjudge-tool import-users-teams-example
-// writes a CSV byte-identical to Python templates/csv/import-users-teams.csv.
+// The output terminates with the last column of the sample row (no
+// trailing newline), preserving the Phase 1 CLI behaviour.
 func TemplateCSV(w io.Writer) error {
 	var buf bytes.Buffer
 	if err := csvio.Write(&buf, csvHeaders, [][]string{templateSampleRow}); err != nil {

@@ -159,6 +159,33 @@ func apiCreateFlowWithSummary(
 	opts ImportOptions,
 	summary *ImportUsersTeamsSummary,
 ) ([]model.CreateUser, error) {
+	importRows := make([]importRow, 0, len(rows))
+	for _, row := range rows {
+		importRows = append(importRows, importRow{user: row})
+	}
+	return apiCreateFlowRowsWithSummary(ctx, api, gw, importRows, contestHint, opts, summary)
+}
+
+func apiCreateFlowRows(
+	ctx context.Context,
+	api *apiv4.Client,
+	gw web.Gateway,
+	rows []importRow,
+	contestHint string,
+	opts ImportOptions,
+) ([]model.CreateUser, error) {
+	return apiCreateFlowRowsWithSummary(ctx, api, gw, rows, contestHint, opts, nil)
+}
+
+func apiCreateFlowRowsWithSummary(
+	ctx context.Context,
+	api *apiv4.Client,
+	gw web.Gateway,
+	rows []importRow,
+	contestHint string,
+	opts ImportOptions,
+	summary *ImportUsersTeamsSummary,
+) ([]model.CreateUser, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -168,12 +195,16 @@ func apiCreateFlowWithSummary(
 		return nil, err
 	}
 
-	categoryID := derefIntOr(opts.CategoryID, 0)
-	if opts.CategoryID != nil {
-		groupTSV := formatGroupsTSV([]model.Group{{
-			ID:   strconv.Itoa(categoryID),
-			Name: defaultImportedGroupName,
-		}})
+	categories := categoriesToUpsert(rows, opts.CategoryID)
+	if len(categories) > 0 {
+		groups := make([]model.Group, 0, len(categories))
+		for _, categoryID := range categories {
+			groups = append(groups, model.Group{
+				ID:   strconv.Itoa(categoryID),
+				Name: defaultImportedGroupName,
+			})
+		}
+		groupTSV := formatGroupsTSV(groups)
 		if _, err := api.Imports.GroupsTSV(ctx, strings.NewReader(groupTSV)); err != nil {
 			return nil, fmt.Errorf("importer: import groups: %w", err)
 		}
@@ -185,8 +216,9 @@ func apiCreateFlowWithSummary(
 	}
 	orgsByName := indexOrganizationsByName(existingOrgs)
 
-	missing := dedupeMissingAffiliations(rows, orgsByName)
-	affiliationSummary := summarizeAPIAffiliations(rows, orgsByName, missing)
+	users := importUsers(rows)
+	missing := dedupeMissingAffiliations(users, orgsByName)
+	affiliationSummary := summarizeAPIAffiliations(users, orgsByName, missing)
 	if len(missing) > 0 {
 		payload := buildOrganizationsPayload(missing, opts.AffiliationCountry)
 		if _, err := api.Imports.Organizations(ctx, payload); err != nil {
@@ -207,18 +239,18 @@ func apiCreateFlowWithSummary(
 	// derived password ends up in accounts.tsv and the returned slice.
 	out := make([]model.CreateUser, 0, len(rows))
 	for _, row := range rows {
-		pw, err := derivePassword(valueOrEmpty(row.Password), opts)
+		pw, err := derivePassword(valueOrEmpty(row.user.Password), opts)
 		if err != nil {
 			return nil, fmt.Errorf("importer: derive password: %w", err)
 		}
-		row.Password = stringPtr(pw)
+		user := row.user
+		user.Password = stringPtr(pw)
 		isExist := false
-		row.IsExist = &isExist
-		out = append(out, row)
+		user.IsExist = &isExist
+		out = append(out, user)
 	}
 
-	categoryIDStr := strconv.Itoa(categoryID)
-	teamsTSV := formatTeamsTSV(out, categoryIDStr, orgsByName)
+	teamsTSV := formatImportRowsTeamsTSV(rows, out, derefIntOr(opts.CategoryID, 0), orgsByName)
 	if _, err := api.Imports.TeamsTSV(ctx, strings.NewReader(teamsTSV)); err != nil {
 		return nil, fmt.Errorf("importer: import teams: %w", err)
 	}
@@ -249,6 +281,43 @@ func apiCreateFlowWithSummary(
 	}
 
 	return out, nil
+}
+
+func importUsers(rows []importRow) []model.CreateUser {
+	out := make([]model.CreateUser, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.user)
+	}
+	return out
+}
+
+func categoriesToUpsert(rows []importRow, fallback *int) []int {
+	out := make([]int, 0, len(rows)+1)
+	seen := make(map[int]struct{}, len(rows)+1)
+	add := func(categoryID int) {
+		if _, ok := seen[categoryID]; ok {
+			return
+		}
+		seen[categoryID] = struct{}{}
+		out = append(out, categoryID)
+	}
+	for _, row := range rows {
+		if row.categoryID != nil {
+			add(*row.categoryID)
+		}
+	}
+	if fallback != nil {
+		for _, row := range rows {
+			if row.categoryID == nil {
+				add(*fallback)
+				break
+			}
+		}
+	}
+	if fallback != nil && len(rows) == 0 {
+		add(*fallback)
+	}
+	return out
 }
 
 // dedupeMissingAffiliations returns each unique CSV affiliation that is

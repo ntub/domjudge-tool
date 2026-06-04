@@ -11,9 +11,8 @@ import (
 
 const goldenTemplatePath = "../../../testdata/importer/template_python_golden.csv"
 
-// TestImportUsersTeamsExample_GoldenCSV locks Phase 1 DoD #5: the
-// command writes import-users-teams.csv byte-identical to the
-// Python template golden.
+// TestImportUsersTeamsExample_GoldenCSV locks the current canonical
+// import-users-teams.csv template emitted by the command.
 func TestImportUsersTeamsExample_GoldenCSV(t *testing.T) {
 	// Read the golden BEFORE Chdir flips cwd to the tempdir.
 	want, err := os.ReadFile(goldenTemplatePath)

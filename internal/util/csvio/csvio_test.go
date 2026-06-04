@@ -90,21 +90,19 @@ func TestReadAll_EmptyInputErrors(t *testing.T) {
 	}
 }
 
-// TestImportTemplateGolden_HeadersByteIdentical is the named TDD anchor
-// that locks the Python `templates/csv/import-users-teams.csv` shape:
-// column order username,name,email,affiliation,password and a BOM is
-// stripped from the first header. The fixture at
-// testdata/importer/template_python_golden.csv is a byte-identical copy
-// of the Python file (no BOM); the BOM behaviour is exercised by the
-// sibling test against testdata/importer/with_bom.csv.
+// TestImportTemplateGolden_HeadersByteIdentical locks the current
+// canonical import-users-teams template header. The first five columns
+// preserve the Phase 1 Python-compatible order; category_id is optional
+// and appended.
 func TestImportTemplateGolden_HeadersByteIdentical(t *testing.T) {
+	templateHeader := []string{"username", "name", "email", "affiliation", "password", "category_id"}
 	path := filepath.Join("..", "..", "..", "testdata", "importer", "template_python_golden.csv")
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open template: %v", err)
 	}
 	t.Cleanup(func() { _ = f.Close() })
-	rows, err := csvio.ReadAll(f, importHeader)
+	rows, err := csvio.ReadAll(f, templateHeader)
 	if err != nil {
 		t.Fatalf("ReadAll on golden template: %v", err)
 	}

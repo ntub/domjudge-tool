@@ -9,11 +9,9 @@ import (
 	"github.com/ntub/domjudge-tool/internal/importer"
 )
 
-// TestTemplateCSV_MatchesGolden locks PHASE1.md DoD #5: the bytes
-// written by [importer.TemplateCSV] must round-trip byte-identical to
-// the Python reference template at
-// `domjudge_tool_cli/templates/csv/import-users-teams.csv`, captured
-// here as `testdata/importer/template_python_golden.csv`.
+// TestTemplateCSV_MatchesGolden locks the canonical template emitted by
+// import-users-teams-example. The first five columns preserve the Phase
+// 1 Python-compatible order; category_id is an optional appended field.
 func TestTemplateCSV_MatchesGolden(t *testing.T) {
 	goldenPath := filepath.Join("..", "..", "testdata", "importer", "template_python_golden.csv")
 	want, err := os.ReadFile(goldenPath)

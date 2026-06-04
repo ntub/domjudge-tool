@@ -41,8 +41,9 @@ problem zip download* 這幾個端點需要爬，剩下 80% 走 API、跟 v7 共
 - **`domserver.json`** 欄位名 / 型別 / 預設值不變。新增欄位需提供
   migration 路徑。
 - **CLI 子指令名與 flag 名**逐字保留 — Python parity 已上線。
-- **`import-users-teams.csv` 欄位順序**保留：
-  `username,name,email,affiliation,password`。
+- **`import-users-teams.csv` 既有欄位順序**保留：
+  `username,name,email,affiliation,password`。可在尾端追加 optional 欄位；
+  舊 CSV 必須繼續可匯入。
 - **三個 Python bug regression test** 與 **`v7.py:161` QUIRK 鎖**保留 —
   本次不能「順便修掉」；若某個指令真的完全離開 scraper、QUIRK 因此消
   失，需在 PR 內增寫 ADR 明文說明（Phase 1 ROADMAP §"Quirks to

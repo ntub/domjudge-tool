@@ -22,6 +22,8 @@ import (
 // PHASE1.md anchor.
 const importCSVHeader = "username,name,email,affiliation,password"
 
+const importCSVHeaderWithCategory = importCSVHeader + ",category_id"
+
 // usersAPIServer wires an httptest.Server at GET /api/v4/users
 // returning the supplied snapshot, and returns an *apiv4.UsersResource
 // pointing at it. The server is registered with t.Cleanup.
@@ -134,6 +136,70 @@ func TestImportUsersTeams_UpdateExistingUser(t *testing.T) {
 	}
 	if gw.updateTeamCalls[0].User.Name != "Test User" {
 		t.Errorf("UpdateTeam User.Name = %q, want %q (CSV name must override snapshot)", gw.updateTeamCalls[0].User.Name, "Test User")
+	}
+}
+
+func TestImportUsersTeams_CategoryIDColumnOverridesFallback(t *testing.T) {
+	existing := model.User{
+		ID:       "7",
+		Username: "alice",
+		Name:     "Existing",
+		TeamID:   strPtr("3"),
+	}
+	users := usersAPIServer(t, []model.User{existing})
+	gw := &mockGateway{
+		createTeamID: "55",
+		createUserID: "99",
+		updateTeamID: "3",
+		updateUserID: "7",
+	}
+	fallbackCategoryID := 21
+
+	body := importCSVHeaderWithCategory +
+		"\nalice,Alice,alice@example.org,,pw1,7" +
+		"\nbob,Bob,bob@example.org,,pw2,\n"
+	if _, err := importer.ImportUsersTeams(context.Background(), gw, users, strings.NewReader(body), importer.ImportOptions{
+		CategoryID:         &fallbackCategoryID,
+		AffiliationCountry: "TWN",
+	}); err != nil {
+		t.Fatalf("ImportUsersTeams: %v", err)
+	}
+
+	if len(gw.updateTeamCalls) != 1 {
+		t.Fatalf("UpdateTeam calls = %d, want 1", len(gw.updateTeamCalls))
+	}
+	if got := gw.updateTeamCalls[0].CategoryID; got != 7 {
+		t.Errorf("UpdateTeam CategoryID = %d, want CSV override 7", got)
+	}
+	if len(gw.createTeamAndUserCalls) != 1 {
+		t.Fatalf("CreateTeamAndUser calls = %d, want 1", len(gw.createTeamAndUserCalls))
+	}
+	if got := gw.createTeamAndUserCalls[0].CategoryID; got != fallbackCategoryID {
+		t.Errorf("CreateTeamAndUser CategoryID = %d, want fallback %d", got, fallbackCategoryID)
+	}
+}
+
+func TestImportUsersTeams_MissingCategoryIDColumnUsesFallback(t *testing.T) {
+	users := usersAPIServer(t, []model.User{})
+	gw := &mockGateway{
+		createTeamID: "55",
+		createUserID: "99",
+	}
+	fallbackCategoryID := 21
+
+	body := importCSVHeader + "\nalice,Alice,alice@example.org,,pw1\n"
+	if _, err := importer.ImportUsersTeams(context.Background(), gw, users, strings.NewReader(body), importer.ImportOptions{
+		CategoryID:         &fallbackCategoryID,
+		AffiliationCountry: "TWN",
+	}); err != nil {
+		t.Fatalf("ImportUsersTeams: %v", err)
+	}
+
+	if len(gw.createTeamAndUserCalls) != 1 {
+		t.Fatalf("CreateTeamAndUser calls = %d, want 1", len(gw.createTeamAndUserCalls))
+	}
+	if got := gw.createTeamAndUserCalls[0].CategoryID; got != fallbackCategoryID {
+		t.Errorf("CreateTeamAndUser CategoryID = %d, want fallback %d", got, fallbackCategoryID)
 	}
 }
 

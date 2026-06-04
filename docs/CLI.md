@@ -96,7 +96,9 @@ No command-specific flags.
 #### `import-users-teams-example`
 
 Write the canonical CSV template to disk. Fill in the template and
-pass it to `import-users-teams`.
+pass it to `import-users-teams`. The template includes an optional
+`category_id` column; leave it blank to use `--category-id` or the
+`domserver.json` default.
 
 ```bash
 domjudge-tool import-users-teams-example
@@ -111,6 +113,9 @@ domjudge-tool import-users-teams-example -o my-contest.csv
 
 Reconcile a CSV file against the live user list. Creates users and
 teams that are missing; optionally updates or deletes existing rows.
+The CSV accepts an optional `category_id` column. When a row leaves
+`category_id` empty, or when the column is omitted entirely, the row
+uses the existing `--category-id` / config fallback.
 
 ```bash
 domjudge-tool import-users-teams import-users-teams.csv

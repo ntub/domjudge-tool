@@ -44,7 +44,9 @@ Carried from `MIGRATION_TO_GOLANG.md` §12 of the Python source repo.
 
 - **`domserver.json`** — field names, types, and defaults stay exactly the
   same. Use snake_case JSON tags on Go structs.
-- **`import-users-teams.csv`** — column order and names unchanged.
+- **`import-users-teams.csv`** — existing columns keep their order and
+  names; optional columns such as `category_id` may be appended only when
+  old CSVs remain accepted.
 - **CLI subcommand and flag names** — keep current names; add Go-idiomatic
   aliases via `cobra.Command.Aliases`.
 - **`rm-teams-and-users` default-protect list** — `admin`, `judgehost`, and

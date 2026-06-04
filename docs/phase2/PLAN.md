@@ -252,7 +252,8 @@ DoD：
 
 - v8 scraper tests 覆蓋 create/update/email/password/affiliation flows。
 - v7 scraper 行為不變。
-- 不改 `import-users-teams.csv` 欄位順序。
+- 不改 `import-users-teams.csv` 既有欄位順序；追加 optional 欄位時必須
+  保持舊 CSV 可匯入。
 
 ### P2-5 — live validation + final docs + release
 
