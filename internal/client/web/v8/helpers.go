@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -178,4 +179,8 @@ func stringSet(xs []string) map[string]struct{} {
 		out[x] = struct{}{}
 	}
 	return out
+}
+
+func lastPathSegment(p string) string {
+	return path.Base(p)
 }

@@ -2,7 +2,6 @@ package v8
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/ntub/domjudge-tool/internal/client/httpx"
@@ -51,8 +50,4 @@ func describeStatus(resp *http.Response, body []byte) error {
 		URL:    resp.Request.URL.String(),
 		Body:   body,
 	}
-}
-
-func unsupported(op string) error {
-	return fmt.Errorf("v8: %s: %w", op, web.ErrUnsupportedOnV8)
 }
