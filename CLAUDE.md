@@ -31,6 +31,18 @@ Reply in zh-TW; the rest in en-US.
 - Prefer `rg` and `rg --files` for search.
 - Keep edits narrow and aligned with existing package boundaries.
 - Use structured parsers/APIs when available instead of ad hoc string parsing.
+- When coordinating parallel subagents, prefer separate `git worktree`
+  checkouts on dedicated feature branches. Give each subagent an explicit
+  scope, required docs, test expectations, and compatibility locks before it
+  implements anything.
+- For implementation work, write or update the relevant design/spec/docs first,
+  then develop with TDD: add the failing test or regression coverage, implement
+  the smallest compatible change, and keep code plus docs in sync.
+- After implementation, run a code review pass before accepting the result:
+  evaluate behavioral risk, compatibility, privacy, missing tests, and
+  documentation gaps; fix the findings before moving on.
+- Finish by updating all related documentation according to
+  `docs/DOCUMENTATION.md`.
 - When a third-party library, SDK, API, CLI, framework, or cloud service is
   involved, fetch current docs with Context7:
   `npx -y ctx7@latest library "<name>" "<question>"`, then
