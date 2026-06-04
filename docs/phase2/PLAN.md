@@ -29,9 +29,9 @@ refactor(<scope>): <desc>      # optional
 |---|----------|-------------|--------------------|
 | P2-0 | fixtures + drift confirmation | `docs/phase2/CONTRACT.md`, `testdata/api/v4/v8/`, `testdata/web/v8/`, capture scripts / notes | Sanitized v8 API JSON + jury HTML fixture 完成；先擴充 privacy gate 覆蓋 `testdata/web/v8/` `.html` / `.headers` 並 pass；`time_limit` / `api_version` / silent drift 寫入 findings；不含 Go v8 code。 |
 | P2-1 | `api/v4` v8 compat | `internal/client/api/v4/`, `internal/model/` | 先寫 v8 fixture decode RED；修 `time_limit` float 與 `api_version` int；v7 fixture 仍綠；不使用 `DisallowUnknownFields`。 |
-| P2-2 | `web/v8` scraper | `internal/client/web/gateway.go`, `internal/client/web/errors.go`, `internal/client/web/v8/` | `web/v8.Client` 滿足完整 `web.Gateway`；5 active methods 有 fixture-driven v8 行為；deprecated fallback methods 回傳 `web.ErrUnsupportedOnV8` sentinel；所有 parser test 吃 `testdata/web/v8/`；delete inverted-filter 行為在 v7 保持不變，v8 delete semantics 以 SPEC 鎖定。 |
+| P2-2 | `web/v8` scraper | `internal/client/web/gateway.go`, `internal/client/web/errors.go`, `internal/client/web/v8/` | `web/v8.Client` 滿足完整 `web.Gateway`；initial active methods 有 fixture-driven v8 行為；pre-P2-4 import fallback methods 可暫時回傳 `web.ErrUnsupportedOnV8` sentinel；所有 parser test 吃 `testdata/web/v8/`；delete inverted-filter 行為在 v7 保持不變，v8 delete semantics 以 SPEC 鎖定。 |
 | P2-3 | version selection + Gateway factory | `internal/client/web/`, `internal/cli/` wiring | Factory 回傳 `web.Gateway`；v7 / v8 都滿足同一介面，不拆 interface；`config.Version=="8.3.1"` 選 v8；7.3.x 選 v7；unsupported version 明確錯誤；不做 auto-detection。 |
-| P2-4 | import body v8 compat | `internal/importer/`, `internal/client/api/v4/imports.go` payload layer | v8 organizations import drop `url` / `twitter_hashtag`；groups / teams / accounts body shape 由 fixture 與 httptest 鎖；v7 import fixture 仍綠。 |
+| P2-4 | full v8 web scraper port | `internal/client/web/v8/` | 實作 7 個先前 stubbed 的 `web.Gateway` 方法（`CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`, `UpdateUserEmail`, `GetAffiliations`, `GetAffiliation`, `CreateAffiliation`），mirroring v7 with confirmed v8 form deltas；create/update/email/password/affiliation 在 v8 import baseline 走 scraper。 |
 | P2-5 | live validation + final docs + release | `docs/phase2/`, `docs/adr/`, `README.md` only if user-visible release notes need it | GET-only validation pass；sanctioned write protocol 若執行則有 sign-off / cleanup record；`just check` + `just privacy-check` pass；ADR 狀態可推 Accepted。 |
 
 ## 2. 依賴圖
@@ -46,7 +46,7 @@ P2-0  ─┬─→ P2-1  ─┬─→ P2-4  ─┐
 - P2-0 是所有 code PR 的前置條件。
 - P2-1 與 P2-2 可在 P2-0 後平行。
 - P2-3 需要 P2-2 的 v8 implementation shape。
-- P2-4 需要 P2-1 的 decoder / import compatibility。
+- P2-4 需要 P2-2 / P2-3 的 v8 scraper 與 version selection shape。
 - P2-5 必須最後做。
 
 ## 3. Fixtures-first hard gate
@@ -163,7 +163,9 @@ DoD：
 
 ### P2-2 — `web/v8` scraper
 
-目的：新增 DOMjudge 8.3.1 HTML scraper，只處理 API 不能做的 active methods。
+目的：新增 DOMjudge 8.3.1 HTML scraper initial surface；P2-4 會接著把
+create/update/email/password/affiliation import methods 從 temporary stubs
+改成真實 v8 form flows。
 
 RED：
 
@@ -171,17 +173,17 @@ RED：
   `DeleteUsers`、`DeleteTeams` parser / request tests。
 - `web/v8.Client` 必須可指派給 `web.Gateway`；若只實作 5 active methods，
   compile 應 fail。
-- 對 6 個 deprecated fallback 方法寫 `httptest` assertions，確認
+- 對 pre-P2-4 fallback 方法寫 `httptest` assertions，確認
   `GetAffiliations`、`GetAffiliation`、`CreateAffiliation`、
-  `CreateTeamAndUser`、`UpdateTeam`、`SetUserPassword` 在 v8 回傳可用
-  `errors.Is(err, web.ErrUnsupportedOnV8)` 判斷的錯誤。
+  `CreateTeamAndUser`、`UpdateTeam`、`SetUserPassword`、`UpdateUserEmail`
+  在 v8 回傳可用 `errors.Is(err, web.ErrUnsupportedOnV8)` 判斷的錯誤。
 
 GREEN：
 
 - 新增 `internal/client/web/v8` implementation。
 - 在 `internal/client/web/errors.go` 新增 `web.ErrUnsupportedOnV8` sentinel，
-  風格比照既有 sentinel errors；v8 非 active fallback stubs wrap / return
-  此錯誤。
+  風格比照既有 sentinel errors；P2-2 的 temporary fallback stubs wrap /
+  return 此錯誤，P2-4 再以真實 scraper implementations 取代。
 - `Download` 支援 problem ZIP export path，並把 non-2xx 包成可用
   `errors.Is` 判斷的錯誤。
 - `DeleteUsers` / `DeleteTeams` selector 以 v8 HTML fixture 鎖定。
@@ -189,9 +191,9 @@ GREEN：
 DoD：
 
 - v8 client 滿足完整 `web.Gateway`，不需要拆 interface。
-- 5 active methods 用 `testdata/web/v8/` fixture-driven tests 鎖住。
-- 6 個 deprecated fallback methods 回傳 `web.ErrUnsupportedOnV8`，且有
-  `errors.Is` assertions。
+- initial active methods 用 `testdata/web/v8/` fixture-driven tests 鎖住。
+- pre-P2-4 fallback methods 回傳 `web.ErrUnsupportedOnV8`，且有 `errors.Is`
+  assertions。
 - v7 QUIRK tests 不改、不刪。
 - 測試只用 `httptest.Server`，不打 live station。
 
@@ -221,26 +223,35 @@ DoD：
 - `config.Default().Version` 仍是 `"7.3.2"`。
 - library package 不印；錯誤回傳給 CLI。
 
-### P2-4 — import body v8 compat
+### P2-4 — full v8 web scraper port
 
-目的：讓 `import-users-teams` 在 v8 使用正確 bulk import body。
+目的：讓 `import-users-teams` 在 v8 使用 v8 HTML scraper 完成
+create/update/email/password/affiliation baseline，而不是走 bulk REST import
+body。Live probing confirmed the bulk `accounts.json` import path drops email,
+so it is not used for the P2-4 baseline.
 
 RED：
 
-- v8 organizations import body 若含 `url` / `twitter_hashtag`，測試 fail。
-- groups / teams / accounts JSON shape 不符合 SPEC §4 時 fail。
+- `web/v8.Client` 對 7 個先前 stubbed 的方法仍回
+  `web.ErrUnsupportedOnV8` 時 compile / behaviour tests fail。
+- `CreateTeamAndUser`、`UpdateTeam`、`SetUserPassword`、`UpdateUserEmail`、
+  `GetAffiliations`、`GetAffiliation`、`CreateAffiliation` 使用 v8 fixture
+  鎖定 form field deltas 與 redirect semantics。
 
 GREEN：
 
-- 建立 version-aware import payload builder，或在 importer 層選擇 v8-safe DTO。
-- v8 organizations body 僅送 `{id,name,formal_name,country}`。
-- accounts body 依 P2-0 sanctioned write findings 選 JSON 或 TSV，並以
-  `httptest` 鎖 request body。
+- 在 `internal/client/web/v8/` 實作上述 7 個方法，mirroring v7 with
+  confirmed v8 form deltas。
+- `CreateTeamAndUser` 使用 `team[addUserForTeam]=create-new-user`、
+  `team[newUsername]`、fresh team `team[penalty]=0`。
+- `UpdateTeam` 從 edit form snapshot 保留 existing `team[penalty]`，不硬寫
+  zero。
+- affiliation flow 使用 v8 的 `team_affiliation[internalcomments]` snapshot。
 
 DoD：
 
-- v7 import tests 仍綠。
-- v8 import tests 綠。
+- v8 scraper tests 覆蓋 create/update/email/password/affiliation flows。
+- v7 scraper 行為不變。
 - 不改 `import-users-teams.csv` 欄位順序。
 
 ### P2-5 — live validation + final docs + release
@@ -292,8 +303,8 @@ Phase 2 的 rollback 必須可以按 slice 做：
 - P2-1 revert：回到 v7-only decoder；v8 commands 會失敗，但 v7 不受影響。
 - P2-2 revert：移除 `web/v8`；`config.Version=="8.3.1"` 的 web commands 不可用。
 - P2-3 revert：factory 回到 v7-only wiring；v8 support 關閉。
-- P2-4 revert：v8 import body 回到 v7 shape；必要時暫停 `import-users-teams`
-  v8 write path。
+- P2-4 revert：移除 v8 create/update/email/password/affiliation scraper
+  implementations；必要時暫停 `import-users-teams` v8 write path。
 - P2-5 revert：docs/release metadata，可單獨退。
 
 Operational fallback：
@@ -303,6 +314,17 @@ Operational fallback：
   疑難排解。
 - `cfg.PreferScraper` 仍是 Phase 1.5 的 scraper fallback knob，但 Phase 2
   不能把它當成跨版本偵測機制。
+
+Future work note:
+
+- Verified on DOMjudge 8.3.1 (readback-confirmed): the single-entity
+  `POST /api/v4/users` honors `email`, `team_id`, `password`, and `roles`, and
+  returns 201, unlike the bulk `accounts.json` path. A future PR could route
+  the v8 user-CREATE cohort to `POST /api/v4/users` after creating the team via
+  scraper auto-id, per ADR 0006 API-first, with scraper fallback. This is out
+  of scope for the P2-4 baseline: `PUT /api/v4/users/{id}` is broken on 8.3.1
+  (HTTP 400 "already exists", field not updated), so user UPDATE stays
+  scraper; there is no REST API DELETE, so delete stays scraper.
 
 ## 7. Review checklist
 

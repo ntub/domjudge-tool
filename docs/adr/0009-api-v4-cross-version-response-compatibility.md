@@ -1,6 +1,6 @@
 # 0009. API v4 cross-version response compatibility
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-04
 - **Deciders:** @project-maintainer
 
@@ -27,6 +27,10 @@ The investigation also found live-confirmed non-breaks:
 - Live problem responses still include `ordinal`, `test_data_count`, and
   `externalid`, even though the v8 OpenAPI description under-describes those
   fields.
+- Bulk `accounts.json` import on DOMjudge 8.3.1 drops email during
+  write/readback validation. Single-entity `POST /api/v4/users` does honor
+  email, `team_id`, password, and roles, but `PUT /api/v4/users/{id}` fails
+  with HTTP 400 "already exists" without updating fields.
 
 There are also silent drifts to verify during P2-0 fixture capture: contest
 and submission `externalid` may appear as `external_id`, organizations dropped
@@ -89,9 +93,10 @@ and 8.3.1 while keeping the package API stable for callers.
   values. Phase 2 should reject or explicitly round only with tests; it should
   not silently truncate.
 - Follow-up: P2-0 captures the v8 fixtures and records the silent drift table.
-  P2-1 implements the decoder changes and dual-version tests. P2-4 uses the
-  organization drift to send a v8-safe import body without `url` or
-  `twitter_hashtag`.
+  P2-1 implements the decoder changes and dual-version tests. P2-4 keeps v8
+  import create/update/email/password/affiliation on the scraper because the
+  bulk REST import mechanics drop email; a future PR can consider
+  single-entity API user create only.
 
 ## References
 

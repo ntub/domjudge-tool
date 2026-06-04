@@ -21,10 +21,10 @@ var ErrUnsupportedVersion = errors.New("gatewayfactory: unsupported DOMjudge ver
 
 // New constructs the web.Gateway implementation selected by cfg.Version.
 //
-// v8 import create/update/email/password/affiliation is completed in P2-4
-// (importer routes these to the v4 REST API); until then a v8 import that
-// creates or updates rows will fail with ErrUnsupportedOnV8. download-problems
-// and rm-teams-and-users work on v8 today.
+// P2-4 implements v8 import create/update/email/password/affiliation flows on
+// the v8 web scraper (internal/client/web/v8). The version-agnostic importer
+// and router send those flows to the scraper on both v7 and v8. Delete remains
+// scraper-only because DOMjudge 8.3.1 has no REST API DELETE for users/teams.
 func New(_ context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("gatewayfactory: config is nil")

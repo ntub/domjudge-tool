@@ -1,6 +1,6 @@
 # 0008. DOMjudge 8.3.1 support and version selection
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-04
 - **Deciders:** @project-maintainer
 
@@ -35,8 +35,12 @@ runtime auto-detection is not free:
 
 The scraper still matters on 8.3.1. The live findings confirmed there is no
 REST API DELETE for users or teams, and there is no full problem-package ZIP
-export endpoint. `rm-teams-and-users` and `download-problems` therefore still
-need a DOMjudge 8 jury HTML implementation.
+export endpoint. Later sanctioned write/readback also confirmed that bulk
+`accounts.json` import drops email, while `PUT /api/v4/users/{id}` fails with
+HTTP 400 "already exists" without updating fields. `rm-teams-and-users`,
+`download-problems`, and the v8 `import-users-teams` create/update/email/
+password/affiliation baseline therefore need a DOMjudge 8 jury HTML
+implementation.
 
 ## Decision
 
@@ -50,17 +54,16 @@ returns either the v7 or v8 implementation.
 - The CLI will not auto-detect the DOMjudge version at runtime.
 - `web/v8` satisfies the full `web.Gateway` interface without splitting the
   interface or changing callers.
-- `web/v8` actively implements the 5 active `Gateway` methods:
-  `Login`, `GetProblems`, `Download`, `DeleteUsers`, and `DeleteTeams`.
-- The 6 deprecated fallback methods (`GetAffiliations`, `GetAffiliation`,
-  `CreateAffiliation`, `CreateTeamAndUser`, `UpdateTeam`, and
-  `SetUserPassword`) are implemented on v8 as unsupported stubs returning a
-  new `web.ErrUnsupportedOnV8` sentinel error. If `prefer_scraper` forces one
-  of those flows on v8, it fails fast with an explicit error rather than
-  silently misbehaving.
-- Any other non-active fallback method required by the current `web.Gateway`
-  shape is also stubbed with the same sentinel so the concrete v8 client is
-  assignable to `web.Gateway`.
+- `web/v8` actively implements the scraper methods needed by Phase 2:
+  `Login`, `GetProblems`, `Download`, `DeleteUsers`, `DeleteTeams`,
+  `GetAffiliations`, `GetAffiliation`, `CreateAffiliation`,
+  `CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`, and
+  `UpdateUserEmail`.
+- v8 import create/update/email/password/affiliation flows use the scraper in
+  the P2-4 baseline. A future PR may route only the v8 user-CREATE cohort to
+  single-entity `POST /api/v4/users`, after scraper team creation, because
+  that endpoint was verified to honor email, team linkage, password, and roles.
+  User UPDATE and delete remain scraper-only on 8.3.1.
 
 The `domserver.json` schema remains unchanged. Phase 2 only changes the value
 an operator may put in the existing `version` field.
@@ -80,11 +83,10 @@ an operator may put in the existing `version` field.
   config value keeps the operational model simple and preserves Phase 1
   compatibility.
 
-- **Actively implement all legacy form flows in `web/v8`.** Rejected. ADR
-  0006 already shrank the active scraper surface. Recreating deprecated form
-  flows for v8 would increase maintenance cost and reintroduce HTML scraping
-  where the API is the intended path. v8 still satisfies the compile-time
-  interface, but deprecated flows return an explicit unsupported sentinel.
+- **Route v8 import through bulk REST imports.** Rejected for the P2-4
+  baseline. Live write/readback showed that bulk `accounts.json` drops email,
+  and `PUT /api/v4/users/{id}` does not update fields on 8.3.1. The scraper is
+  the verified baseline for v8 create/update/email/password/affiliation.
 
 - **Add a new config field such as `server_version` or `auto_detect`.**
   Rejected. `version` already exists, and Phase 2 has a hard compatibility
@@ -94,21 +96,22 @@ an operator may put in the existing `version` field.
 
 - Positive: Version routing is explicit, deterministic, and reviewable from a
   checked-in or operator-managed `domserver.json`.
-- Positive: The v8 scraper's active surface is small: 5 real methods, while
-  deprecated methods are explicit unsupported stubs.
+- Positive: The v8 scraper covers the verified Phase 2 baseline, including
+  create/update/email/password/affiliation flows that bulk REST imports cannot
+  safely cover on 8.3.1.
 - Positive: `web.Gateway` and all callers stay unchanged; no interface split
   is needed for Phase 2.
-- Positive: Forced deprecated scraper paths on v8 fail fast via
-  `web.ErrUnsupportedOnV8`.
+- Positive: Future API-first user create work remains possible without making
+  update or delete depend on broken/missing REST API endpoints.
 - Positive: The existing config schema and Python compatibility contract stay
   intact.
 - Negative: Operators must set `version` correctly. If a server is upgraded
   from 7.3.x to 8.3.1, the config must be updated manually.
 - Negative: The factory needs a clear unsupported-version error path so
   mistyped versions do not silently fall back to v7.
-- Follow-up: Phase 2 PR P2-3 adds the factory and CLI wiring tests. Future
-  DOMjudge versions can be added by extending the factory decision table and
-  adding fixtures before code.
+- Follow-up: Phase 2 PR P2-3 adds the factory and CLI wiring tests. P2-4 adds
+  the v8 import scraper methods. Future DOMjudge versions can be added by
+  extending the factory decision table and adding fixtures before code.
 
 ## References
 

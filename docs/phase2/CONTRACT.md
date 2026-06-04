@@ -319,5 +319,7 @@ HTML scraper test 模式：
   fixture diff。
 - 如果 upstream 加了 users / teams DELETE 或 full problem-package ZIP API，
   先寫新的 ADR，再決定是否縮小 `web/v8` scope。
-- 如果 `accounts.json` / import mechanics 在 v8 live write 中被證實不同，
-  更新本文件 §6 的 write note 與 `SPEC.md` §4，再改 code。
+- DOMjudge 8.3.1 live write/readback verified that bulk `accounts.json`
+  mechanics differ from the v7 baseline because email is dropped; therefore
+  v8 `import-users-teams` relies on the scraper for create/update/email/
+  password/affiliation in P2-4.

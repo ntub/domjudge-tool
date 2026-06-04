@@ -15,10 +15,10 @@
 2. **CLI 介面、輸入輸出格式、`domserver.json` schema 全部不變**。
 3. 讓 `internal/client/api/v4` 的 decoder 能吃 v7 與 v8 fixture，不因
    `time_limit` float 或 `api_version` int 這類跨版本 drift 失敗。
-4. 新增 `web/v8`，active scraper surface 維持 5 個方法：
-   `Login`、`GetProblems`、`Download`、`DeleteUsers`、`DeleteTeams`；
-   但 `web/v8.Client` 必須滿足完整 `web.Gateway` 介面，非 active 的 legacy
-   fallback 方法以明確 unsupported sentinel fail fast。
+4. 新增 `web/v8`，scraper surface 包含 `Login`、`GetProblems`、`Download`、
+   `DeleteUsers`、`DeleteTeams`，以及 v8 import baseline 所需的
+   `CreateTeamAndUser`、`UpdateTeam`、`SetUserPassword`、`UpdateUserEmail`、
+   `GetAffiliations`、`GetAffiliation`、`CreateAffiliation`。
 5. 先抓 sanitized v8 fixture，再寫 v8 Go code。API JSON 與 jury HTML 都
    需要 contract fixture。
 6. 明確鎖住 live write/delete 安全規則：teams / users / groups / orgs 在
@@ -47,16 +47,17 @@
 |----------|-----------------------------|-----------|-------------------------|
 | `gen-config` | — local-only | ✅ | 不改 schema；只允許 operator 手動把既有 `version` 設成 `"8.3.1"`。預設值仍是 `"7.3.2"`。 |
 | `export-users` | ✅ `/api/v4/users` | 待 P2-0 fixture 確認 | 抓 v8 users fixture；確認 silent drift 不影響 `model.User` 與 exporter 欄位。 |
-| `import-users-teams` | ⚠️ API import + scraper fallback（v7 create/update 仍有 fallback） | ❌ | v8 import body shape 需調整；organizations JSON 不送 `url` / `twitter_hashtag`；groups / teams / accounts 用 P2-0 live write protocol 驗證。 |
+| `import-users-teams` | ⚠️ API import + scraper fallback（v7 create/update 仍有 fallback） | ❌ | v8 create/update/email/password/affiliation 走 `web/v8` scraper。Bulk `accounts.json` REST import drops email on 8.3.1 and is not used for the baseline。 |
 | `rm-teams-and-users` | ⚠️ API list users + scraper delete users/teams | ❌ | 新增 `web/v8.DeleteUsers` / `DeleteTeams`；delete correctness 用 `httptest` 鎖。live write/delete 只可用 unique synthetic prefix + explicit sign-off。 |
 | `download-problems` | 🔒 `web.Gateway.GetProblems` + `Download` problem ZIP | ❌ | 新增 `web/v8.GetProblems` 與 `Download`。v8 API 沒有完整 problem-package ZIP export；只有 samples zip 不足以替代。 |
 | `download-scoreboard` | ✅ `/api/v4/contests/{cid}/scoreboard` + teams/orgs/groups | 待 P2-0 fixture 確認 | 抓 v8 scoreboard / teams / orgs / groups fixture；確認 `Category` 與 sortorder flow 不受 drift 影響。 |
 | `download-submissions` | ✅ submissions / files / source-code API | ❌ | `indexProblems` 會讀 problems；v8 `time_limit: 5.0` 會讓 Go int decode fail。P2-1 修 `time_limit` 相容後才能 as-is。 |
-| `set-password` | ⚠️ API accounts import 或 scraper fallback | 待 live write 確認 | v8 accounts body shape 使用 `{id,username,password,type:"team",team_id,name}` 的 import mechanics；live write 只可在 sanctioned contest / synthetic prefix 下驗證。 |
+| `set-password` | ⚠️ API accounts import 或 scraper fallback | ❌ | v8 password updates use `web/v8.SetUserPassword` so roles/enabled form state can be preserved from the edit snapshot。 |
 
 結論：
 
-- v8 仍不是「全 API」。`rm-teams-and-users` 與 `download-problems` 必須保留
+- v8 仍不是「全 API」。`import-users-teams` 的 create/update/email/password/
+  affiliation flows、`rm-teams-and-users`、`download-problems` 必須保留
   scraper。
 - `download-submissions` 是已確認的真 break，因為它會透過
   `internal/client/api/v4.ProblemsResource` 讀 `time_limit`。
@@ -103,10 +104,12 @@ P2-1 的 decoder 原則：
 - 對已知跨版本欄位提供 narrow custom decoder，不做全域 loose map parser。
 - v7 與 v8 fixture 都要留在 testdata，避免修 v8 時弄壞 v7。
 
-## 4. v8 import body shapes
+## 4. v8 import transport
 
-Live findings 來自 Python `domjudge_import.py` 對 8.x / 9.0 的 probing。所有
-bulk import 都是 `multipart/form-data`，主要 endpoint 是：
+Live findings 來自 Python `domjudge_import.py` 對 8.x / 9.0 的 probing，加上
+DOMjudge 8.3.1 sanctioned write/readback。Bulk import endpoints are still
+documented because they explain why the P2-4 baseline does **not** route v8
+user create/update/email/password through the REST import path.
 
 ```text
 POST /api/v4/users/groups
@@ -115,24 +118,27 @@ POST /api/v4/users/teams
 POST /api/v4/users/accounts
 ```
 
-Root CCS fallback 仍可作為參考，但 Phase 2 以 `/users/{...}` primary routes
-為準。
+The bulk `accounts.json` path drops email on DOMjudge 8.3.1, so
+`import-users-teams` uses the v8 scraper for create/update/email/password/
+affiliation in the P2-4 baseline. Delete is also scraper-only because there is
+no REST API DELETE for users/teams on 8.3.1.
 
-| Endpoint | Field | v8 body shape | Phase 2 requirement |
-|----------|-------|---------------|---------------------|
-| `/users/groups` | `json` | `groups.json`: `{id,name,hidden,sortorder}` | 可用 JSON；確認 `hidden` / `sortorder` 型別。 |
-| `/users/organizations` | `json` | `organizations.json`: `{id,name,formal_name,country}` | **v8 不送 `url` / `twitter_hashtag`**。這是 Phase 2 hard requirement。 |
-| `/users/teams` | `json` | `teams.json`: `{id,name,group_ids:[catID],organization_id?}` | `group_ids` 保持 array；`organization_id` 可省略或 null，依 fixture 鎖。 |
-| `/users/accounts` | `json` 或 TSV mechanics 待確認 | `accounts.json`: `{id,username,password,type:"team",team_id,name}` | P2-0 sanctioned write 驗證接受 shape；若 server 只接受 TSV，文件與 router 需明確記錄 fallback。 |
+| Endpoint | Live finding | Phase 2 requirement |
+|----------|--------------|---------------------|
+| `/users/groups` | Bulk JSON route exists. | Not used for v8 import baseline. |
+| `/users/organizations` | Bulk JSON route drops `url` / `twitter_hashtag`. | Do not infer v8 user create/update routing from this route. |
+| `/users/teams` | Bulk JSON route exists, but team auto-id is needed by the scraper create flow. | P2-4 creates teams through `web/v8.CreateTeamAndUser` / `UpdateTeam`. |
+| `/users/accounts` | Bulk `accounts.json` drops email. | Not used for v8 baseline user create/update/email/password. |
 
-目前 `internal/client/api/v4.ImportsResource.Organizations` 送的是
-`[]model.Organization`，而 `model.Organization` 含 `URL` / `Hashtag`
-(`twitter_hashtag`)。Phase 2 不應為 v8 硬改 model schema；應在 import
-payload 層建立 v8-safe body 或 encoder，讓 v7 import 仍可保留既有欄位。
+Verified future opportunity: single-entity `POST /api/v4/users` on DOMjudge
+8.3.1 honors `email`, `team_id`, `password`, and `roles`, and returns 201.
+Future work may route only the v8 user-CREATE cohort through that endpoint
+after scraper team creation. `PUT /api/v4/users/{id}` is broken on 8.3.1
+(HTTP 400 "already exists", field not updated), so UPDATE stays scraper.
 
 ## 5. `web/v8` scope
 
-Phase 2 的 `web/v8` active scraper surface 只包含 5 個 `Gateway` 方法：
+Phase 2 的 `web/v8` scraper surface contains these `Gateway` methods:
 
 ```text
 Login
@@ -140,15 +146,18 @@ GetProblems
 Download
 DeleteUsers
 DeleteTeams
+CreateTeamAndUser
+UpdateTeam
+SetUserPassword
+UpdateUserEmail
+GetAffiliations
+GetAffiliation
+CreateAffiliation
 ```
 
-但 Go compile contract 仍是完整 `web.Gateway`。`web/v8.Client` 必須實作整個
-介面：上述 5 個方法提供真實 v8 行為；`GetAffiliations`、`GetAffiliation`、
-`CreateAffiliation`、`CreateTeamAndUser`、`UpdateTeam`、
-`SetUserPassword` 這 6 個 deprecated fallback 方法在 v8 回傳
-`web.ErrUnsupportedOnV8`。若介面仍包含其他非 active fallback 方法，P2-2 也
-必須用同一個 sentinel stub 補齊，確保 `web/v8.Client` 可指派給
-`web.Gateway`。
+`web/v8.Client` 必須實作完整 `web.Gateway`。The import-related methods are
+real scraper implementations in P2-4 because the bulk REST import path drops
+email on 8.3.1, and `PUT /api/v4/users/{id}` is not usable for updates.
 
 原因：
 
@@ -158,12 +167,10 @@ DeleteTeams
 2. DOMjudge 8.3.1 live findings 仍 **沒有 full problem-package ZIP export**。
    `/contests/{cid}/samples.zip` 只能下載 samples，不等於 jury web UI 的
    problem package export。
-3. Phase 1.5 之後 `GetAffiliations`、`GetAffiliation`、
-   `CreateAffiliation`、`CreateTeamAndUser`、`UpdateTeam`、
-   `SetUserPassword` 都是 deprecated fallback，不是 default active path。
-   v8 不應重做這 6 個 legacy form flows；如果 `prefer_scraper` 在 v8 強制
-   走到它們，必須以 `web.ErrUnsupportedOnV8` 明確失敗，不能 silent
-   misbehave。
+3. The bulk `accounts.json` path on 8.3.1 drops email, so the v8 import
+   baseline uses scraper form flows for create/update/email/password/
+   affiliation. Future API-first work may use single-entity
+   `POST /api/v4/users` for creates only, with scraper fallback.
 
 `web/v8` parser 必須以 `testdata/web/v8/` 的 sanitized jury HTML fixture 為
 準，不接受只靠截圖或肉眼推測 selector。
@@ -234,6 +241,6 @@ Phase 2 所有 PR 都必須保持：
 | v8 fixture 未先抓，parser 靠猜 | 高 | P2-0 fixtures-first hard gate；沒有 fixture 不寫 v8 Go code。 |
 | `time_limit` float 修法破壞 v7 int | 高 | v7 + v8 dual fixture；narrow custom decoder；`just test` 鎖。 |
 | live delete 誤刪 global teams/users | 極高 | 不做 broad live delete；predicted match set + synthetic prefix + sign-off + cleanup。 |
-| organizations import 送 v7 欄位被 v8 reject | 中 | v8 import payload 明確 drop `url` / `twitter_hashtag`。 |
+| bulk `accounts.json` import drops email | 高 | v8 import baseline uses scraper create/update/email/password flows；single-entity API create remains future work。 |
 | auto-detection 誤判版本 | 中 | 不做 auto-detection；只讀 `config.Version`。 |
-| deprecated `Gateway` 方法被 v8 重做 | 中 | `web/v8` actively implements 5 methods；deprecated fallback methods 只做 `web.ErrUnsupportedOnV8` stubs；ADR 0008 鎖。 |
+| v8 scraper form delta regressions | 中 | `web/v8` import methods use sanitized form fixtures and assert posted fields；ADR 0008 鎖。 |
