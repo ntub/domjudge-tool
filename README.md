@@ -63,7 +63,9 @@ stay byte-identical to pre-v1.3.0 output.
 
 Run `domjudge-tool --help` to list every command grouped by domain. The
 command tree mirrors the Python CLI's; commands added in v1.2.0 are
-flagged below. Long-running batch commands (`import-users-teams`,
+flagged below. For the complete per-flag reference see
+[`docs/CLI.md`](docs/CLI.md) (English) and
+[`docs/CLI.zh-TW.md`](docs/CLI.zh-TW.md) (Traditional Chinese). Long-running batch commands (`import-users-teams`,
 `send-user-accounts`, `render-user-accounts`, `download-problems`,
 `download-submissions`, `download-scoreboard`) print a per-row
 progress bar to stderr on a TTY since v1.3.0.
@@ -157,6 +159,10 @@ Run `just` (no args) to list every available task.
   sheet.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — phase plan and forward-looking
   notes.
+- [`docs/CLI.md`](docs/CLI.md) — complete per-flag CLI reference
+  (English).
+- [`docs/CLI.zh-TW.md`](docs/CLI.zh-TW.md) — Traditional Chinese CLI
+  reference.
 - [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) — meta-rules for
   writing docs in this repo.
 - [`docs/adr/`](docs/adr/) — Architecture Decision Records.

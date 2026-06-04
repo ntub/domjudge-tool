@@ -15,6 +15,8 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 | `docs/TESTING.md`      | Test framework, fixtures, naming.                           |
 | `docs/COMMITS.md`      | Conventional Commits cheat sheet.                           |
 | `docs/ROADMAP.md`      | Phase 0/1/2/3 plan + carried-over notes.                    |
+| `docs/CLI.md`          | Complete per-flag CLI reference (English, canonical).       |
+| `docs/CLI.zh-TW.md`    | Traditional Chinese translation of `docs/CLI.md`.           |
 | `docs/DOCUMENTATION.md`| This file.                                                  |
 | `docs/adr/`            | Architecture Decision Records, one per file.                |
 
@@ -30,6 +32,11 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 - **`docs/CONVENTIONS.md`** — when a new style rule is agreed.
 - **`docs/ROADMAP.md`** — at every phase boundary, or when forward-looking
   notes need to be captured so they aren't forgotten.
+- **`docs/CLI.md` and `docs/CLI.zh-TW.md`** — whenever a command, flag,
+  default, alias, or output format changes. Always update both files
+  together to keep the translation in sync. The two files must remain
+  structurally identical (same command order, same flag tables); translate
+  prose, keep flag names and code examples byte-identical.
 - **`docs/adr/NNNN-*.md`** — when an architectural decision is non-obvious,
   hard to reverse, or affects multiple packages.
 
