@@ -9,7 +9,7 @@ four phases. Each phase is a stand-alone milestone.
 | **0** | Project bootstrap (this repo's foundation) | Git, Just, lefthook, git-cliff, golangci-lint | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | Go 1.23+, Cobra, goquery, net/http | **Done** — `v1.0.0-rc1`. See [`phase1/README.md`](phase1/README.md). |
 | **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling + operator UX | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand`, `schollz/progressbar/v3` | **Done** — `v1.4.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling; `v1.2.1` import auto-recovery; `v1.3.0` progress bars; `v1.4.0` scoreboard categories + import report) |
-| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | Planned |
+| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | **Done** — `v1.5.0` |
 | **3** | Cross-platform desktop app | PocketBase + Wails + Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui + TanStack | Planned |
 
 ## Phase 0 — Bootstrap (done)
@@ -125,6 +125,12 @@ PR may use it for v8 user create only, while update/delete stay scraper.
 Capture HTML fixtures from a real 8.3.1 instance into `testdata/web/v8/`
 **before any Go code is written for v8.** That way the parser is built
 against verifiable inputs, not screenshots of a hypothetical page.
+
+## Phase 2 — completion log
+
+| Tag | Date | Scope |
+| --- | ---- | ----- |
+| `v1.5.0` | 2026-06-04 | DOMjudge 8.3.1 support — one binary selects the v7 or v8 backend from `domserver.json`, adds cross-version API decoding, and completes the v8 jury scraper fallback for importer, delete, and problem-download workflows. |
 
 ## Phase 3 — Cross-platform desktop app
 
