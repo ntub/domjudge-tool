@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/ntub/domjudge-tool/internal/config"
 )
@@ -41,7 +42,6 @@ const (
 	reasonAccountsUpsertNotSafe    = "PR-0 finding: accounts.tsv re-upload is not idempotent"
 	reasonAccountsTSVLinkageBroken = "accounts.tsv user→team linkage broken on v7"
 	reasonDefaultAPIFirst          = "default api-first"
-	accountsTSVUpsertSafeOnPR0     = true
 	affiliationResolutionGlobal    = false
 )
 
@@ -103,7 +103,7 @@ func (r *DefaultRouter) Decide(ctx context.Context, op Op, in Context) Decision 
 }
 
 func decide(cfg *config.DomServerClient, op Op, in Context) Decision {
-	if op == OpSetPassword && !accountsTSVUpsertSafeOnPR0 {
+	if op == OpSetPassword && !accountsTSVUpsertSafe(cfg) {
 		return Decision{Path: PathScraper, Reason: reasonAccountsUpsertNotSafe}
 	}
 	if preferScraper(cfg) && !apiOnly(op) {
@@ -135,6 +135,21 @@ func decide(cfg *config.DomServerClient, op Op, in Context) Decision {
 		}
 	}
 	return Decision{Path: PathAPI, Reason: reasonDefaultAPIFirst}
+}
+
+// accountsTSVUpsertSafe reports whether the bulk accounts.tsv re-upload path is
+// safe for password resets. PR-0 confirmed it is idempotent on DOMjudge 7.3.x,
+// but on 8.3.1 the bulk/PUT write path is broken (live-verified: PUT users/{id}
+// 400 "already exists"; email dropped), so set-password must use the scraper.
+func accountsTSVUpsertSafe(cfg *config.DomServerClient) bool {
+	return !isV8Config(cfg)
+}
+
+func isV8Config(cfg *config.DomServerClient) bool {
+	if cfg == nil {
+		return false
+	}
+	return cfg.Version == "8.3" || strings.HasPrefix(cfg.Version, "8.3.")
 }
 
 func preferScraper(cfg *config.DomServerClient) bool {

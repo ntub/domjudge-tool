@@ -63,6 +63,13 @@ func TestDefaultRouter_DecisionTable(t *testing.T) {
 			wantReason: reasonDefaultAPIFirst,
 		},
 		{
+			name:       "OpSetPassword_V8_NoRoles_Scraper",
+			cfg:        &config.DomServerClient{Version: "8.3.1"},
+			op:         OpSetPassword,
+			wantPath:   PathScraper,
+			wantReason: reasonAccountsUpsertNotSafe,
+		},
+		{
 			name:       "OpSetPassword_WithRoles_Scraper",
 			op:         OpSetPassword,
 			ctx:        Context{Roles: []int{1, 2}},

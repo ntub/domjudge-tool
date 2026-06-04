@@ -27,6 +27,10 @@ tmp/raw_api_v4/
 *.swp
 *~
 
+# Python tooling caches (scripts/*.py)
+__pycache__/
+*.pyc
+
 # Claude Code (per-developer overrides)
 .claude/settings.local.json
 .claude/worktrees/
