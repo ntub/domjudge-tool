@@ -12,8 +12,8 @@ should consult before adding a new file.
 - **Testability without a real DOMjudge.** All I/O (HTTP, filesystem, email)
   is reachable through narrow interfaces so unit tests can substitute fakes.
 - **Forward compatibility with DOMjudge versions.** A `web.Gateway`-style
-  abstraction lets us plug in a new scraper for a future server without
-  touching callers (Phase 2 ships v8 alongside v7).
+  abstraction lets us plug in versioned scrapers without touching callers;
+  v1.5.0 ships v8 alongside v7.
 - **Reuse from the desktop app.** Phase 3 (Wails + React) consumes the same
   `internal/` packages directly through Wails bindings — no business logic
   is duplicated in TypeScript.
@@ -36,8 +36,11 @@ internal/client/api/v4     REST client for DOMjudge JSON API
                             (12 sub-resources incl. Imports,
                              Organizations, Groups, Contests,
                              Scoreboard — added in Phase 1.5)
-internal/client/web        HTML scraper Gateway (v7 in Phase 1, v8 in Phase 2)
-                            — 5 active methods + 6 deprecated since v1.1.0
+internal/client/web        HTML scraper Gateway (v7 and v8) — both
+                            versioned clients implement the full Gateway
+                            surface; v8 scraper writes cover create/update/
+                            password/email/affiliation, and delete
+                            remains scraper-only
 internal/client/web/gatewayfactory
                             config.Version-driven factory for web.Gateway
         │
@@ -70,9 +73,9 @@ place.
 | `internal/model`           | Plain data types shared across packages. No I/O.                     |
 | `internal/client/httpx`    | Shared HTTP transports. `Client` (Basic Auth, no redirects) used by `client/api/v4`; `SessionClient` (cookie jar, follows redirects, BaseURL-relative path resolution) used by versioned web scrapers through `client/web/gatewayfactory`. Both honour optional TLS-skip and configurable timeout. |
 | `internal/client/api/v4`   | Typed wrapper around the DOMjudge v4 REST API. Sub-resources: general, users, teams, problems, submissions, judgements, judgement-types (Phase 1) plus `ImportsResource` (bulk-import multipart POSTs to `/users/{groups,organizations,teams,accounts}`, `/contests`, `/contests/{cid}/problems`), `OrganizationsResource`, `GroupsResource`, `ContestsResource`, `ScoreboardResource` (Phase 1.5). Multipart bodies are built via the package-private `postMultipart` helper. |
-| `internal/client/web`      | Version-agnostic `Gateway` interface (11 ops total). Phase 1.5 marks 6 as `// Deprecated:` (`GetAffiliations`, `GetAffiliation`, `CreateAffiliation`, `CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`) — implementations stay in `web/v7` for `cfg.PreferScraper` rollback but no caller drives them in the default code path. The remaining 5 are active: `Login`, `GetProblems`, `Download` (problem ZIP), `DeleteUsers`, `DeleteTeams`. Plus shared `ParseFormFields` helper and gateway-level sentinel errors. Version-specific scrapers live in subpackages — `web/v7` in Phase 1, `web/v8` in Phase 2 (5 active methods only). |
-| `internal/client/web/gatewayfactory` | Shared factory that reads `config.DomServerClient.Version`, builds the `httpx.SessionClient`, and returns `web/v7` for supported `7.3.x` configs or `web/v8` for supported `8.3.x` configs. It lives outside `internal/client/web` because the factory imports both version packages, while those packages import the base `web` interface. |
-| `internal/importer`        | Use-case functions plus the Phase 1.5 router. `TemplateCSV` writes the `import-users-teams.csv` template (byte-identical to the Python golden). `ImportUsersTeams` reconciles a CSV against the live API user list and drives `Router` (added Phase 1.5) which dispatches each row to either `internal/client/api/v4.ImportsResource` (default) or `web.Gateway` (when `cfg.PreferScraper=true` or the row needs a feature the API can't express, e.g. role-aware password). Returns `[]model.CreateUser` with passwords populated. `DeleteTeamsAndUsers` lists API users, applies the default-protect list (`admin`, `judgehost`, config username) plus caller-supplied include/exclude filters, then calls `gw.DeleteUsers` followed by `gw.DeleteTeams` (always scraper — no API equivalent). The router emits `slog` decisions (`router decision op=… path=… reason=…`) for incident triage. |
+| `internal/client/web`      | Version-agnostic `Gateway` interface (11 ops total). Phase 1.5 marks 6 as `// Deprecated:` (`GetAffiliations`, `GetAffiliation`, `CreateAffiliation`, `CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`) because v7's default path is API-first, with those implementations kept in `web/v7` for `cfg.PreferScraper` rollback. `web/v8` implements the full Gateway surface; on v8 the importer routes create, update, password, email, and affiliation writes through the scraper, and delete is scraper-only because DOMjudge 8.3.1 has no REST API DELETE. Shared helpers include `ParseFormFields` and gateway-level sentinel errors. |
+| `internal/client/web/gatewayfactory` | Shared factory that reads `config.DomServerClient.Version`, builds the `httpx.SessionClient`, and returns `web/v7` for supported `7.3.x` configs or `web/v8` for supported `8.3.1` configs. It lives outside `internal/client/web` because the factory imports both version packages, while those packages import the base `web` interface. |
+| `internal/importer`        | Use-case functions plus the Phase 1.5 router. `TemplateCSV` writes the `import-users-teams.csv` template (byte-identical to the Python golden). `ImportUsersTeams` reconciles a CSV against the live API user list and drives `Router` (added Phase 1.5) which dispatches each row to either `internal/client/api/v4.ImportsResource` or `web.Gateway`: v7 defaults to the API unless `cfg.PreferScraper=true` or the row needs a feature the API can't express, while v8 routes create, update, password, email, and affiliation writes through the scraper because those operations are not available as working v8 REST API paths. Returns `[]model.CreateUser` with passwords populated. `DeleteTeamsAndUsers` lists API users, applies the default-protect list (`admin`, `judgehost`, config username) plus caller-supplied include/exclude filters, then calls `gw.DeleteUsers` followed by `gw.DeleteTeams` (always scraper — v8 REST has no DELETE). The router emits `slog` decisions (`router decision op=… path=… reason=…`) for incident triage. |
 | `internal/scoreboard`      | `Download` (Phase 1.5: drives `api/v4` `Scoreboard.Get` + `Contests.Get` + `Teams.List` + `Organizations.List`) and `Build` (Phase 1.5: joins those four JSON responses into a CSV row stream byte-identical to v1.0.0-rc1's HTML-parser output). The legacy HTML parser (`parse.go`) stays compiled and tested as a fallback path but is no longer wired into `Download`. |
 | `internal/exporter`        | `Users([]model.User, Format, io.Writer) error` and `CreateUsers([]model.CreateUser, Format, io.Writer) error` — serialise user data to CSV or JSON. `Format` is a string constant (`"csv"` / `"json"`); both functions emit `[]` for nil slices and treat unknown formats as errors. Used by the CLI layer (PR-6) to write `export_users.*` and `import-users-teams-out.csv`. |
 | `internal/email`           | `LoadTemplate(dir)` reads `subject.txt` + `body.html` (HTML preferred over `body.txt`); `(*Template).Render(vars)` applies `os.Expand` variable substitution and unconditionally Q-encodes the subject. `Dial(ctx, DialOptions)` opens a plain or TLS SMTP connection, sends EHLO, and performs `PlainAuth` when credentials are non-empty (STARTTLS not implemented — Python parity). `SendUserAccounts(ctx, Sender, *Template, []model.CreateUser, *config.DomServerClient, SendOptions)` iterates the user list: abort-on-first-error; recipient resolved from `user.Email` or falls back to `{username}@{domain}` when `Email` is nil; builds complete RFC 5322 messages with explicit `Date:` and `Message-ID:` headers, base64-encoded body. `BuildEML(*Template, model.CreateUser, *config.DomServerClient, SendOptions) ([]byte, string, error)` extracts the message-construction half of `SendUserAccounts` so the offline `render-user-accounts` CLI can emit per-recipient `.eml` files without touching SMTP. `WriteTemplateScaffold(dir string, force bool) error` writes a runnable scaffold containing all six supported placeholders; collisions raise the sentinel `ErrTemplateDirExists` unless `force=true`. |
@@ -83,20 +86,20 @@ place.
 
 `internal/client/web/gateway.go` declares the 11-method `Gateway`
 interface that captures every shaped operation the CLI needs from the
-HTML UI. `internal/client/web/v7.Client` is the only Phase 1
-implementation; Phase 2 will add `internal/client/web/v8.Client` beside
-it without touching callers — both will satisfy the same interface.
+HTML UI. `internal/client/web/v7.Client` and
+`internal/client/web/v8.Client` both satisfy the same interface, so
+callers stay behind `web.Gateway` while `gatewayfactory` selects the
+versioned implementation from `cfg.Version`.
 
-**Phase 1.5 (since v1.1.0):** the interface still lists 11 methods,
-but only 5 are wired into default callers — `Login`, `GetProblems`,
-`Download` (problem ZIP), `DeleteUsers`, and `DeleteTeams`. The other
-6 (`GetAffiliations`, `GetAffiliation`, `CreateAffiliation`,
-`CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`) are marked
-`// Deprecated:` on the interface and on `web/v7`'s implementations;
-they remain compiled and tested so `cfg.PreferScraper=true` continues
-to route everything through the scraper, but no caller drives them
-when the router is in its default state. Phase 2's `web/v8` only needs
-to implement the 5 active methods.
+**Version routing:** the `// Deprecated:` markers on the interface and
+on `web/v7`'s implementations describe v7's API-first default routing
+since Phase 1.5. Those methods remain compiled and tested so
+`cfg.PreferScraper=true` can route v7 writes through the scraper. On v8,
+the same methods are active: create, update, password, email, and
+affiliation changes route through `web/v8`, with update avoiding the
+DOMjudge 8.3.1 REST API's missing working PUT-update path. Delete operations
+(`DeleteUsers`, `DeleteTeams`) are scraper-only on both versions, and on
+v8 specifically remain scraper-only because the REST API has no DELETE.
 
 **Lifecycle**: callers MUST call `Login(ctx)` before any other method.
 Phase 1 implementations do NOT auto-relogin on session expiry — a 302
