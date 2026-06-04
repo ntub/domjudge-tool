@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+GIT_COMMON_DIR="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
 RESULTS="${TRUFFLEHOG_RESULTS:-verified,unknown}"
 
 FILESYSTEM_PATHS=(
@@ -25,8 +26,12 @@ FILESYSTEM_PATHS=(
 )
 
 if command -v trufflehog >/dev/null 2>&1; then
-    TRUFFLEHOG=(trufflehog)
-    GIT_TARGET="file://."
+    TRUFFLEHOG=(trufflehog --no-update)
+    if [[ -n "$GIT_COMMON_DIR" ]]; then
+        GIT_TARGET="file://$(dirname "$GIT_COMMON_DIR")"
+    else
+        GIT_TARGET="file://."
+    fi
 elif command -v docker >/dev/null 2>&1; then
     TRUFFLEHOG=(
         docker run --rm

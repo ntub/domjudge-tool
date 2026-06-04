@@ -12,10 +12,14 @@
 | **0** | Project bootstrap | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | **Done** — `v1.0.0-rc1` |
 | **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.3.0` |
-| **2** | Add **DOMjudge 8.3.1** support to the CLI | Planned |
+| **2** | Add **DOMjudge 8.3.1** support to the CLI | **Done** — `v1.5.0` |
 | **3** | Cross-platform desktop app (PocketBase + Wails + React) | Planned |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details.
+
+The CLI supports DOMjudge 7.3.x and 8.3.1. Existing `domserver.json`
+files load unchanged; the `version` field selects the matching v7 or v8
+web gateway.
 
 ## Install
 
@@ -94,22 +98,23 @@ is the SMTP path.
 For the full flag list of any command, run
 `domjudge-tool <command> --help`.
 
-## Phase 1.5 architecture (since v1.1.0)
+## Hybrid transport architecture (since v1.1.0)
 
 `domjudge-tool` talks to DOMjudge through **two transports** and picks
-the right one per operation:
+the right one per operation. The same CLI supports DOMjudge 7.3.x and
+8.3.1; `domserver.json` `version` selects the v7 or v8 web gateway via
+`internal/client/web/gatewayfactory`.
 
 - **DOMjudge REST API v4** (`internal/client/api/v4`) — used for every
   read flow (`version`, `export-users`, `download-submissions`,
-  `download-scoreboard`) and for the bulk-import write flows
-  (`import-users-teams` create-flow, `set-password` without
-  `--user-roles`).
-- **HTML scraper over the jury web UI** (`internal/client/web/v7`) — used
-  for the operations the v7 API does not support: deleting users and
-  teams (`rm-teams-and-users`, `--delete-existing`), exporting problem
-  ZIP files (`download-problems`), and per-row email or role-aware
-  password updates (the CCS `accounts.tsv` schema has no email or role
-  columns).
+  `download-scoreboard`) and, on v7, for the bulk-import write flows
+  (`import-users-teams` create-flow and `set-password` without
+  `--user-roles`) unless scraper fallback is requested.
+- **HTML scraper over the jury web UI** (`internal/client/web/v7` and
+  `internal/client/web/v8`) — used for operations the selected API path
+  cannot express. On v8, create, update, password, email, and affiliation
+  writes route through the scraper, and delete is scraper-only because
+  DOMjudge 8.3.1 has no REST API DELETE.
 
 The choice is made by `internal/importer.Router` and surfaced in
 structured `slog` lines (`router decision op=… path=… reason=…`) for

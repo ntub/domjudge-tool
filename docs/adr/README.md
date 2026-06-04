@@ -41,6 +41,20 @@ adr/
 └── NNNN-…
 ```
 
+## Index
+
+| ADR | Status | Title |
+| --- | ------ | ----- |
+| [0001](0001-go-module-path.md) | Accepted | Go module path |
+| [0002](0002-tdd-collaboration-model.md) | Accepted | TDD collaboration model |
+| [0003](0003-cobra-version-pin.md) | Accepted | Cobra version pin |
+| [0004](0004-goquery-version-pin.md) | Accepted | goquery version pin |
+| [0005](0005-python-quirk-preservation.md) | Accepted | Python quirk preservation |
+| [0006](0006-api-first-with-scraper-fallback.md) | Accepted | API-first with scraper fallback |
+| [0007](0007-scoreboard-cell-format-and-categories.md) | Accepted | Scoreboard cell format and categories |
+| [0008](0008-domjudge-8.3.1-support-and-version-selection.md) | Proposed | DOMjudge 8.3.1 support and version selection |
+| [0009](0009-api-v4-cross-version-response-compatibility.md) | Proposed | API v4 cross-version response compatibility |
+
 ## Style
 
 - ATX headings.

@@ -9,11 +9,9 @@ package problems
 
 import (
 	"context"
-	"time"
 
-	"github.com/ntub/domjudge-tool/internal/client/httpx"
 	"github.com/ntub/domjudge-tool/internal/client/web"
-	v7 "github.com/ntub/domjudge-tool/internal/client/web/v7"
+	"github.com/ntub/domjudge-tool/internal/client/web/gatewayfactory"
 	"github.com/ntub/domjudge-tool/internal/config"
 )
 
@@ -23,38 +21,19 @@ import (
 const groupID = "problems"
 
 // Deps groups the gateway factory the problems-subtree commands
-// need. The default implementation builds a real v7 gateway; tests
-// inject a stub returning the same web.Gateway interface.
+// need. The default implementation builds a real version-aware gateway;
+// tests inject a stub returning the same web.Gateway interface.
 type Deps struct {
 	NewGateway func(ctx context.Context, cfg *config.DomServerClient) (web.Gateway, error)
 }
 
-// DefaultDeps wires Deps with the production v7 gateway constructor.
+// DefaultDeps wires Deps with the production gateway constructor.
 // cmd/domjudge-tool's blank import calls register(), which uses
 // these defaults.
 func DefaultDeps() Deps {
 	return Deps{NewGateway: defaultNewGateway}
 }
 
-func defaultNewGateway(_ context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
-	session, err := httpx.NewSession(httpx.SessionOptions{
-		BaseURL:    cfg.Host,
-		DisableSSL: cfg.DisableSSL,
-		Timeout:    derefSecondsDuration(cfg.Timeout),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return v7.New(v7.Options{
-		Session:  session,
-		Username: cfg.Username,
-		Password: cfg.Password,
-	})
-}
-
-func derefSecondsDuration(p *float64) time.Duration {
-	if p == nil {
-		return 0
-	}
-	return time.Duration(*p * float64(time.Second))
+func defaultNewGateway(ctx context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
+	return gatewayfactory.New(ctx, cfg)
 }

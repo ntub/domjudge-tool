@@ -1,0 +1,56 @@
+[
+  {
+    "last_login_time": "2026-01-01T00:00:00+08:00",
+    "last_api_login_time": "2026-01-01T00:00:00+08:00",
+    "first_login_time": "2026-01-01T00:00:00+08:00",
+    "team": null,
+    "team_id": null,
+    "roles": [
+      "admin"
+    ],
+    "type": "admin",
+    "id": "1",
+    "username": "sampleuser1",
+    "name": "Sample name 17",
+    "email": null,
+    "last_ip": "192.0.2.1",
+    "ip": null,
+    "enabled": true
+  },
+  {
+    "last_login_time": null,
+    "last_api_login_time": "2026-01-01T00:00:00+08:00",
+    "first_login_time": "2026-01-01T00:00:00+08:00",
+    "team": null,
+    "team_id": null,
+    "roles": [
+      "judgehost"
+    ],
+    "type": null,
+    "id": "2",
+    "username": "sampleuser2",
+    "name": "Sample name 18",
+    "email": null,
+    "last_ip": "192.0.2.1",
+    "ip": null,
+    "enabled": true
+  },
+  {
+    "last_login_time": "2026-01-01T00:00:00+08:00",
+    "last_api_login_time": null,
+    "first_login_time": "2026-01-01T00:00:00+08:00",
+    "team": "Tester01",
+    "team_id": "3",
+    "roles": [
+      "team"
+    ],
+    "type": "team",
+    "id": "5",
+    "username": "sampleuser3",
+    "name": "Sample name 19",
+    "email": null,
+    "last_ip": "192.0.2.1",
+    "ip": null,
+    "enabled": true
+  }
+]

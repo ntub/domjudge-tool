@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import re
 import sys
 import zipfile
@@ -12,9 +13,47 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-FIXTURE_SUFFIXES = {".json", ".txt", ".tsv", ".csv", ".zip"}
+FIXTURE_SUFFIXES = {".json", ".txt", ".tsv", ".csv", ".zip", ".html", ".headers"}
 MAX_EXCERPT = 180
 SENSITIVE_HOST_TOKENS = ("domjudge7", "jason" "xie", "nt" "ub")
+ALLOWED_PUBLIC_HOSTS = {"ccs-specs.icpc.io", "www.domjudge.org", "clics.ecs.baylor.edu"}
+HOST_TLDS = (
+    "com",
+    "net",
+    "org",
+    "edu",
+    "gov",
+    "mil",
+    "tw",
+    "io",
+    "dev",
+    "local",
+    "me",
+    "co",
+    "app",
+    "cloud",
+    "ai",
+    "info",
+    "biz",
+    "xyz",
+    "eu",
+    "uk",
+    "jp",
+    "cn",
+    "kr",
+    "us",
+    "ca",
+    "au",
+    "de",
+    "fr",
+)
+CFEMAIL_PATTERN = re.compile(
+    r"\bdata-cfemail\s*=\s*(?P<quote>[\"'])(?P<hex>[0-9A-Fa-f]+)(?P=quote)"
+)
+NON_EXAMPLE_EMAIL_PATTERN = re.compile(
+    r"\b[A-Za-z0-9._%+-]+@(?!(?:example\.org)(?![A-Za-z0-9.-]))"
+    r"(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?![A-Za-z0-9.-])"
+)
 
 
 @dataclass(frozen=True)
@@ -44,29 +83,76 @@ def _csrf_allowed(match: re.Match[str]) -> bool:
     return value == "TEST_CSRF_TOKEN"
 
 
+def _ipv4_allowed(match: re.Match[str]) -> bool:
+    try:
+        value = ipaddress.ip_address(match.group(0))
+    except ValueError:
+        return False
+    return value in ipaddress.ip_network("192.0.2.0/24") or value in ipaddress.ip_network(
+        "203.0.113.0/24"
+    )
+
+
+def _hostname_allowed(match: re.Match[str]) -> bool:
+    host_match = match.group("host")
+    if host_match is None:
+        return False
+    host = host_match.lower().rstrip(".")
+    return host == "example.org" or host.endswith(".example.org") or host in ALLOWED_PUBLIC_HOSTS
+
+
+def cf_decode(value: str) -> str:
+    raw = bytes.fromhex(value)
+    key = raw[0]
+    return "".join(chr(char ^ key) for char in raw[1:])
+
+
+def cfemail_findings(source: str, line_no: int, line: str) -> list[Finding]:
+    findings: list[Finding] = []
+    for match in CFEMAIL_PATTERN.finditer(line):
+        try:
+            decoded = cf_decode(match.group("hex"))
+        except ValueError:
+            findings.append(Finding(5, "non-example.org email", source, line_no, _excerpt(line)))
+            continue
+        if NON_EXAMPLE_EMAIL_PATTERN.search(decoded) or not decoded.lower().endswith(
+            "@example.org"
+        ):
+            findings.append(Finding(5, "non-example.org email", source, line_no, _excerpt(line)))
+    return findings
+
+
+def mask_cfemail_values(line: str) -> str:
+    return CFEMAIL_PATTERN.sub(
+        lambda match: f"data-cfemail={match.group('quote')}REDACTED{match.group('quote')}",
+        line,
+    )
+
+
 GATES = (
     Gate(
         1,
-        "sensitive hostname or organization token",
+        "sensitive or raw hostname",
         re.compile(
-            r"\b(?:" + "|".join(re.escape(token) for token in SENSITIVE_HOST_TOKENS) + r")\b",
+            r"\b(?:" + "|".join(re.escape(token) for token in SENSITIVE_HOST_TOKENS) + r")\b"
+            r"|(?i:(?:https?://)?(?P<host>(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+            r"(?:" + "|".join(HOST_TLDS) + r")|localhost)\b)",
             re.IGNORECASE,
         ),
+        _hostname_allowed,
     ),
-    Gate(2, "8-digit student id", re.compile(r"(?<!\d)\d{8}(?!\d)")),
+    Gate(2, "8+ digit student id", re.compile(r"(?<!\d)\d{8,}(?!\d)")),
     Gate(3, "CJK text", re.compile(r"[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+")),
     Gate(
         4,
-        "private IPv4 address",
-        re.compile(r"\b(?:10|172\.(?:1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}\b"),
+        "real IPv4 address",
+        re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
+        _ipv4_allowed,
     ),
     Gate(
         5,
         "non-example.org email",
-        re.compile(
-            r"\b[A-Za-z0-9._%+-]+@(?!(?:example\.org)(?![A-Za-z0-9.-]))"
-            r"(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?![A-Za-z0-9.-])"
-        ),
+        NON_EXAMPLE_EMAIL_PATTERN,
     ),
     Gate(
         6,
@@ -85,9 +171,16 @@ GATES = (
         8,
         "csrf token",
         re.compile(
-            r"(?i)\b_csrf_token\b[\"']?\s*[:=]\s*[\"']?(?P<value>[A-Za-z0-9_-]{8,})"
+            r"(?i)\b(?:_csrf_token|csrf[_-]?token)\b"
+            r"(?:[\"']?\s*[:=]\s*[\"']?|[^>\n]{0,200}\bvalue\s*=\s*[\"'])"
+            r"(?P<value>[A-Za-z0-9_-]{8,})"
         ),
         _csrf_allowed,
+    ),
+    Gate(
+        9,
+        "basic credentials",
+        re.compile(r"(?i)\bbasic\s+[A-Za-z0-9+/]{8,}={0,2}"),
     ),
 )
 
@@ -112,8 +205,10 @@ def _excerpt(line: str) -> str:
 def scan_text(source: str, text: str) -> list[Finding]:
     findings: list[Finding] = []
     for line_no, line in enumerate(text.splitlines() or [text], start=1):
+        findings.extend(cfemail_findings(source, line_no, line))
+        scan_line = mask_cfemail_values(line)
         for gate in GATES:
-            for match in gate.pattern.finditer(line):
+            for match in gate.pattern.finditer(scan_line):
                 if gate.allowed is not None and gate.allowed(match):
                     continue
                 findings.append(

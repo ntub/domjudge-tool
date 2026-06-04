@@ -1,0 +1,29 @@
+[
+  {
+    "hidden": false,
+    "id": "3",
+    "icpc_id": null,
+    "name": "Sample name 14",
+    "sortorder": 0,
+    "color": null,
+    "allow_self_registration": false
+  },
+  {
+    "hidden": false,
+    "id": "6",
+    "icpc_id": null,
+    "name": "Sample name 15",
+    "sortorder": 0,
+    "color": null,
+    "allow_self_registration": false
+  },
+  {
+    "hidden": false,
+    "id": "7",
+    "icpc_id": null,
+    "name": "Sample name 16",
+    "sortorder": 0,
+    "color": null,
+    "allow_self_registration": false
+  }
+]

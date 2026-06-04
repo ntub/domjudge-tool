@@ -87,7 +87,7 @@ secret-scan:
 # Run local API fixture tooling checks.
 api-fixture-check:
     @python3 -m unittest discover -s scripts -p '*_test.py'
-    @python3 scripts/check_pii_api.py testdata/api/v4
+    @python3 scripts/check_pii_api.py testdata/api/v4 testdata/web
 
 # Run all repository privacy gates: generic secrets + project-specific PII.
 privacy-check: secret-scan api-fixture-check

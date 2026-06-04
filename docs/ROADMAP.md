@@ -9,7 +9,7 @@ four phases. Each phase is a stand-alone milestone.
 | **0** | Project bootstrap (this repo's foundation) | Git, Just, lefthook, git-cliff, golangci-lint | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | Go 1.23+, Cobra, goquery, net/http | **Done** — `v1.0.0-rc1`. See [`phase1/README.md`](phase1/README.md). |
 | **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling + operator UX | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand`, `schollz/progressbar/v3` | **Done** — `v1.4.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling; `v1.2.1` import auto-recovery; `v1.3.0` progress bars; `v1.4.0` scoreboard categories + import report) |
-| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | Planned |
+| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | **Done** — `v1.5.0` |
 | **3** | Cross-platform desktop app | PocketBase + Wails + Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui + TanStack | Planned |
 
 ## Phase 0 — Bootstrap (done)
@@ -83,21 +83,18 @@ affiliations, …). Only ship a `v7` implementation in Phase 1; the interface
 is in place so Phase 2 can plug in `v8` next to it without callers
 changing.
 
-> **Phase 1.5 update (since v1.1.0):** the `web.Gateway` interface still
-> declares all 11 methods, but only **5 are active** —
-> `Login`, `GetProblems`, `Download` (problem ZIP), `DeleteUsers`, and
-> `DeleteTeams`. The remaining **6 are marked `// Deprecated:`**
-> (`GetAffiliations`, `GetAffiliation`, `CreateAffiliation`,
-> `CreateTeamAndUser`, `UpdateTeam`, `SetUserPassword`); their
-> implementations stay in `web/v7` for `prefer_scraper=true` rollback
-> but no caller drives them in the default code path. Phase 2 therefore
-> only needs to implement the 5 active methods in `web/v8`. See ADR
-> 0006 (`docs/adr/0006-api-first-with-scraper-fallback.md`).
+> **Phase 2 P2-4 update:** the `web.Gateway` interface remains the
+> version-agnostic contract. DOMjudge 8.3.1 still needs scraper-backed
+> create/update/email/password/affiliation flows because the bulk REST import
+> path drops email and update is not usable through `PUT /api/v4/users/{id}`.
+> `web/v8` therefore implements those methods as real form flows, not
+> unsupported stubs. See ADR 0006
+> (`docs/adr/0006-api-first-with-scraper-fallback.md`) and ADR 0008.
 
 ## Phase 2 — DOMjudge 8.3.1 support
 
 Goal: support both 7.3.2 and 8.3.1 servers from one binary, selected by the
-config or runtime detection.
+existing config version field.
 
 ### Web-form differences from v7
 
@@ -106,25 +103,34 @@ config or runtime detection.
 - `team[addUserForTeam]` enum changed: `"1"` → `"create-new-user"`.
 - New-user field renamed:
   `team[users][0][username]` → `team[newUsername]`.
-- New fixed field: `team[penalty] = "0"`.
+- Fresh team default field: `team[penalty] = "0"`; updates preserve the edit
+  form snapshot value.
 - Team delete flow: GET-and-click row link → POST to
   `/jury/teams/{id}/delete?_=<timestamp>`.
 - Affiliation comments field renamed: `comments` → `internalcomments`.
 - Affiliation list column offsets shifted by one.
 
-> **Phase 1.5 update (since v1.1.0):** of the differences above, only
-> the **team delete flow** is still exercised by `domjudge-tool` —
-> create-team, update-team, set-password, and create-affiliation moved
-> to the v4 REST API in v1.1.0 and no longer hit those forms. Phase 2
-> only needs to re-implement delete (and `Login` / problem-ZIP
-> download) in `web/v8`; the rest of the deltas above are documentation
-> for the legacy `web/v7` scraper that remains as fallback.
+> **Phase 2 P2-4 update:** live DOMjudge 8.3.1 write/readback showed that the
+> bulk `accounts.json` REST import path drops email, so v8
+> `import-users-teams` uses the `web/v8` scraper for
+> create/update/email/password/affiliation. Delete remains scraper-only
+> because 8.3.1 has no REST API DELETE for users/teams.
+
+Future work: single-entity `POST /api/v4/users` on DOMjudge 8.3.1 was
+verified to honor email, team linkage, password, and roles; a later Phase 2.x
+PR may use it for v8 user create only, while update/delete stay scraper.
 
 ### Implementation note
 
 Capture HTML fixtures from a real 8.3.1 instance into `testdata/web/v8/`
 **before any Go code is written for v8.** That way the parser is built
 against verifiable inputs, not screenshots of a hypothetical page.
+
+## Phase 2 — completion log
+
+| Tag | Date | Scope |
+| --- | ---- | ----- |
+| `v1.5.0` | 2026-06-04 | DOMjudge 8.3.1 support — one binary selects the v7 or v8 backend from `domserver.json`, adds cross-version API decoding, and completes the v8 jury scraper fallback for importer, delete, and problem-download workflows. |
 
 ## Phase 3 — Cross-platform desktop app
 

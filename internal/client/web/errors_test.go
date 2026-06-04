@@ -23,3 +23,16 @@ func TestErrTeamIDMissing_IsComparable(t *testing.T) {
 		t.Errorf("ErrTeamIDMissing.Error() = %q, want %q", got, "web: team_id missing on snapshot")
 	}
 }
+
+func TestErrUnsupportedOnV8_IsComparable(t *testing.T) {
+	if ErrUnsupportedOnV8 == nil {
+		t.Fatal("ErrUnsupportedOnV8 must not be nil")
+	}
+	wrapped := fmt.Errorf("v8: update team: %w", ErrUnsupportedOnV8)
+	if !errors.Is(wrapped, ErrUnsupportedOnV8) {
+		t.Errorf("errors.Is(wrapped, ErrUnsupportedOnV8) = false, want true")
+	}
+	if got := ErrUnsupportedOnV8.Error(); got != "web: unsupported on v8 scraper" {
+		t.Errorf("ErrUnsupportedOnV8.Error() = %q, want %q", got, "web: unsupported on v8 scraper")
+	}
+}

@@ -1,0 +1,15 @@
+{
+  "version": "2023-06",
+  "version_url": "https://ccs-specs.icpc.io/2023-06/contest_api",
+  "name": "Sample name 1",
+  "provider": {
+    "name": "Sample name 2",
+    "version": "8.3.1"
+  },
+  "domjudge": {
+    "apiversion": 4,
+    "version": "8.3.1",
+    "environment": "prod",
+    "doc_url": "https://test-station.example.org/api/doc"
+  }
+}

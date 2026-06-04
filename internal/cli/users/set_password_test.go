@@ -212,6 +212,42 @@ func TestSetPassword_RolesFlagGoesScraper(t *testing.T) {
 	}
 }
 
+func TestSetPassword_V8ConfigWithoutRolesGoesScraper(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(userListHandler(t, []model.User{{ID: "1", Username: "alice"}}))
+	defer srv.Close()
+
+	gw := &mockGateway{}
+	accounts := &fakeAccountsImporter{}
+	cmd := users.NewSetPasswordCmd(stubDepsWithAccounts(srv.URL, gw, accounts))
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"alice", "--password", "rotated"})
+	cmd.SetContext(ctxWithCfg(&config.DomServerClient{
+		Host:     srv.URL,
+		Username: "admin",
+		Password: "secret",
+		Version:  "8.3.1",
+	}))
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if len(accounts.calls) != 0 {
+		t.Fatalf("Accounts calls = %d, want 0 for scraper path", len(accounts.calls))
+	}
+	if gw.loginCalls != 1 {
+		t.Errorf("Login called %d times, want 1 for scraper path", gw.loginCalls)
+	}
+	if len(gw.setPasswordCalls) != 1 {
+		t.Fatalf("SetUserPassword calls = %d, want 1", len(gw.setPasswordCalls))
+	}
+	got := gw.setPasswordCalls[0]
+	if got.UserID != "1" || got.Password != "rotated" || got.Roles != nil {
+		t.Errorf("scraper call = %+v, want user 1 password rotated nil roles", got)
+	}
+}
+
 func TestSetPassword_PreferScraperConfigGoesScraper(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(userListHandler(t, []model.User{{ID: "1", Username: "alice"}}))
