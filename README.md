@@ -71,7 +71,7 @@ flagged below. For the complete per-flag reference see
 [`docs/CLI.md`](docs/CLI.md) (English) and
 [`docs/CLI.zh-TW.md`](docs/CLI.zh-TW.md) (Traditional Chinese). Long-running batch commands (`import-users-teams`,
 `send-user-accounts`, `render-user-accounts`, `download-problems`,
-`download-submissions`, `download-scoreboard`) print a per-row
+`import-problems`, `download-submissions`, `download-scoreboard`) print a per-row
 progress bar to stderr on a TTY since v1.3.0.
 
 `download-scoreboard` writes columns `Rank, TeamAffiliation, TeamName,

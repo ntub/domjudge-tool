@@ -199,6 +199,44 @@ func TestImports_Problem_PassesContestAndProblemFields(t *testing.T) {
 	}
 }
 
+func TestImports_ProblemPackage_OmitsProblemField(t *testing.T) {
+	const zipBody = "problem zip"
+	srv := importServer(t, "/api/v4/contests/2/problems", func(t *testing.T, r *http.Request) {
+		if got := r.FormValue("problem"); got != "" {
+			t.Fatalf("problem = %q, want empty for create", got)
+		}
+		got := readMultipartFile(t, r, "zip")
+		if got != zipBody {
+			t.Fatalf("zip body = %q, want %q", got, zipBody)
+		}
+	}, `{"problem_id":3,"messages":[]}`)
+	defer srv.Close()
+
+	c := New(Options{BaseURL: srv.URL})
+	if err := c.Imports.ProblemPackage(context.Background(), "2", "boolfind.zip", strings.NewReader(zipBody)); err != nil {
+		t.Fatalf("ProblemPackage: %v", err)
+	}
+}
+
+func TestImports_ProblemPackageZipArray_UsesLegacyZipArrayField(t *testing.T) {
+	const zipBody = "problem zip"
+	srv := importServer(t, "/api/v4/contests/2/problems", func(t *testing.T, r *http.Request) {
+		if got := r.FormValue("problem"); got != "" {
+			t.Fatalf("problem = %q, want empty for create", got)
+		}
+		got := readMultipartFile(t, r, "zip[]")
+		if got != zipBody {
+			t.Fatalf("zip[] body = %q, want %q", got, zipBody)
+		}
+	}, `{"problem_ids":[3],"messages":[]}`)
+	defer srv.Close()
+
+	c := New(Options{BaseURL: srv.URL})
+	if err := c.Imports.ProblemPackageZipArray(context.Background(), "2", "boolfind.zip", strings.NewReader(zipBody)); err != nil {
+		t.Fatalf("ProblemPackageZipArray: %v", err)
+	}
+}
+
 func importServer(t *testing.T, path string, inspect func(t *testing.T, r *http.Request), response string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

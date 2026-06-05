@@ -93,6 +93,42 @@ func (r *ImportsResource) Problem(ctx context.Context, cid, problemID string, zi
 	return singleImportID(ids)
 }
 
+// ProblemPackage imports one problem ZIP into contest cid as a new problem.
+// Unlike Problem, it omits the optional `problem` form field; DOMjudge treats
+// that field as an update target and rejects new imports when the id is absent.
+func (r *ImportsResource) ProblemPackage(ctx context.Context, cid, filename string, zip io.Reader) error {
+	if cid == "" {
+		return fmt.Errorf("%w: cid must not be empty", ErrInvalidArgument)
+	}
+	if filename == "" {
+		filename = "problem.zip"
+	}
+	if err := r.c.postMultipart(ctx, fmt.Sprintf("/contests/%s/problems", cid), map[string]multipartField{
+		"zip": multipartFile{filename: filename, contentType: "application/zip", reader: zip},
+	}, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ProblemPackageZipArray imports one problem ZIP using the legacy DOMjudge 7
+// multipart file field name (`zip[]`). DOMjudge 8 switched this create path to
+// `zip`, so callers should select this only for 7.x servers.
+func (r *ImportsResource) ProblemPackageZipArray(ctx context.Context, cid, filename string, zip io.Reader) error {
+	if cid == "" {
+		return fmt.Errorf("%w: cid must not be empty", ErrInvalidArgument)
+	}
+	if filename == "" {
+		filename = "problem.zip"
+	}
+	if err := r.c.postMultipart(ctx, fmt.Sprintf("/contests/%s/problems", cid), map[string]multipartField{
+		"zip[]": multipartFile{filename: filename, contentType: "application/zip", reader: zip},
+	}, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *ImportsResource) postIDs(ctx context.Context, path string, fields map[string]multipartField) ([]string, error) {
 	var ids importIDs
 	if err := r.c.postMultipart(ctx, path, fields, &ids); err != nil {

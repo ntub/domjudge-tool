@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,6 +24,17 @@ import (
 // post-run mock for assertions.
 func runWithStubGateway(t *testing.T, m *mockGateway, args ...string) (*cobra.Command, error) {
 	t.Helper()
+	cfg := &config.DomServerClient{Host: "http://example.test", Username: "u", Password: "p"}
+	return runWithStubGatewayConfig(t, cfg, m, args...)
+}
+
+func runWithStubGatewayConfig(
+	t *testing.T,
+	cfg *config.DomServerClient,
+	m *mockGateway,
+	args ...string,
+) (*cobra.Command, error) {
+	t.Helper()
 	deps := problems.Deps{
 		NewGateway: func(_ context.Context, _ *config.DomServerClient) (web.Gateway, error) {
 			return m, nil
@@ -34,7 +47,6 @@ func runWithStubGateway(t *testing.T, m *mockGateway, args ...string) (*cobra.Co
 	root.SetOut(&bytes.Buffer{})
 	root.SetErr(&bytes.Buffer{})
 
-	cfg := &config.DomServerClient{Host: "http://example.test", Username: "u", Password: "p"}
 	ctx := cli.WithConfig(context.Background(), cfg)
 	return root, root.ExecuteContext(ctx)
 }
@@ -114,6 +126,39 @@ func TestDownloadProblems_ExcludeOnlyForwarded(t *testing.T) {
 		t.Errorf("Exclude = %v, want %v", got, want)
 	}
 	if got, want := m.getProblemsArg.Only, []string{"c"}; !equalStrSlice(got, want) {
+		t.Errorf("Only = %v, want %v", got, want)
+	}
+}
+
+func TestDownloadProblems_ContestIDScopesScraperListFromAPI(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v4/contests/29/problems" {
+			t.Errorf("path = %s, want /api/v4/contests/29/problems", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{"id":"9","label":"MA","name":"MA","externalid":"MA","time_limit":1},
+			{"id":"17","label":"MB","name":"MI","externalid":"MI","time_limit":1},
+			{"id":"13","label":"MC","name":"ME","externalid":"ME","time_limit":1}
+		]`))
+	}))
+	t.Cleanup(srv.Close)
+
+	contestID := "29"
+	cfg := &config.DomServerClient{
+		Host:      srv.URL,
+		Username:  "u",
+		Password:  "p",
+		ContestID: &contestID,
+	}
+	m := &mockGateway{getProblemsRes: []model.ProblemItem{}}
+
+	if _, err := runWithStubGatewayConfig(t, cfg, m); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if got, want := m.getProblemsArg.Only, []string{"9", "17", "13"}; !equalStrSlice(got, want) {
 		t.Errorf("Only = %v, want %v", got, want)
 	}
 }

@@ -330,7 +330,10 @@ domjudge-tool send-user-accounts users.csv ./my-template \
 
 #### `download-problems`
 
-使用設定的裁判憑證登入、列出比賽題目，並將每道題目的匯出 ZIP 檔案寫入磁碟。
+使用設定的裁判憑證登入，並將選定題目的匯出 ZIP 檔案寫入磁碟。當
+`domserver.json.contest_id` 已設定且未指定 `--only` 時，命令會先讀取
+`/api/v4/contests/{cid}/problems`，用該 contest 的 problem ids 限縮
+scraper 下載範圍，避免 DOMjudge 7.x 下載到全域 jury problem catalog。
 
 ```bash
 domjudge-tool download-problems
@@ -343,6 +346,31 @@ domjudge-tool download-problems --exclude D,E
 | `--folder` | `export_problems` | 輸出目錄 |
 | `--exclude` | — | 要排除的題目 id（逗號分隔） |
 | `--only` | — | 要保留的題目 id（逗號分隔，排除其他所有題目） |
+
+#### `import-problems`
+
+將 problem package ZIP 匯入設定檔指定的比賽。此命令使用
+`domserver.json.contest_id` 作為目標 contest id。新建匯入時不送 optional
+`problem` form field，讓 DOMjudge 從 package metadata 建立題目。
+DOMjudge 7.x 使用 legacy multipart file field `zip[]`；DOMjudge 8.x
+使用 `zip`。只有在匯入單一 ZIP 並要更新既有 problem id 時，才使用
+`--problem-id`。
+
+若 DOMjudge 回報 `problem.externalid: This value is already used`，代表
+server 已有相同 external id 的全域 problem package。除非你明確要更新那個
+既有 server problem，否則不要用 `--problem-id` 重試 create path。在
+DOMjudge 8.3.1，
+`DELETE /api/v4/contests/{cid}/problems/{id}` 只會將 problem 從 contest
+unlink，不會刪除全域 problem package。
+
+```bash
+domjudge-tool import-problems ./export_problems
+domjudge-tool import-problems ./zips/A_easy.zip --problem-id A
+```
+
+| 旗標 | 預設值 | 說明 |
+| ---- | ------ | ---- |
+| `--problem-id` | — | 單一 ZIP input 要更新的既有 problem id |
 
 ---
 
@@ -434,8 +462,10 @@ domjudge-tool import-users-teams-example
 | `export-users` | API | 讀取 `/api/v4/users`，再於記憶體補篩選 |
 | `download-submissions` | API | 使用 submission list 與 file/source endpoints |
 | `download-scoreboard` | API | 讀取 scoreboard、teams、organizations、groups 後重建 CSV |
-| `download-problems` list | Scraper | 使用版本化 jury UI problem listing |
+| `download-problems` contest scope | API | `contest_id` 已設定且未指定 `--only` 時讀取 `/api/v4/contests/{cid}/problems` |
+| `download-problems` list | Scraper | 套用 API contest scoping 後使用版本化 jury UI problem listing |
 | `download-problems` ZIP | Scraper | REST API 沒有 problem ZIP export endpoint |
+| `import-problems` | API | 將 problem package ZIP POST 到 `/api/v4/contests/{cid}/problems` |
 | `import-users-teams` create/update/password/email | v7 與 v8 預設 Scraper | v7 `accounts.tsv` user-to-team linkage 不安全；v8 write APIs 對這些欄位不可靠 |
 | `import-users-teams` delete-existing | Scraper | REST API 沒有 user/team DELETE |
 | `set-password` 未明確指定 `--user-roles` | v7 走 API，v8 走 scraper | v7 `accounts.tsv` password reset 安全；v8 fallback scraper |

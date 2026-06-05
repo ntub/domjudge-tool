@@ -345,8 +345,12 @@ domjudge-tool send-user-accounts users.csv ./my-template \
 
 #### `download-problems`
 
-Log in via the configured jury credentials, list the contest's
-problems, and write each problem's export ZIP to disk.
+Log in via the configured jury credentials and write each selected
+problem's export ZIP to disk. When `domserver.json.contest_id` is set
+and `--only` is omitted, the command first reads
+`/api/v4/contests/{cid}/problems` and uses those problem ids to scope
+the scraper download. This avoids downloading the global jury problem
+catalog on DOMjudge 7.x.
 
 ```bash
 domjudge-tool download-problems
@@ -359,6 +363,31 @@ domjudge-tool download-problems --exclude D,E
 | `--folder` | `export_problems` | Output folder |
 | `--exclude` | — | Comma-separated problem ids to exclude |
 | `--only` | — | Comma-separated problem ids to keep (excludes all others) |
+
+#### `import-problems`
+
+Import problem package ZIPs into the configured contest. The command
+uses `domserver.json.contest_id` as the target contest id. New imports
+omit the optional `problem` form field so DOMjudge creates the problem
+from the package metadata. DOMjudge 7.x uses the legacy multipart file
+field `zip[]`; DOMjudge 8.x uses `zip`. Use `--problem-id` only when
+importing exactly one ZIP to update an existing problem id.
+
+If DOMjudge reports `problem.externalid: This value is already used`, a
+global problem package with the same external id already exists. Do not retry
+the create path with `--problem-id` unless you intentionally want to update
+that existing server problem. On DOMjudge 8.3.1,
+`DELETE /api/v4/contests/{cid}/problems/{id}` unlinks a problem from the
+contest only; it does not delete the global problem package.
+
+```bash
+domjudge-tool import-problems ./export_problems
+domjudge-tool import-problems ./zips/A_easy.zip --problem-id A
+```
+
+| Flag | Default | Description |
+| ---- | ------- | ----------- |
+| `--problem-id` | — | Existing problem id to update for a single ZIP input |
 
 ---
 
@@ -455,8 +484,10 @@ router decisions as structured log lines.
 | `export-users` | API | Reads `/api/v4/users`; filters again in memory |
 | `download-submissions` | API | Uses submission list and file/source endpoints |
 | `download-scoreboard` | API | Reads scoreboard, teams, organizations, and groups, then rebuilds CSV |
-| `download-problems` list | Scraper | Uses versioned jury UI problem listing |
+| `download-problems` contest scope | API | Reads `/api/v4/contests/{cid}/problems` when `contest_id` is set and `--only` is omitted |
+| `download-problems` list | Scraper | Uses versioned jury UI problem listing after any API contest scoping |
 | `download-problems` ZIP | Scraper | REST API has no problem ZIP export endpoint |
+| `import-problems` | API | Posts problem package ZIPs to `/api/v4/contests/{cid}/problems` |
 | `import-users-teams` create/update/password/email | Scraper on v7 and v8 | v7 `accounts.tsv` user-to-team linkage is unsafe; v8 write APIs are not reliable for these fields |
 | `import-users-teams` delete-existing | Scraper | REST API has no user/team DELETE |
 | `set-password` without explicit `--user-roles` | API on v7, scraper on v8 | v7 `accounts.tsv` password reset is safe; v8 falls back to scraper |

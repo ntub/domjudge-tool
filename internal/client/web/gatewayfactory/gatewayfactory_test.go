@@ -57,7 +57,7 @@ func TestNew_UnsupportedVersionReturnsSentinel(t *testing.T) {
 	}
 }
 
-func TestNew_V7DoesNotPassContestID(t *testing.T) {
+func TestNew_V7PassesContestID(t *testing.T) {
 	gw, err := New(context.Background(), cfgWithVersion("7.3.2"))
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -75,9 +75,13 @@ func TestNew_V7DoesNotPassContestID(t *testing.T) {
 	root.Path = "/"
 	for _, cookie := range sessioned.Session().Jar().Cookies(root) {
 		if cookie.Name == "domjudge_cid" {
-			t.Fatalf("unexpected domjudge_cid cookie: %s=%s", cookie.Name, cookie.Value)
+			if cookie.Value != "2" {
+				t.Fatalf("domjudge_cid = %q, want 2", cookie.Value)
+			}
+			return
 		}
 	}
+	t.Fatal("domjudge_cid cookie missing")
 }
 
 func cfgWithVersion(version string) *config.DomServerClient {

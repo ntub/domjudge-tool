@@ -15,4 +15,5 @@ func init() { //nolint:gochecknoinits // registry wiring per CLAUDE.md
 
 func register(root *cobra.Command) {
 	root.AddCommand(NewDownloadProblemsCmd(DefaultDeps()))
+	root.AddCommand(NewImportProblemsCmd(DefaultDeps()))
 }

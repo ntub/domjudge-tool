@@ -54,6 +54,7 @@ adr/
 | [0007](0007-scoreboard-cell-format-and-categories.md) | Accepted | Scoreboard cell format and categories |
 | [0008](0008-domjudge-8.3.1-support-and-version-selection.md) | Proposed | DOMjudge 8.3.1 support and version selection |
 | [0009](0009-api-v4-cross-version-response-compatibility.md) | Proposed | API v4 cross-version response compatibility |
+| [0010](0010-problem-package-contest-scoping-and-import.md) | Proposed | Problem package contest scoping and import |
 
 ## Style
 

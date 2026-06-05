@@ -40,9 +40,10 @@ func New(_ context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
 	switch family {
 	case "7.3":
 		gw, err := v7.New(v7.Options{
-			Session:  session,
-			Username: cfg.Username,
-			Password: cfg.Password,
+			Session:   session,
+			Username:  cfg.Username,
+			Password:  cfg.Password,
+			ContestID: derefString(cfg.ContestID),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("gatewayfactory: new v7 gateway: %w", err)
@@ -50,9 +51,10 @@ func New(_ context.Context, cfg *config.DomServerClient) (web.Gateway, error) {
 		return gw, nil
 	case "8.3":
 		gw, err := v8.New(v8.Options{
-			Session:  session,
-			Username: cfg.Username,
-			Password: cfg.Password,
+			Session:   session,
+			Username:  cfg.Username,
+			Password:  cfg.Password,
+			ContestID: derefString(cfg.ContestID),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("gatewayfactory: new v8 gateway: %w", err)
@@ -90,4 +92,11 @@ func derefSecondsDuration(p *float64) time.Duration {
 		return 0
 	}
 	return time.Duration(*p * float64(time.Second))
+}
+
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }

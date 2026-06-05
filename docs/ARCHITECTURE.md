@@ -112,6 +112,14 @@ cookie on the session jar at construction time. v8 may translate the
 same field into path scoping (`/contests/{cid}/jury/...`); callers see
 `web.Gateway` and don't depend on the mechanism.
 
+**Problem package workflows**: contest scoping for problem package export is
+API-assisted. `download-problems` uses `api/v4.Problems.List` to turn
+`domserver.json.contest_id` into concrete problem ids, then uses the
+versioned scraper only for the full ZIP export that the API does not expose.
+`import-problems` remains API-backed but selects the multipart file field by
+DOMjudge family (`zip[]` on 7.x, `zip` on 8.x). See
+[`adr/0010`](adr/0010-problem-package-contest-scoping-and-import.md).
+
 **Locked Python QUIRK**: `v7.Client.DeleteUsers` and `DeleteTeams`
 preserve the inverted-filter behaviour at Python `services/web/v7.py:161`
 and `:188` — an empty `include` argument short-circuits to "skip every

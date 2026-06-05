@@ -11,6 +11,7 @@ import (
 
 	"github.com/ntub/domjudge-tool/internal/cli"
 	"github.com/ntub/domjudge-tool/internal/client/web"
+	"github.com/ntub/domjudge-tool/internal/config"
 	"github.com/ntub/domjudge-tool/internal/model"
 	"github.com/ntub/domjudge-tool/internal/util/pathx"
 )
@@ -53,6 +54,24 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 			if !ok {
 				return fmt.Errorf("download-problems: config not on context (PreRunE missing)")
 			}
+			effectiveOnly, scopedEmpty, err := resolveDownloadOnly(ctx, deps, cfg, only)
+			if err != nil {
+				return err
+			}
+			out := folder
+			if out == "" {
+				out = defaultFolder
+			}
+			if err := os.MkdirAll(out, 0o755); err != nil {
+				return fmt.Errorf("download-problems: mkdir %s: %w", out, err)
+			}
+			if scopedEmpty {
+				rep := cli.ReporterFromContext(ctx)
+				rep.Start(0, "downloading")
+				rep.Finish()
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Processed 0 problems.\n")
+				return nil
+			}
 			gw, err := deps.NewGateway(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("download-problems: gateway: %w", err)
@@ -60,17 +79,9 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 			if err := gw.Login(ctx); err != nil {
 				return fmt.Errorf("download-problems: login: %w", err)
 			}
-			items, err := gw.GetProblems(ctx, web.ProblemFilter{Exclude: exclude, Only: only})
+			items, err := gw.GetProblems(ctx, web.ProblemFilter{Exclude: exclude, Only: effectiveOnly})
 			if err != nil {
 				return fmt.Errorf("download-problems: list: %w", err)
-			}
-
-			out := folder
-			if out == "" {
-				out = defaultFolder
-			}
-			if err := os.MkdirAll(out, 0o755); err != nil {
-				return fmt.Errorf("download-problems: mkdir %s: %w", out, err)
 			}
 
 			rep := cli.ReporterFromContext(ctx)
@@ -98,6 +109,36 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 	flags.StringSliceVar(&only, "only", nil, "comma-separated problem ids to keep (excludes others)")
 	flags.StringVar(&folder, "folder", "", "output folder (default: export_problems)")
 	return cmd
+}
+
+func resolveDownloadOnly(
+	ctx context.Context,
+	deps Deps,
+	cfg *config.DomServerClient,
+	only []string,
+) (effectiveOnly []string, scopedEmpty bool, err error) {
+	if len(only) > 0 || cfg == nil || cfg.ContestID == nil || *cfg.ContestID == "" {
+		return only, false, nil
+	}
+	newAPI := deps.NewAPI
+	if newAPI == nil {
+		newAPI = defaultNewAPI
+	}
+	api := newAPI(cfg)
+	if api == nil || api.Problems == nil {
+		return nil, false, fmt.Errorf("download-problems: api problems resource unavailable")
+	}
+	problems, err := api.Problems.List(ctx, *cfg.ContestID)
+	if err != nil {
+		return nil, false, fmt.Errorf("download-problems: contest %s problems: %w", *cfg.ContestID, err)
+	}
+	ids := make([]string, 0, len(problems))
+	for _, p := range problems {
+		if p.ID != "" {
+			ids = append(ids, p.ID)
+		}
+	}
+	return ids, len(ids) == 0, nil
 }
 
 // writeProblemZip streams gw.Download(*p.ExportFilePath) into a
