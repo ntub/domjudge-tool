@@ -26,7 +26,7 @@ func (c *Client) SetUserPassword(
 		"user[plainPassword]": {password},
 		"user[enabled]":       {enabledStr},
 	}
-	if roles != nil {
+	if len(roles) > 0 {
 		rolesAsStr := make([]string, len(roles))
 		for i, r := range roles {
 			rolesAsStr[i] = strconv.Itoa(r)

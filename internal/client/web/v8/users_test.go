@@ -35,11 +35,18 @@ func TestSetUserPassword_Integration(t *testing.T) {
 			wantEnabled: "1",
 		},
 		{
-			name:        "nil roles preserves form roles",
+			name:        "nil roles preserves Team Member",
 			roles:       nil,
 			enabled:     false,
 			wantRoles:   []string{"3"},
 			wantEnabled: "0",
+		},
+		{
+			name:        "empty roles preserves Team Member",
+			roles:       []int{},
+			enabled:     true,
+			wantRoles:   []string{"3"},
+			wantEnabled: "1",
 		},
 		{
 			name:       "stayed on edit returns update failed",

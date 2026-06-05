@@ -132,9 +132,23 @@ no REST API DELETE for users/teams on 8.3.1.
 
 Verified future opportunity: single-entity `POST /api/v4/users` on DOMjudge
 8.3.1 honors `email`, `team_id`, `password`, and `roles`, and returns 201.
-Future work may route only the v8 user-CREATE cohort through that endpoint
-after scraper team creation. `PUT /api/v4/users/{id}` is broken on 8.3.1
-(HTTP 400 "already exists", field not updated), so UPDATE stays scraper.
+2026-06-05 amendment: the live 8.3.1 `api/doc.json` explicitly documents
+single-entity user writes:
+
+```text
+POST /api/v4/users
+PUT  /api/v4/users/{id}
+```
+
+Both `AddUser` and `UpdateUser` include `email`, `password`, `team_id`,
+`roles`, and `enabled`, so these routes are valid future/backup write paths
+for v8 user-field repair. The live 422 seen during password backfill was
+traced to a narrower scraper bug: `user_roles: []` from config was treated as
+an explicit empty role override, clearing the form's existing Team Member role.
+Empty role lists must be normalized to "unspecified" so the scraper preserves
+the checked form roles. The bulk `/api/v4/users/accounts` route remains
+unsuitable for this command because it is file-import oriented and cannot
+represent the full email/role contract.
 
 ## 5. `web/v8` scope
 
@@ -168,9 +182,12 @@ email on 8.3.1, and `PUT /api/v4/users/{id}` is not usable for updates.
    `/contests/{cid}/samples.zip` 只能下載 samples，不等於 jury web UI 的
    problem package export。
 3. The bulk `accounts.json` path on 8.3.1 drops email, so the v8 import
-   baseline uses scraper form flows for create/update/email/password/
-   affiliation. Future API-first work may use single-entity
-   `POST /api/v4/users` for creates only, with scraper fallback.
+   baseline does not use `/api/v4/users/accounts` for user field updates.
+   Empty `user_roles` config values are treated as unspecified so scraper
+   password updates preserve the form's existing roles. The single-entity
+   `/api/v4/users` and `/api/v4/users/{id}` routes may be used after scraper
+   team creation/update because they carry email, password, team linkage,
+   roles, and enabled state in one JSON request.
 
 `web/v8` parser 必須以 `testdata/web/v8/` 的 sanitized jury HTML fixture 為
 準，不接受只靠截圖或肉眼推測 selector。

@@ -117,33 +117,44 @@ func TestSetUserPassword_EnabledFalseSendsZero(t *testing.T) {
 	}
 }
 
-func TestSetUserPassword_NilRolesPreservesFormRoles(t *testing.T) {
+func TestSetUserPassword_UnspecifiedRolesPreservesTeamMember(t *testing.T) {
 	editForm := mustReadFixture(t, userEditFixture)
-	var gotRoles []string
-	mux := http.NewServeMux()
-	mux.HandleFunc("/jury/users/42/edit", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			_, _ = w.Write(editForm)
-		case http.MethodPost:
-			_ = r.ParseForm()
-			gotRoles = r.PostForm["user[user_roles][]"]
-			http.Redirect(w, r, "/jury/users/42", http.StatusFound)
-		}
-	})
-	mux.HandleFunc("/jury/users/42", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	c := newTestClient(t, srv)
-	if err := c.SetUserPassword(context.Background(), "42", "pw", nil, true); err != nil {
-		t.Fatalf("SetUserPassword: %v", err)
+	tests := []struct {
+		name  string
+		roles []int
+	}{
+		{name: "nil", roles: nil},
+		{name: "empty", roles: []int{}},
 	}
-	want := []string{"3"}
-	if !reflect.DeepEqual(gotRoles, want) {
-		t.Errorf("user[user_roles][] = %v, want preserved %v", gotRoles, want)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotRoles []string
+			mux := http.NewServeMux()
+			mux.HandleFunc("/jury/users/42/edit", func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					_, _ = w.Write(editForm)
+				case http.MethodPost:
+					_ = r.ParseForm()
+					gotRoles = r.PostForm["user[user_roles][]"]
+					http.Redirect(w, r, "/jury/users/42", http.StatusFound)
+				}
+			})
+			mux.HandleFunc("/jury/users/42", func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			c := newTestClient(t, srv)
+			if err := c.SetUserPassword(context.Background(), "42", "pw", tc.roles, true); err != nil {
+				t.Fatalf("SetUserPassword: %v", err)
+			}
+			want := []string{"3"}
+			if !reflect.DeepEqual(gotRoles, want) {
+				t.Errorf("user[user_roles][] = %v, want preserved Team Member %v", gotRoles, want)
+			}
+		})
 	}
 }
 

@@ -1,6 +1,7 @@
 package v4
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
@@ -127,4 +128,46 @@ func (c *Client) getStream(ctx context.Context, path string) (*http.Response, er
 		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: body, URL: c.base + path}
 	}
 	return resp, nil
+}
+
+func (c *Client) postJSON(ctx context.Context, path string, in, out interface{}) error {
+	return c.writeJSON(ctx, http.MethodPost, path, in, out)
+}
+
+func (c *Client) putJSON(ctx context.Context, path string, in, out interface{}) error {
+	return c.writeJSON(ctx, http.MethodPut, path, in, out)
+}
+
+func (c *Client) writeJSON(ctx context.Context, method, path string, in, out interface{}) error {
+	body, err := json.Marshal(in)
+	if err != nil {
+		return fmt.Errorf("encode request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build JSON request: %w", err)
+	}
+	req.Header.Set("Authorization", c.authHeader)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.postHTTP.Do(req)
+	if err != nil {
+		return fmt.Errorf("write JSON: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return &HTTPError{StatusCode: resp.StatusCode, Body: respBody, URL: c.base + path}
+	}
+	if out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(respBody, out); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+	return nil
 }
