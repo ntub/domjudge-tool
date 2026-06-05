@@ -48,6 +48,34 @@
 | `contest_id` | string \| null | null | 指定比賽（數字 id 或 shortname）；null 自動偵測唯一進行中比賽 |
 | `prefer_scraper` | bool \| null | null | 強制所有混合指令走 HTML 爬蟲路徑 |
 
+### 設定欄位語意
+
+- `host`、`username`、`password` 同時供 REST API client 與 scraper
+  session 使用。API 呼叫使用 Basic Auth；scraper 呼叫會登入 DOMjudge jury UI。
+- `disable_ssl` 也可由全域 `--disable-ssl` 強制啟用。只應用於可信任、
+  使用自簽憑證的測試站。
+- `version` 選擇 scraper 實作。`7.3.x` family 使用 v7 gateway；
+  `8.3.x` family 使用 v8 gateway。不支援的 family 會在任何 mutation
+  前失敗。
+- `api_version` 目前為 `v4`。API client 路徑以 `/api/v4` 為根。
+- `timeout` 套用到 HTTP client。`null` 表示不設定明確逾時。
+  `max_connections` 與 `max_keepalive_connections` 保留作為設定相容性；
+  目前 HTTP client 不提供使用者可見的並行調校。
+- `category_id` 是 `import-users-teams` 與 `set-password` API import
+  使用的預設 DOMjudge team category/group id。CSV `category_id` cell
+  會覆蓋該列的值。
+- `affiliation_id` 是 CSV row 的 `affiliation` 留空時使用的備援
+  affiliation id。若 `affiliation` 有值，importer 會改為解析或建立該
+  affiliation。
+- `affiliation_country` 用於 importer 建立缺少的 affiliation/organization。
+- `user_roles` 是 scraper 密碼寫入的預設角色 id 清單。明確指定 roles
+  會讓密碼更新走 scraper，因為 `accounts.tsv` 沒有 role 欄位。
+- `contest_id` 用於需要 contest scope 的 API 讀取與 import。若省略，
+  需要 contest 的指令只會在剛好有一個 active contest 時自動選用；
+  否則會要求你設定此欄位。
+- `prefer_scraper=true` 會在 scraper 實作存在時，強制混合操作走 scraper。
+  API-only 讀取仍維持 API 路徑。
+
 ## 指令
 
 ### 一般
@@ -115,6 +143,32 @@ domjudge-tool import-users-teams-example -o my-contest.csv
 CSV 可包含可選的 `category_id` 欄位。若該列留空，或整份 CSV 省略此欄，
 該列會使用既有的 `--category-id` / 設定檔備援機制。
 
+詳細流程：
+
+1. 載入 `domserver.json`、套用指令旗標、建立 API client，並建立依版本
+   選擇的 web gateway。
+2. 先透過 scraper gateway 登入。這會在 mutation 開始前攔截無效的 jury
+   憑證。
+3. 從 `/api/v4/users` 取得目前使用者清單並解析 CSV。重複 username 或
+   格式錯誤會在 delete/create mutation 前中止。
+4. 若指定 `--delete-existing`，透過 scraper 刪除符合的既有 users 與
+   teams。DOMjudge 7.3.x 與 8.3.1 都沒有提供這些資源的 REST DELETE。
+5. 將資料列分成 create、update、skip cohorts。`--ignore-existing` 會略過
+   既有 username；否則既有資料列會依所選路由更新 team、password、email。
+6. 解析 affiliation 資料。非空的 `affiliation` cell 會解析或建立該
+   affiliation/organization；空白 cell 使用 `--affiliation-id` 或設定檔備援。
+7. 解析 team category。非空的 CSV `category_id` cell 會套用到該列；
+   否則使用 `--category-id` 或設定檔。
+8. 建立/更新 users、設定密碼，並在需要時補寫 email。指令會寫出
+   `import-users-teams-out.csv`，其中包含產生或實際使用的密碼。
+
+輸出：
+
+- `import-users-teams-out.csv` 會寫在目前工作目錄。
+- 輸出 CSV 保持帳號寄送用格式，不包含 input-only 的可選 `category_id`
+  欄位。
+- 成功執行時會列印簡短摘要與輸出檔名。
+
 ```bash
 domjudge-tool import-users-teams import-users-teams.csv
 domjudge-tool import-users-teams import-users-teams.csv \
@@ -150,6 +204,19 @@ domjudge-tool export-users --ids 1,2,3
 | `-o, --output` | stdout | 輸出檔案 |
 | `--ids` | — | 要包含的使用者 id（逗號分隔） |
 | `--team-id` | — | 依隊伍 id 篩選 |
+
+詳細流程：
+
+1. 載入設定檔，並以 `host`、`username`、`password`、`disable_ssl`、
+   `timeout` 建立 REST API v4 client。
+2. 讀取 `/api/v4/users`，並在 API 支援處傳入 `--ids` 與 `--team-id`。
+3. 在記憶體中再次套用 `--ids` 與 `--team-id`。這可保留 DOMjudge 7.3.x
+   伺服器忽略 `?team_id=` 時的正確行為。
+4. 序列化為 CSV 或 JSON。未指定 `--output` 時輸出到 stdout；指定
+   `--output` 時 stdout 保持空白，資料寫入檔案。
+
+CSV 輸出包含 live DOMjudge user 欄位。JSON 輸出保留本工具使用的 model
+欄位名稱。
 
 #### `rm-teams-and-users`
 
@@ -328,7 +395,7 @@ domjudge-tool download-submissions 1 --mode 1 --path ./dl --extract=false
 ## CSV 格式
 
 `import-users-teams`、`render-user-accounts`、`send-user-accounts` 均使用
-相同的 CSV 格式。檔案支援 BOM（UTF-8 BOM 會自動略過）。
+相同的帳號憑證 CSV 核心格式。檔案支援 BOM（UTF-8 BOM 會自動略過）。
 
 | 欄位 | 必填 | 說明 |
 | ---- | ---- | ---- |
@@ -337,14 +404,47 @@ domjudge-tool download-submissions 1 --mode 1 --path ./dl --extract=false
 | `email` | 否 | 電子郵件（空白 = 不設定帳號 email） |
 | `affiliation` | 是 | 所屬機構 / affiliation 名稱 |
 | `password` | 否 | 明文密碼；空白時自動產生 |
+| `category_id` | 否 | `import-users-teams` 的 input-only per-row team category override；email 指令會忽略 |
 
-欄位順序固定，不可新增或刪除欄位。
+前五個欄位保留歷史順序：`username,name,email,affiliation,password`。
+`category_id` 可追加在尾端。沒有 `category_id` 的舊 CSV 仍可使用。
+
+`import-users-teams` 也接受兩種相容格式：
+
+- `username,email,affiliation,name`
+- `username,name,email,affiliation,password,is_exist`
+
+`is_exist` 只用於讀取先前產生的輸出。不要把 `category_id` 寫入
+`import-users-teams-out.csv`；它只屬於輸入。
 
 使用下列指令產生範本：
 
 ```bash
 domjudge-tool import-users-teams-example
 ```
+
+## 操作路由
+
+`domjudge-tool` 在 REST API v4 足夠時使用 API；DOMjudge 沒有安全 API
+路徑時使用 HTML scraper。`--verbose` 會以結構化 log 顯示 router decision。
+
+| 操作 | 預設路由 | 原因 |
+| ---- | -------- | ---- |
+| `version` | API | 讀取 `/api/v4/version` |
+| `export-users` | API | 讀取 `/api/v4/users`，再於記憶體補篩選 |
+| `download-submissions` | API | 使用 submission list 與 file/source endpoints |
+| `download-scoreboard` | API | 讀取 scoreboard、teams、organizations、groups 後重建 CSV |
+| `download-problems` list | Scraper | 使用版本化 jury UI problem listing |
+| `download-problems` ZIP | Scraper | REST API 沒有 problem ZIP export endpoint |
+| `import-users-teams` create/update/password/email | v7 與 v8 預設 Scraper | v7 `accounts.tsv` user-to-team linkage 不安全；v8 write APIs 對這些欄位不可靠 |
+| `import-users-teams` delete-existing | Scraper | REST API 沒有 user/team DELETE |
+| `set-password` 未明確指定 `--user-roles` | v7 走 API，v8 走 scraper | v7 `accounts.tsv` password reset 安全；v8 fallback scraper |
+| `set-password` 明確指定 `--user-roles` | Scraper | `accounts.tsv` 沒有 role 欄位 |
+| `rm-teams-and-users` | Scraper | REST API 沒有 user/team DELETE |
+| Email commands | Local / SMTP | 本機讀 CSV/templates；只有 `send-user-accounts` 會連 SMTP |
+
+`domserver.json` 的 `prefer_scraper=true` 會強制混合操作走 scraper route。
+它不會讓 scoreboard 或 submission download 這類 API-only 讀取離開 API。
 
 ## 郵件範本佔位符號
 
