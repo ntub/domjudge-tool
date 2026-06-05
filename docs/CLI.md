@@ -244,12 +244,14 @@ not change without an ADR.
 ```bash
 domjudge-tool rm-teams-and-users
 domjudge-tool rm-teams-and-users --exclude contestant1,contestant2
+domjudge-tool rm-teams-and-users --include-csv import-users-teams.csv
 ```
 
 | Flag | Default | Description |
 | ---- | ------- | ----------- |
 | `--exclude` | — | Usernames to keep (in addition to protected accounts) |
 | `--include` | — | Usernames to delete (default: all non-protected) |
+| `--include-csv` | — | Import-users-teams CSV whose usernames should be deleted |
 
 #### `set-password`
 

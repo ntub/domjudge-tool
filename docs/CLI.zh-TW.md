@@ -229,12 +229,14 @@ CSV 輸出包含 live DOMjudge user 欄位。JSON 輸出保留本工具使用的
 ```bash
 domjudge-tool rm-teams-and-users
 domjudge-tool rm-teams-and-users --exclude contestant1,contestant2
+domjudge-tool rm-teams-and-users --include-csv import-users-teams.csv
 ```
 
 | 旗標 | 預設值 | 說明 |
 | ---- | ------ | ---- |
 | `--exclude` | — | 要保留的帳號（除受保護帳號外） |
 | `--include` | — | 要刪除的帳號（預設：所有非受保護帳號） |
+| `--include-csv` | — | 讀取 import-users-teams CSV，刪除其中 `username` 欄位列出的帳號 |
 
 #### `set-password`
 
