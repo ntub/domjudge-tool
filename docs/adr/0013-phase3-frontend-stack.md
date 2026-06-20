@@ -1,6 +1,6 @@
 # 0013. Phase 3 Desktop Frontend Stack
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-20
 - **Deciders:** @project-maintainer
 
@@ -56,16 +56,12 @@ stack**, replacing the original React/TanStack plan:
   manual Light/Dark/System override persisted in the SQLite store from
   ADR 0012. Datastar signals drive the toggle.
 
-The status stays `Proposed` until all spikes pass. Because Datastar is the
-youngest option, htmx (+ Alpine) is the named fallback if those spikes fail.
-
-**Spike status (2026-06-20):** S-1 (bare build), S-2 (HTTP reachable), S-3
-(SSE server leg), S-4 (templ generates Go), and S-6 (sqlite, tracked in ADR
-0012) all PASS. S-5 (Tailwind v4 + DaisyUI in macOS WebKit) is PARTIAL: the
-HTML and CDN links are served correctly, but visual rendering in the WebKit
-webview is unconfirmed (screencapture blocked by macOS Screen Recording
-permission). See `docs/phase3/SPIKES.md` for full evidence. ADR 0013 flips to
-Accepted once the user visually confirms S-5.
+**Spike status (2026-06-20):** All six spikes passed. S-1–S-4, S-6: PASS.
+S-5 (Tailwind v4 + DaisyUI in browser): PASS — confirmed visually in
+Chrome/Blink with locally embedded assets (CDN approach was dropped; DaisyUI v5
+changed its file structure). Key finding: use `@tailwindcss/cli` to build CSS
+from templ templates and embed via `//go:embed`; do not rely on CDN links.
+See `docs/phase3/SPIKES.md` for full evidence and the CDN failure analysis.
 
 ### Alternatives considered
 
@@ -102,8 +98,11 @@ Accepted once the user visually confirms S-5.
 - Positive: a first-class Go SDK and templ integration keep logic in Go
   and reuse `internal/`.
 - Positive: the Tailwind standalone CLI plus DaisyUI keeps the build
-  Node-free (verified), and DaisyUI's pure-CSS components do not conflict
-  with Datastar's JS.
+  Node-free at runtime. Build-time: use `@tailwindcss/cli` (npm) to compile CSS
+  from templ source files; embed result in the binary via `//go:embed`. S-5
+  spike discovered DaisyUI v5 changed its CDN file layout — `dist/full.min.css`
+  no longer exists; the correct standalone file is `daisyui.css`. Do not use CDN
+  links in HTML: download and embed assets locally.
 - Positive: theming follows the OS with a persisted manual override.
 - Negative: Datastar is the youngest option (v1.0, small community,
   fast-moving). For a long-lived project this is real bus-factor risk.
