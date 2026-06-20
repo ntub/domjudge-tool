@@ -6,7 +6,7 @@
 
 **Track A（PR-8 / v1.2.1 patch）— `import-users-teams` UPDATE 在 API
 snapshot 回 `team_id == nil` 時的自動修復。**v1.2.0 在真實 v7 站點 dry-
-run 時觸發 `web: update team: TeamID is required`：被修人 `11446001` 是
+run 時觸發 `web: update team: TeamID is required`：被修人 `student001` 是
 v1.1.0 silent-corruption bug（v1.1.1 已修）的孤兒受害者，team 仍存在，
 但 `/api/v4/users` 列表 snapshot 在 `team_id` 上回 `null`。當前 importer
 沒有 fallback 路徑，operator 必須走 web UI 或加 `--delete-existing` 才能
@@ -196,7 +196,7 @@ func resolveTeamID(
 
 - [ ] `just check` 綠。
 - [ ] 對曾 fail 的 NTUB 站點重跑 `import-users-teams ...`，預期 update
-      `11446001` 由 team-name fallback 自動接住，exit 0、出 CSV 正常。
+      `student001` 由 team-name fallback 自動接住，exit 0、出 CSV 正常。
 - [ ] 在 fresh test station 把某 user 的 team 砍掉但留 user（人造
       orphan），預期錯誤含 `web: team_id missing on snapshot` 與
       該 username。

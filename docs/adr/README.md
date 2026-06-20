@@ -52,10 +52,12 @@ adr/
 | [0005](0005-python-quirk-preservation.md) | Accepted | Python quirk preservation |
 | [0006](0006-api-first-with-scraper-fallback.md) | Accepted | API-first with scraper fallback |
 | [0007](0007-scoreboard-cell-format-and-categories.md) | Accepted | Scoreboard cell format and categories |
-| [0008](0008-domjudge-8.3.1-support-and-version-selection.md) | Proposed | DOMjudge 8.3.1 support and version selection |
-| [0009](0009-api-v4-cross-version-response-compatibility.md) | Proposed | API v4 cross-version response compatibility |
-| [0010](0010-problem-package-contest-scoping-and-import.md) | Proposed | Problem package contest scoping and import |
-| [0011](0011-import-problems-upsert.md) | Proposed | Import problems upsert |
+| [0008](0008-domjudge-8.3.1-support-and-version-selection.md) | Accepted | DOMjudge 8.3.1 support and version selection |
+| [0009](0009-api-v4-cross-version-response-compatibility.md) | Accepted | API v4 cross-version response compatibility |
+| [0010](0010-problem-package-contest-scoping-and-import.md) | Accepted | Problem package contest scoping and import |
+| [0011](0011-import-problems-upsert.md) | Accepted | Import problems upsert |
+| [0012](0012-phase3-local-datastore.md) | Proposed | Phase 3 desktop local datastore |
+| [0013](0013-phase3-frontend-stack.md) | Proposed | Phase 3 desktop frontend stack |
 
 ## Style
 

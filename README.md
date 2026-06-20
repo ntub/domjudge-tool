@@ -3,7 +3,7 @@
 > A Go-based CLI (and, eventually, desktop app) for managing
 > [DOMjudge](https://www.domjudge.org/) contest servers.
 
-![status](https://img.shields.io/badge/status-phase%201%20complete-green) <!-- TODO: replace with real CI badge once a public remote is wired up -->
+![status](https://img.shields.io/badge/status-phase%202%20complete%20%E2%80%94%20v1.6.0-green) <!-- TODO: replace with real CI badge once a public remote is wired up -->
 
 ## Roadmap
 
@@ -11,8 +11,8 @@
 | ----- | ----- | ------ |
 | **0** | Project bootstrap | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | **Done** — `v1.0.0-rc1` |
-| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.3.0` |
-| **2** | Add **DOMjudge 8.3.1** support to the CLI | **Done** — `v1.5.0` |
+| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.4.0` |
+| **2** | Add **DOMjudge 8.3.1** support to the CLI | **Done** — `v1.6.0` |
 | **3** | Cross-platform desktop app (PocketBase + Wails + React) | Planned |
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details.

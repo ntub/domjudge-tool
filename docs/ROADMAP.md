@@ -9,7 +9,7 @@ four phases. Each phase is a stand-alone milestone.
 | **0** | Project bootstrap (this repo's foundation) | Git, Just, lefthook, git-cliff, golangci-lint | Done |
 | **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | Go 1.23+, Cobra, goquery, net/http | **Done** — `v1.0.0-rc1`. See [`phase1/README.md`](phase1/README.md). |
 | **1.5** | API-first refactor (DOMjudge 7.3.x) + email template tooling + operator UX | Go 1.23+, REST API v4, `net/smtp`, `crypto/rand`, `schollz/progressbar/v3` | **Done** — `v1.4.0` (`v1.1.0` API-first; `v1.1.1` hot-fix; `v1.2.0` email tooling; `v1.2.1` import auto-recovery; `v1.3.0` progress bars; `v1.4.0` scoreboard categories + import report) |
-| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | **Done** — `v1.5.0` |
+| **2** | Add DOMjudge **8.3.1** support to CLI | Strategy pattern over web scraper | **Done** — `v1.6.0` (`v1.5.0` 8.3.1 support; `v1.6.0` `import-problems --upsert`) |
 | **3** | Cross-platform desktop app | PocketBase + Wails + Vite + React 19 + TS strict + Tailwind v4 + shadcn/ui + TanStack | Planned |
 
 ## Phase 0 — Bootstrap (done)
@@ -133,6 +133,7 @@ against verifiable inputs, not screenshots of a hypothetical page.
 | Tag | Date | Scope |
 | --- | ---- | ----- |
 | `v1.5.0` | 2026-06-04 | DOMjudge 8.3.1 support — one binary selects the v7 or v8 backend from `domserver.json`, adds cross-version API decoding, and completes the v8 jury scraper fallback for importer, delete, and problem-download workflows. |
+| `v1.6.0` | 2026-06-20 | `import-problems --upsert` — tool-side, contest-scoped create-or-update reconciliation that indexes `/api/v4/contests/{cid}/problems` and imports each ZIP as a create or an update by package identity (ADR 0011). |
 
 ## Phase 3 — Cross-platform desktop app
 
@@ -156,6 +157,29 @@ fast-moving APIs that training data lags hardest on.
   Query + Router + Table for this domain.
 - **Reuse strategy**: import `internal/` Go packages from Phases 1–2
   directly via Wails bindings; avoid duplicating business logic in TS.
+
+### Local datastore
+
+The local-state engine choice is captured in
+[ADR 0012](adr/0012-phase3-local-datastore.md): SQLite via
+`modernc.org/sqlite` (pure-Go, cgo-free), pinned to a Go 1.23-compatible
+version — `v1.38.0` at proposal time, because later tags raise the `go.mod`
+directive to `1.25.0` and would force a module-directive bump. bbolt,
+`mattn/go-sqlite3`, PocketBase, and plain JSON were considered. Re-check the
+pin and the Go toolchain when Phase 3 starts; the ADR stays `Proposed` until
+a Wails v3 + `modernc` build is verified via `ctx7`.
+
+### Frontend stack
+
+The frontend stack choice is captured in
+[ADR 0013](adr/0013-phase3-frontend-stack.md): a server-driven Datastar
+stack (Wails v3 + an in-process Go HTTP server + templ + Datastar with its
+Go SDK + Tailwind v4 standalone CLI + DaisyUI 5), replacing the original
+React 19 + TanStack plan. Datastar's signals drop the separate Alpine
+dependency, and its SSE model targets the Phase 1.5 batch-progress
+commands. htmx (+ Alpine) is the named fallback. The ADR stays `Proposed`
+until spikes confirm SSE through the Wails webview, Tailwind v4 rendering
+on all target webviews, and acceptable Datastar v1.x stability.
 
 ## Phase 1.5 — completion log
 

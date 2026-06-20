@@ -1,6 +1,6 @@
 # 0011. Import Problems Upsert
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-20
 - **Deciders:** @project-maintainer
 

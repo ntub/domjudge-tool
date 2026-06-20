@@ -15,8 +15,11 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 | `docs/TESTING.md`      | Test framework, fixtures, naming.                           |
 | `docs/COMMITS.md`      | Conventional Commits cheat sheet.                           |
 | `docs/ROADMAP.md`      | Phase 0/1/2/3 plan + carried-over notes.                    |
+| `docs/PHASE1.md`       | Phase 1 plan + per-PR status (preserved history).           |
 | `docs/CLI.md`          | Complete per-flag CLI reference (English, canonical).       |
 | `docs/CLI.zh-TW.md`    | Traditional Chinese translation of `docs/CLI.md`.           |
+| `docs/SNIPPETS.md`     | Copy-paste command examples (English).                      |
+| `docs/SNIPPETS.zh-TW.md`| Traditional Chinese translation of `docs/SNIPPETS.md`.     |
 | `docs/DOCUMENTATION.md`| This file.                                                  |
 | `docs/adr/`            | Architecture Decision Records, one per file.                |
 

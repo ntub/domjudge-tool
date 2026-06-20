@@ -91,7 +91,7 @@ Releases are manual and infrequent. The flow:
    changelog by `cliff.toml`).
 4. `git push --follow-tags`.
 
-Phase 0 has no released versions yet.
+The latest released version is `v1.6.0`.
 
 ## Reporting issues
 

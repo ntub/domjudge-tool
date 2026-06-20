@@ -1,6 +1,6 @@
 # 0010. Problem Package Contest Scoping and Import
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-05
 - **Deciders:** @project-maintainer
 
