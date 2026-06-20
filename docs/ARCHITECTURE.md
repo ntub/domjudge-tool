@@ -119,6 +119,12 @@ versioned scraper only for the full ZIP export that the API does not expose.
 `import-problems` remains API-backed but selects the multipart file field by
 DOMjudge family (`zip[]` on 7.x, `zip` on 8.x). See
 [`adr/0010`](adr/0010-problem-package-contest-scoping-and-import.md).
+`import-problems --upsert` is a tool-side reconciliation mode: it reads
+`api/v4.Problems.List` for the configured contest, matches each ZIP by
+package identity, and then chooses either the existing create import path or
+an update import with `problem=<existing id>`. It does not rely on a native
+DOMjudge bulk upsert API. See
+[`adr/0011`](adr/0011-import-problems-upsert.md).
 
 **Locked Python QUIRK**: `v7.Client.DeleteUsers` and `DeleteTeams`
 preserve the inverted-filter behaviour at Python `services/web/v7.py:161`

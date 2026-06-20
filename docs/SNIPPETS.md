@@ -186,6 +186,42 @@ domjudge-tool \
   --path /path/to/domjudge-tool/tmp/live-test/problems
 ```
 
+## Upload Problem Packages
+
+`import-problems` uploads problem package ZIPs into the contest selected
+by `domserver.json.contest_id`. Set `--contest-id` when generating the
+config, or edit `contest_id` before running these commands.
+
+Upload one ZIP as a new problem. DOMjudge reads the problem id and
+metadata from the package:
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips/A_easy.zip
+```
+
+Upload one ZIP to update an existing problem id:
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips/A_easy.zip \
+  --problem-id A
+```
+
+Batch upload every top-level `.zip` file in a folder:
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips
+```
+
+Use `--problem-id` only with a single ZIP file. Folder uploads create
+or import each package from its metadata and do not accept
+`--problem-id`.
+
 ## Email Account Credentials
 
 Create an email template directory:

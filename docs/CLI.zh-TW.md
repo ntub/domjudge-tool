@@ -358,21 +358,44 @@ DOMjudge 7.x 使用 legacy multipart file field `zip[]`；DOMjudge 8.x
 使用 `zip`。只有在匯入單一 ZIP 並要更新既有 problem id 時，才使用
 `--problem-id`。
 
+使用 `--upsert` 可針對設定檔指定的 contest 做 ZIP reconciliation。命令會先
+讀取 `/api/v4/contests/{cid}/problems`，為每個 ZIP 推導 identity，並用
+`problem=<existing id>` 更新符合的 contest problem。沒有符合 contest
+problem list 的 ZIP 會走目前的 create path。這是 tool-side
+reconciliation，不是 DOMjudge 原生 bulk upsert。`--upsert` 與
+`--problem-id` 互斥。
+
+ZIP identity 在 DOMjudge 8.x 會優先使用 `domjudge-problem.ini`
+`externalid`（若存在），再 fallback 到 sanitized filename stem。DOMjudge
+7.x 使用 sanitized filename stem，因為目前支援的 7.3 import path 不可靠地
+採用 ini `externalid`。Filename fallback 也會嘗試第一個底線前的 prefix，
+讓 `download-problems` 產出的 ZIP（`{id}_{name}.zip`）可以更新原本的
+problem id，並會 trim 掉移除不支援字元後殘留在前後的 `-` / `_`。若
+contest problem list 含有 ambiguous identity，`--upsert` 會在上傳前失敗。
+
+DOMjudge 8.x update import 時，multipart ZIP filename 會使用已匹配 contest
+problem 的 `externalid`（若 `externalid` 空白則使用 id）。這可避免 DOMjudge
+從操作者本機檔名推導出不同 external id，同時仍更新已匹配的 problem id。
+
 若 DOMjudge 回報 `problem.externalid: This value is already used`，代表
 server 已有相同 external id 的全域 problem package。除非你明確要更新那個
 既有 server problem，否則不要用 `--problem-id` 重試 create path。在
 DOMjudge 8.3.1，
 `DELETE /api/v4/contests/{cid}/problems/{id}` 只會將 problem 從 contest
-unlink，不會刪除全域 problem package。
+unlink，不會刪除全域 problem package。在 `--upsert` 模式中，第一版遇到
+duplicate global external id 但該 problem 未連到設定檔指定的 contest 時，
+會以清楚錯誤失敗；不會自動 link 或刪除全域 problem。
 
 ```bash
 domjudge-tool import-problems ./export_problems
+domjudge-tool import-problems ./export_problems --upsert
 domjudge-tool import-problems ./zips/A_easy.zip --problem-id A
 ```
 
 | 旗標 | 預設值 | 說明 |
 | ---- | ------ | ---- |
 | `--problem-id` | — | 單一 ZIP input 要更新的既有 problem id |
+| `--upsert` | `false` | 建立缺少的 contest problems，並更新符合的 contest problems |
 
 ---
 
@@ -468,6 +491,7 @@ domjudge-tool import-users-teams-example
 | `download-problems` list | Scraper | 套用 API contest scoping 後使用版本化 jury UI problem listing |
 | `download-problems` ZIP | Scraper | REST API 沒有 problem ZIP export endpoint |
 | `import-problems` | API | 將 problem package ZIP POST 到 `/api/v4/contests/{cid}/problems` |
+| `import-problems --upsert` contest index | API | 選擇 create 或 update 前讀取 `/api/v4/contests/{cid}/problems` |
 | `import-users-teams` create/update/password/email | v7 與 v8 預設 Scraper | v7 `accounts.tsv` user-to-team linkage 不安全；v8 write APIs 對這些欄位不可靠 |
 | `import-users-teams` delete-existing | Scraper | REST API 沒有 user/team DELETE |
 | `set-password` 未明確指定 `--user-roles` | v7 走 API，v8 走 scraper | v7 `accounts.tsv` password reset 安全；v8 fallback scraper |

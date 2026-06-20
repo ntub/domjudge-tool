@@ -55,6 +55,7 @@ adr/
 | [0008](0008-domjudge-8.3.1-support-and-version-selection.md) | Proposed | DOMjudge 8.3.1 support and version selection |
 | [0009](0009-api-v4-cross-version-response-compatibility.md) | Proposed | API v4 cross-version response compatibility |
 | [0010](0010-problem-package-contest-scoping-and-import.md) | Proposed | Problem package contest scoping and import |
+| [0011](0011-import-problems-upsert.md) | Proposed | Import problems upsert |
 
 ## Style
 

@@ -183,6 +183,40 @@ domjudge-tool \
   --path /path/to/domjudge-tool/tmp/live-test/problems
 ```
 
+## Upload Problem Packages
+
+`import-problems` 會將 problem package ZIP 上傳到
+`domserver.json.contest_id` 指定的 contest。產生設定檔時請設定
+`--contest-id`，或在執行前編輯 `contest_id`。
+
+上傳單一 ZIP 作為新題目。DOMjudge 會從 package 讀取 problem id 與 metadata：
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips/A_easy.zip
+```
+
+上傳單一 ZIP 以更新既有 problem id：
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips/A_easy.zip \
+  --problem-id A
+```
+
+批次上傳資料夾中所有 top-level `.zip` 檔：
+
+```bash
+domjudge-tool \
+  --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
+  import-problems /path/to/domjudge-tool/tmp/live-test/problem-zips
+```
+
+`--problem-id` 只能搭配單一 ZIP 檔使用。資料夾批次上傳會依各 package 的
+metadata 建立或匯入題目，不接受 `--problem-id`。
+
 ## Email Account Credentials
 
 建立 email template 目錄：

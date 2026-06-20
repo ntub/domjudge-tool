@@ -199,6 +199,64 @@ func TestImports_Problem_PassesContestAndProblemFields(t *testing.T) {
 	}
 }
 
+func TestImports_Problem_AcceptsProblemIDsResponse(t *testing.T) {
+	const zipBody = "problem zip"
+	srv := importServer(t, "/api/v4/contests/2/problems", func(t *testing.T, r *http.Request) {
+		if got := r.FormValue("problem"); got != "10" {
+			t.Fatalf("problem = %q, want 10", got)
+		}
+		got := readMultipartFile(t, r, "zip[]")
+		if got != zipBody {
+			t.Fatalf("zip body = %q, want %q", got, zipBody)
+		}
+	}, `{"problem_ids":[10],"messages":["Saved problem 10"]}`)
+	defer srv.Close()
+
+	c := New(Options{BaseURL: srv.URL})
+	id, err := c.Imports.Problem(context.Background(), "2", "10", strings.NewReader(zipBody))
+	if err != nil {
+		t.Fatalf("Problem: %v", err)
+	}
+	if id != "10" {
+		t.Fatalf("id = %q, want 10", id)
+	}
+}
+
+func TestImports_ProblemPackageUpdate_UsesZipField(t *testing.T) {
+	const zipBody = "problem zip"
+	srv := importServer(t, "/api/v4/contests/2/problems", func(t *testing.T, r *http.Request) {
+		if got := r.FormValue("problem"); got != "boolfind" {
+			t.Fatalf("problem = %q, want boolfind", got)
+		}
+		file, header, err := r.FormFile("zip")
+		if err != nil {
+			t.Fatalf("FormFile zip: %v", err)
+		}
+		defer func() { _ = file.Close() }()
+		if got := header.Filename; got != "boolfind-package.zip" {
+			t.Fatalf("filename = %q, want boolfind-package.zip", got)
+		}
+		raw, err := io.ReadAll(file)
+		if err != nil {
+			t.Fatalf("read zip: %v", err)
+		}
+		got := string(raw)
+		if got != zipBody {
+			t.Fatalf("zip body = %q, want %q", got, zipBody)
+		}
+	}, `{"problem_id":3,"messages":[]}`)
+	defer srv.Close()
+
+	c := New(Options{BaseURL: srv.URL})
+	id, err := c.Imports.ProblemPackageUpdate(context.Background(), "2", "boolfind", "boolfind-package.zip", strings.NewReader(zipBody))
+	if err != nil {
+		t.Fatalf("ProblemPackageUpdate: %v", err)
+	}
+	if id != "3" {
+		t.Fatalf("id = %q, want 3", id)
+	}
+}
+
 func TestImports_ProblemPackage_OmitsProblemField(t *testing.T) {
 	const zipBody = "problem zip"
 	srv := importServer(t, "/api/v4/contests/2/problems", func(t *testing.T, r *http.Request) {

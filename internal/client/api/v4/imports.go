@@ -93,6 +93,28 @@ func (r *ImportsResource) Problem(ctx context.Context, cid, problemID string, zi
 	return singleImportID(ids)
 }
 
+// ProblemPackageUpdate imports one ICPC problem ZIP into an existing problem
+// id using DOMjudge 8.x's `zip` file field.
+func (r *ImportsResource) ProblemPackageUpdate(ctx context.Context, cid, problemID, filename string, zip io.Reader) (string, error) {
+	if cid == "" {
+		return "", fmt.Errorf("%w: cid must not be empty", ErrInvalidArgument)
+	}
+	if problemID == "" {
+		return "", fmt.Errorf("%w: problemID must not be empty", ErrInvalidArgument)
+	}
+	if filename == "" {
+		filename = problemID + ".zip"
+	}
+	ids, err := r.postIDs(ctx, fmt.Sprintf("/contests/%s/problems", cid), map[string]multipartField{
+		"problem": multipartValue{value: problemID},
+		"zip":     multipartFile{filename: filename, contentType: "application/zip", reader: zip},
+	})
+	if err != nil {
+		return "", err
+	}
+	return singleImportID(ids)
+}
+
 // ProblemPackage imports one problem ZIP into contest cid as a new problem.
 // Unlike Problem, it omits the optional `problem` form field; DOMjudge treats
 // that field as an update target and rejects new imports when the id is absent.
@@ -164,8 +186,7 @@ func (ids *importIDs) UnmarshalJSON(data []byte) error {
 		return ErrEmptyResponse
 	}
 
-	var list []string
-	if err := json.Unmarshal(data, &list); err == nil {
+	if list, ok := decodeImportIDList(data); ok {
 		*ids = list
 		return nil
 	}
@@ -192,8 +213,12 @@ func (ids *importIDs) UnmarshalJSON(data []byte) error {
 
 	var obj map[string]json.RawMessage
 	if err := json.Unmarshal(data, &obj); err == nil {
-		if raw, ok := obj["ids"]; ok {
-			if err := json.Unmarshal(raw, &list); err == nil {
+		for _, key := range []string{"ids", "problem_ids"} {
+			raw, ok := obj[key]
+			if !ok {
+				continue
+			}
+			if list, ok := decodeImportIDList(raw); ok {
 				*ids = list
 				return nil
 			}
@@ -207,6 +232,25 @@ func (ids *importIDs) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("decode import ids: unsupported response %s", strings.TrimSpace(string(data)))
 }
 
+func decodeImportIDList(data []byte) ([]string, bool) {
+	var stringIDs []string
+	if err := json.Unmarshal(data, &stringIDs); err == nil {
+		return stringIDs, true
+	}
+	var numbers []json.Number
+	if err := json.Unmarshal(data, &numbers); err != nil {
+		return nil, false
+	}
+	out := make([]string, 0, len(numbers))
+	for _, number := range numbers {
+		if number.String() == "" {
+			return nil, false
+		}
+		out = append(out, number.String())
+	}
+	return out, true
+}
+
 func firstStringField(obj map[string]json.RawMessage, keys ...string) (string, bool) {
 	for _, key := range keys {
 		raw, ok := obj[key]
@@ -216,6 +260,10 @@ func firstStringField(obj map[string]json.RawMessage, keys ...string) (string, b
 		var value string
 		if err := json.Unmarshal(raw, &value); err == nil && value != "" {
 			return value, true
+		}
+		var numeric json.Number
+		if err := json.Unmarshal(raw, &numeric); err == nil && numeric.String() != "" {
+			return numeric.String(), true
 		}
 	}
 	return "", false

@@ -375,21 +375,48 @@ from the package metadata. DOMjudge 7.x uses the legacy multipart file
 field `zip[]`; DOMjudge 8.x uses `zip`. Use `--problem-id` only when
 importing exactly one ZIP to update an existing problem id.
 
+Use `--upsert` to reconcile ZIPs against the configured contest. The command
+first reads `/api/v4/contests/{cid}/problems`, derives an identity for each
+ZIP, and updates a matching contest problem with `problem=<existing id>`.
+ZIPs that do not match the contest problem list are imported through the
+current create path. This is tool-side reconciliation, not a native DOMjudge
+bulk upsert. `--upsert` and `--problem-id` are mutually exclusive.
+
+For ZIP identity, DOMjudge 8.x prefers `domjudge-problem.ini` `externalid`
+when present and falls back to the sanitized filename stem. DOMjudge 7.x uses
+the sanitized filename stem because the supported 7.3 import path does not
+reliably honour the ini `externalid`. Filename fallback also tries the prefix
+before the first underscore so ZIPs produced by `download-problems`
+(`{id}_{name}.zip`) can update the original problem id, and trims leading or
+trailing `-` / `_` left after unsupported characters are removed. If the
+contest problem list contains an ambiguous identity, `--upsert` fails before
+uploading.
+
+On DOMjudge 8.x update imports, the multipart ZIP filename is set to the
+matched contest problem's `externalid` (or id when `externalid` is empty).
+This keeps DOMjudge from deriving a different external id from an operator's
+local filename while still updating the matched problem id.
+
 If DOMjudge reports `problem.externalid: This value is already used`, a
 global problem package with the same external id already exists. Do not retry
 the create path with `--problem-id` unless you intentionally want to update
 that existing server problem. On DOMjudge 8.3.1,
 `DELETE /api/v4/contests/{cid}/problems/{id}` unlinks a problem from the
-contest only; it does not delete the global problem package.
+contest only; it does not delete the global problem package. In `--upsert`
+mode, the first version fails this case with a clear message when the
+duplicate global external id is not linked to the configured contest; it does
+not auto-link or delete the global problem.
 
 ```bash
 domjudge-tool import-problems ./export_problems
+domjudge-tool import-problems ./export_problems --upsert
 domjudge-tool import-problems ./zips/A_easy.zip --problem-id A
 ```
 
 | Flag | Default | Description |
 | ---- | ------- | ----------- |
 | `--problem-id` | — | Existing problem id to update for a single ZIP input |
+| `--upsert` | `false` | Create missing contest problems and update matching contest problems |
 
 ---
 
@@ -490,6 +517,7 @@ router decisions as structured log lines.
 | `download-problems` list | Scraper | Uses versioned jury UI problem listing after any API contest scoping |
 | `download-problems` ZIP | Scraper | REST API has no problem ZIP export endpoint |
 | `import-problems` | API | Posts problem package ZIPs to `/api/v4/contests/{cid}/problems` |
+| `import-problems --upsert` contest index | API | Reads `/api/v4/contests/{cid}/problems` before choosing create vs update |
 | `import-users-teams` create/update/password/email | Scraper on v7 and v8 | v7 `accounts.tsv` user-to-team linkage is unsafe; v8 write APIs are not reliable for these fields |
 | `import-users-teams` delete-existing | Scraper | REST API has no user/team DELETE |
 | `set-password` without explicit `--user-roles` | API on v7, scraper on v8 | v7 `accounts.tsv` password reset is safe; v8 falls back to scraper |
