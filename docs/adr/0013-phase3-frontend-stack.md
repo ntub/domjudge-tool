@@ -131,8 +131,10 @@ fallback if those spikes fail.
 ## References
 
 - [0012. Phase 3 Desktop Local Datastore](0012-phase3-local-datastore.md)
+- [0014. Go Toolchain Bump for Phase 3](0014-go-toolchain-bump-for-phase3.md)
 - [`docs/ROADMAP.md`](../ROADMAP.md) — Phase 3 scope and pre-research
   checklist.
+- [`docs/phase3/SPEC.md`](../phase3/SPEC.md) — Phase 3 specification.
 - [Datastar (GitHub)](https://github.com/starfederation/datastar) and the
   [Go SDK](https://pkg.go.dev/github.com/starfederation/datastar/sdk/go).
 - [Datastar backend requests and SSE events](https://data-star.dev/guide/backend_requests_sse_events).

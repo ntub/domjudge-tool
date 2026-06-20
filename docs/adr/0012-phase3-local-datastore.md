@@ -123,8 +123,12 @@ is justified by history and cached-entity views, not by config alone.
 
 - [`docs/ROADMAP.md`](../ROADMAP.md) — Phase 3 desktop app scope and the
   Phase 3 pre-research checklist.
+- [`docs/phase3/SPEC.md`](../phase3/SPEC.md) — Phase 3 specification.
 - [0004. goquery version pin](0004-goquery-version-pin.md) — precedent for
   pinning a dependency to protect the Go-version tradeoff.
+- [0014. Go Toolchain Bump for Phase 3](0014-go-toolchain-bump-for-phase3.md)
+  — the decision that dissolves the Go 1.23 pin constraint and revisits the
+  `modernc.org/sqlite` version selection.
 - `modernc.org/sqlite` go.mod directives:
   [v1.38.0 (`go 1.23.0`)](https://raw.githubusercontent.com/modernc-org/sqlite/v1.38.0/go.mod),
   [`master` (`go 1.25.0`)](https://raw.githubusercontent.com/modernc-org/sqlite/master/go.mod).
