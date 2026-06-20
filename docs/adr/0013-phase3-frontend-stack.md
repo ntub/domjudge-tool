@@ -56,9 +56,16 @@ stack**, replacing the original React/TanStack plan:
   manual Light/Dark/System override persisted in the SQLite store from
   ADR 0012. Datastar signals drive the toggle.
 
-The status stays `Proposed` until the spikes in *Consequences* pass.
-Because Datastar is the youngest option, htmx (+ Alpine) is the named
-fallback if those spikes fail.
+The status stays `Proposed` until all spikes pass. Because Datastar is the
+youngest option, htmx (+ Alpine) is the named fallback if those spikes fail.
+
+**Spike status (2026-06-20):** S-1 (bare build), S-2 (HTTP reachable), S-3
+(SSE server leg), S-4 (templ generates Go), and S-6 (sqlite, tracked in ADR
+0012) all PASS. S-5 (Tailwind v4 + DaisyUI in macOS WebKit) is PARTIAL: the
+HTML and CDN links are served correctly, but visual rendering in the WebKit
+webview is unconfirmed (screencapture blocked by macOS Screen Recording
+permission). See `docs/phase3/SPIKES.md` for full evidence. ADR 0013 flips to
+Accepted once the user visually confirms S-5.
 
 ### Alternatives considered
 
@@ -129,6 +136,8 @@ fallback if those spikes fail.
   `CLAUDE.md`.
 
 ## References
+
+- [`docs/phase3/SPIKES.md`](../phase3/SPIKES.md) — full spike evidence log
 
 - [0012. Phase 3 Desktop Local Datastore](0012-phase3-local-datastore.md)
 - [0014. Go Toolchain Bump for Phase 3](0014-go-toolchain-bump-for-phase3.md)

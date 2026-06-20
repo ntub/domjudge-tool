@@ -6,6 +6,8 @@
       "Bash(sed *)",
       "Bash(wc *)",
       "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(mkdir *)",
       "Bash(just)",
       "Bash(just *)",
       "Bash(go test:*)",
@@ -16,6 +18,7 @@
       "Bash(go doc:*)",
       "Bash(go env:*)",
       "Bash(go run:*)",
+      "Bash(go install:*)",
       "Bash(golangci-lint run:*)",
       "Bash(gofumpt:*)",
       "Bash(gofmt:*)",
@@ -26,7 +29,8 @@
       "Bash(git branch:*)",
       "Bash(git show:*)",
       "Bash(npx -y ctx7@latest *)",
-      "Bash(npx ctx7@latest *)"
+      "Bash(npx ctx7@latest *)",
+      "Bash(~/go/bin/wails3 *)"
     ],
     "ask": [
       "Bash(git add:*)",

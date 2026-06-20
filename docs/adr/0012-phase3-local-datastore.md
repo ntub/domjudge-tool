@@ -1,6 +1,6 @@
 # 0012. Phase 3 Desktop Local Datastore
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-06-20
 - **Deciders:** @project-maintainer
 
@@ -22,10 +22,9 @@ The forces in play:
   history and cached entities in tables the operator can filter, sort,
   and report over. The DOMjudge domain is relational
   (contest -> team -> user, affiliations).
-- **Go 1.23 module lock.** The Phase 3 app reuses `internal/` packages
-  and is expected to share the module. `CLAUDE.md` forbids bumping the Go
-  module directive casually, so a datastore dependency must not drag the
-  module past Go 1.23.
+- **Go module lock.** The Phase 3 app reuses `internal/` packages and
+  shares the module. ADR 0014 bumped the module directive from Go 1.23 to
+  Go 1.26, lifting the original Go 1.23 pin constraint on this ADR.
 - **Pure-Go / cgo packaging.** Wails cross-platform builds are simpler
   without an added cgo toolchain per target. The repo already prefers
   pure-Go pins (see ADR 0004 for the goquery precedent).
@@ -39,18 +38,19 @@ concrete library to pin.
 ## Decision
 
 We decided to use **SQLite via `modernc.org/sqlite`** (the pure-Go,
-cgo-free port) as the Phase 3 local datastore, pinned at a version whose
-`go.mod` directive stays at or below Go 1.23.
+cgo-free port) as the Phase 3 local datastore.
 
-At decision time the compatible boundary is **`modernc.org/sqlite`
-v1.38.0** (`go 1.23.0` directive). The library moved its module
-directive to `go 1.25.0` on later tags (verified on `master` and on the
-v1.38.2 line), which would force a module-directive bump and is therefore
-out of bounds while the repo is locked to Go 1.23. Several versions are
-upstream-retracted (`v1.33.0`, `v1.34.3`, `v1.42.0`, and others); the pin
-must avoid them. The chosen build bundles SQLite 3.53.2 and supports all
-Wails desktop targets (`darwin/{amd64,arm64}`, `windows/{386,amd64,
-arm64}`, and the `linux` family).
+**Updated pin (2026-06-20):** ADR 0014 dissolved the Go 1.23 constraint by
+bumping the module directive to Go 1.26.0. The pin is therefore updated from
+the tentative v1.38.0 to **`modernc.org/sqlite` v1.52.0** (`go 1.25.0`
+directive — compatible with Go 1.26). This version bundles SQLite 3.53.0,
+confirmed by ctx7 on 2026-06-20, and supports all Wails desktop targets
+(`darwin/{amd64,arm64}`, `windows/{386,amd64,arm64}`, and the `linux`
+family). S-6 spike confirmed v1.52.0 builds and queries correctly alongside
+Wails v3 under `CGO_ENABLED=1` (see `docs/phase3/SPIKES.md`).
+
+Several versions remain upstream-retracted (`v1.33.0`, `v1.34.3`, `v1.42.0`,
+and others); the pin at v1.52.0 avoids all retracted tags.
 
 This decision is conditional on Phase 3 actually persisting queryable
 state. If the shipped app only stores a handful of server profiles and
@@ -73,10 +73,10 @@ is justified by history and cached-entity views, not by config alone.
   It requires a C toolchain for every cross-compile target and conflicts
   with the repo's pure-Go preference. Rejected in favor of the cgo-free
   `modernc.org/sqlite`.
-- **Latest `modernc.org/sqlite` (v1.38.2+/`master`).** Rejected for now:
-  its `go 1.25.0` directive would force a module-directive bump that
-  `CLAUDE.md` disallows without a deliberate decision. Revisit if and
-  when Phase 3 raises the toolchain.
+- **Latest `modernc.org/sqlite` (v1.38.2+/`master`).** Previously
+  rejected because the `go 1.25.0` directive would have forced a module
+  bump. That constraint dissolved with ADR 0014 (Go 1.26 bump). The
+  latest non-retracted tag (v1.52.0) is now the chosen pin.
 - **PocketBase as the datastore.** Brings SQLite plus auth, realtime,
   an admin UI, and collection rules. Rejected as over-scoped for a
   single-user local tool: those features are unused, and embedding it
@@ -102,17 +102,14 @@ is justified by history and cached-entity views, not by config alone.
   require cgo for WebView integration and are typically built on macOS,
   so the app as a whole is not cgo-free; the win is "no *added* cgo," not
   "no cgo."
-- Negative: the version pin is constrained by the Go 1.23 lock. The app
-  cannot track the latest `modernc.org/sqlite` until the toolchain
-  decision is made, and version selection must skip retracted tags.
+- Neutral: the Go 1.23 version-pin constraint is dissolved by ADR 0014.
+  The pin is updated to v1.52.0 (Go 1.25 directive, compatible with Go 1.26).
 - Negative: SQLite introduces a schema and therefore a migration story
   (tooling choice deferred below). bbolt would have avoided schema
   migrations at the cost of manual struct-version handling.
-- Follow-up: confirm `modernc.org/sqlite` v1.38.0 builds and runs under
-  Wails v3 on all target platforms at Phase 3 implementation start, via
-  `ctx7` per `CLAUDE.md`.
-- Follow-up: when Phase 3 begins, re-decide the Go toolchain. If it moves
-  to >= 1.25, re-pin to the latest non-retracted `modernc.org/sqlite`.
+- Done: `modernc.org/sqlite` v1.52.0 confirmed build and run under
+  Wails v3 on darwin/arm64 — see S-6 in `docs/phase3/SPIKES.md`.
+- Done: Go toolchain bumped to 1.26 (ADR 0014); pin updated to v1.52.0.
 - Follow-up: choose a migration approach (hand-rolled, `goose`, or
   `golang-migrate`) in a Phase 3 implementation PR; keep it dependency-
   light per `CLAUDE.md`.
@@ -133,5 +130,6 @@ is justified by history and cached-entity views, not by config alone.
   [v1.38.0 (`go 1.23.0`)](https://raw.githubusercontent.com/modernc-org/sqlite/v1.38.0/go.mod),
   [`master` (`go 1.25.0`)](https://raw.githubusercontent.com/modernc-org/sqlite/master/go.mod).
 - [`modernc.org/sqlite` on pkg.go.dev](https://pkg.go.dev/modernc.org/sqlite).
+- [`docs/phase3/SPIKES.md`](../phase3/SPIKES.md) — S-6 spike evidence for this ADR.
 - [`go.etcd.io/bbolt`](https://github.com/etcd-io/bbolt).
 - [Wails v3 Cross-Platform Building](https://v3.wails.io/guides/build/cross-platform/).
