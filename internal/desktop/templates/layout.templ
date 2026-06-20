@@ -1,0 +1,40 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } — domjudge-tool</title>
+		<link href="/static/tailwind.css" rel="stylesheet"/>
+		<link href="/static/daisyui.css" rel="stylesheet"/>
+	</head>
+	<body class="min-h-screen bg-base-200">
+		<div class="navbar bg-base-100 shadow-sm px-4">
+			<div class="navbar-start">
+				<a href="/" class="text-lg font-bold tracking-tight">domjudge-tool</a>
+			</div>
+			<div class="navbar-center hidden md:flex">
+				<ul class="menu menu-horizontal px-1 gap-1">
+					<li><a href="/profiles" class="font-medium">Servers</a></li>
+					<li><a href="/import-users-teams">Import Users</a></li>
+					<li><a href="/history">History</a></li>
+					<li><a href="/settings">Settings</a></li>
+				</ul>
+			</div>
+		</div>
+		<main class="container mx-auto px-4 py-8 max-w-5xl">
+			{ children... }
+		</main>
+	</body>
+	</html>
+}
+
+templ Flash(kind, message string) {
+	if message != "" {
+		<div class={ "alert mb-6", "alert-" + kind }>
+			<span>{ message }</span>
+		</div>
+	}
+}

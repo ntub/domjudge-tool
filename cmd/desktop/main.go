@@ -1,0 +1,72 @@
+//go:build desktop
+
+// Command desktop is the Wails v3 desktop app for domjudge-tool.
+// Build with: CGO_ENABLED=1 go build -tags desktop ./cmd/desktop
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/ntub/domjudge-tool/internal/desktop/assets"
+	"github.com/ntub/domjudge-tool/internal/desktop/db"
+	"github.com/ntub/domjudge-tool/internal/desktop/handler"
+	"github.com/ntub/domjudge-tool/internal/desktop/profile"
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+const port = ":9900"
+
+func main() {
+	dbPath := desktopDBPath()
+	gdb, err := db.Open(dbPath)
+	if err != nil {
+		log.Fatalf("open db: %v", err)
+	}
+
+	store, err := profile.NewStore(gdb)
+	if err != nil {
+		log.Fatalf("profile store: %v", err)
+	}
+	mux := handler.New(store)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
+
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1"+port, mux); err != nil {
+			log.Fatalf("http server: %v", err)
+		}
+	}()
+	time.Sleep(80 * time.Millisecond)
+
+	app := application.New(application.Options{
+		Name: "domjudge-tool",
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+	})
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:  "domjudge-tool",
+		Width:  1280,
+		Height: 800,
+		URL:    "http://127.0.0.1" + port + "/",
+	})
+	if err := app.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// desktopDBPath returns the SQLite file path in the OS user config dir.
+func desktopDBPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		dir = "."
+	}
+	appDir := filepath.Join(dir, "domjudge-tool")
+	if err := os.MkdirAll(appDir, 0o700); err != nil {
+		return "domjudge-tool.db"
+	}
+	return filepath.Join(appDir, "domjudge-tool.db")
+}

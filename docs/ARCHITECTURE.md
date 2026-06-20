@@ -21,7 +21,7 @@ should consult before adding a new file.
 ## Layers
 
 ```
-cmd/domjudge-tool/         entry point — thin shell; flag parsing only
+cmd/domjudge-tool/         CLI entry point — thin shell; flag parsing only
         │
         ▼
 internal/cli/              cobra command tree; turns args into use-cases
@@ -56,6 +56,27 @@ internal/config/           domserver.json read/write
 internal/util/             shared helpers (passwords, BOM-safe CSV, …)
 ```
 
+Phase 3 desktop app adds a separate entry point and package tree (gated
+by the `desktop` build tag so the CLI build path is unaffected):
+
+```
+cmd/desktop/               Wails v3 shell — CGO_ENABLED=1, -tags desktop
+        │
+        ▼
+internal/desktop/handler/  in-process net/http ServeMux; PRG + SSE handlers
+        │
+        ▼
+internal/desktop/profile/  server-profile CRUD use-case (GORM model + Store)
+        │
+        ▼
+internal/desktop/db/       GORM open helper (glebarez/sqlite, pure-Go driver)
+
+internal/desktop/assets/   pre-built CSS files embedded via //go:embed
+internal/desktop/templates/ templ components (layout, screens)
+frontend/                  Tailwind v4 build source (input.css + daisyui.css);
+                            output goes to internal/desktop/assets/
+```
+
 Dependencies always flow downward in this diagram. `model/`, `config/`, and
 `util/` are leaf packages and must not import any of the layers above them.
 `client/httpx` is the *only* package allowed to construct an `*http.Client`
@@ -81,6 +102,12 @@ place.
 | `internal/email`           | `LoadTemplate(dir)` reads `subject.txt` + `body.html` (HTML preferred over `body.txt`); `(*Template).Render(vars)` applies `os.Expand` variable substitution and unconditionally Q-encodes the subject. `Dial(ctx, DialOptions)` opens a plain or TLS SMTP connection, sends EHLO, and performs `PlainAuth` when credentials are non-empty (STARTTLS not implemented — Python parity). `SendUserAccounts(ctx, Sender, *Template, []model.CreateUser, *config.DomServerClient, SendOptions)` iterates the user list: abort-on-first-error; recipient resolved from `user.Email` or falls back to `{username}@{domain}` when `Email` is nil; builds complete RFC 5322 messages with explicit `Date:` and `Message-ID:` headers, base64-encoded body. `BuildEML(*Template, model.CreateUser, *config.DomServerClient, SendOptions) ([]byte, string, error)` extracts the message-construction half of `SendUserAccounts` so the offline `render-user-accounts` CLI can emit per-recipient `.eml` files without touching SMTP. `WriteTemplateScaffold(dir string, force bool) error` writes a runnable scaffold containing all six supported placeholders; collisions raise the sentinel `ErrTemplateDirExists` unless `force=true`. |
 | `internal/util`            | Cross-cutting utilities (random passwords, BOM-safe readers, etc.).  |
 | `internal/util/progress`   | Optional `Reporter` interface (`Start` / `Tick` / `Finish`) plus `New` and `Nop` constructors. The visual implementation wraps `github.com/schollz/progressbar/v3`; the package adds a uniform TTY / `NO_COLOR` / `TERM=dumb` / `--no-progress` gate so call sites don't re-implement it. Library packages accept a `Reporter` field on their option structs but never construct one — only `internal/cli` root PreRunE does, via `progress.New(cmd.ErrOrStderr(), …)`. Added in Phase 1.5 / v1.3.0. |
+| `cmd/desktop`              | Phase 3 desktop entry point (`//go:build desktop`). Opens the SQLite DB, builds the in-process HTTP server, and starts the Wails v3 window. Only file that imports Wails; gated by the `desktop` build tag so `go build ./...` and `go test ./...` never pull in CGO-requiring Wails code on paths that must stay CGO-free. |
+| `internal/desktop/db`      | `Open(path) (*gorm.DB, error)` — opens a SQLite file via `glebarez/sqlite` (pure-Go GORM driver). Configures WAL mode, foreign keys, and single-writer connection. |
+| `internal/desktop/profile` | `ServerProfile` GORM model and `Store` — full CRUD for the `server_profiles` table. `NewStore` calls `AutoMigrate`. Operations: `List`, `Get`, `Create`, `Update`, `Delete` (hard), `SetDefault`, `SeedFromLegacy`. |
+| `internal/desktop/handler` | `New(*profile.Store) *http.ServeMux` — routes for Screen 1 (server profiles). PRG pattern: `GET /profiles`, `GET /profiles/new`, `POST /profiles`, `GET /profiles/{id}/edit`, `POST /profiles/{id}`, `POST /profiles/{id}/delete`, `POST /profiles/{id}/default`. SSE endpoints added per screen as Phase 3 progresses. |
+| `internal/desktop/templates` | templ components: `Layout`, `Flash`, `ProfileList`, `ProfileForm`. Generated `*_templ.go` files are committed. |
+| `internal/desktop/assets`  | `var FS embed.FS` — embeds `tailwind.css` and `daisyui.css`. Rebuilt by `just build-desktop-css` when templates change; committed so the binary is self-contained. |
 
 ## The `web.Gateway` abstraction (Phase 1+)
 

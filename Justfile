@@ -33,6 +33,19 @@ setup:
 build:
     @go build -o ./bin/domjudge-tool ./cmd/domjudge-tool
 
+# Build the desktop app binary into ./bin.
+build-desktop:
+    @CGO_ENABLED=1 go build -tags desktop -o ./bin/domjudge-tool-app ./cmd/desktop
+
+# Rebuild Tailwind CSS from templ templates (requires tailwindcss v4 in PATH).
+# Output goes to internal/desktop/assets/tailwind.css — commit that file after running.
+build-desktop-css:
+    @tailwindcss -i ./frontend/input.css -o ./internal/desktop/assets/tailwind.css
+
+# Regenerate templ Go files from *.templ sources.
+generate-templates:
+    @templ generate ./internal/desktop/templates/
+
 # Run the CLI from source. Usage: `just run --help`
 run *args:
     @go run ./cmd/domjudge-tool {{ args }}
