@@ -83,8 +83,8 @@ func removeUsersSubmit(profileStore *profile.Store, oplogStore *oplog.Store) htt
 		}
 
 		opts := DeleteOpts{
-			Include: splitTrimmed(r.FormValue("include")),
-			Exclude: splitTrimmed(r.FormValue("exclude")),
+			Include: getFormValues(r, "include"),
+			Exclude: getFormValues(r, "exclude"),
 			DryRun:  r.FormValue("dry_run") == "on",
 		}
 		paramsJSON, _ := json.Marshal(opts)
@@ -224,4 +224,17 @@ func userListItems(users []string) string {
 		sb.WriteString("</li>")
 	}
 	return sb.String()
+}
+
+// getFormValues retrieves form parameters, splitting any comma-separated values.
+func getFormValues(r *http.Request, key string) []string {
+	var out []string
+	for _, val := range r.Form[key] {
+		parts := splitTrimmed(val)
+		out = append(out, parts...)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

@@ -13,39 +13,35 @@ templ RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string)
 		@Flash(flashKind, flash)
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/remove-users-teams" class="space-y-4">
+				<form
+					method="post"
+					action="/remove-users-teams"
+					class="space-y-4"
+					data-signals='{"profileId": ""}'
+				>
 					<div class="form-control">
 						<label class="label" for="remove_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
 						</label>
-						<select id="remove_profile_id" name="profile_id" class="select select-bordered w-full" required>
+						<select
+							id="remove_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/users?field=include'); @get('/api/fragment/users?field=exclude')"
+							required
+						>
 							<option value="">— choose a server —</option>
 							for _, p := range profiles {
 								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
 							}
 						</select>
 					</div>
-					<div class="form-control">
-						<label class="label" for="include">
-							<span class="label-text font-medium">Include (usernames to delete)</span>
-						</label>
-						<input id="include" type="text" name="include"
-							placeholder="user1, user2, … (blank = all non-protected)"
-							class="input input-bordered w-full"/>
-						<label class="label">
-							<span class="label-text-alt">Comma-separated. Leave blank to delete all non-protected users.</span>
-						</label>
+					<div id="users-include-fragment">
+						@UsersTextInputFragment("include", "Include (usernames to delete)", "user1, user2, … (blank = all non-protected)", "Comma-separated. Leave blank to delete all non-protected users.")
 					</div>
-					<div class="form-control">
-						<label class="label" for="exclude">
-							<span class="label-text font-medium">Exclude (usernames to keep)</span>
-						</label>
-						<input id="exclude" type="text" name="exclude"
-							placeholder="user3, user4, …"
-							class="input input-bordered w-full"/>
-						<label class="label">
-							<span class="label-text-alt">Protected users (admin, judgehost, server account) are always excluded.</span>
-						</label>
+					<div id="users-exclude-fragment">
+						@UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", "Protected users (admin, judgehost, server account) are always excluded.")
 					</div>
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">

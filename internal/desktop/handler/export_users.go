@@ -72,7 +72,7 @@ func exportUsersDownload(profileStore *profile.Store, runExport ExportFunc) http
 
 		opts := ExportOpts{
 			Format: format,
-			IDs:    splitTrimmed(r.FormValue("ids")),
+			IDs:    getFormValues(r, "ids"),
 			TeamID: strings.TrimSpace(r.FormValue("team_id")),
 		}
 

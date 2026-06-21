@@ -99,3 +99,101 @@ templ UsernameInputFragment(placeholder, helpText, errMsg string, required bool)
 	</div>
 }
 
+// SelectOption represents a simple key-value pair for select inputs.
+type SelectOption struct {
+	Label string
+	Value string
+}
+
+// TagMultiSelect renders a multi-select element with the specified options.
+// Items display the label/value structure.
+templ TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOption, helpText string) {
+	<div id={ fragmentID }>
+		<div class="form-control">
+			<label class="label" for={ "frag_" + fieldName }>
+				<span class="label-text font-medium">{ labelText }</span>
+			</label>
+			<select
+				id={ "frag_" + fieldName }
+				name={ fieldName }
+				class="select select-bordered w-full min-h-[120px]"
+				multiple
+			>
+				for _, item := range items {
+					<option value={ item.Value }>{ item.Label }</option>
+				}
+			</select>
+			if helpText != "" {
+				<label class="label">
+					<span class="label-text-alt">{ helpText }</span>
+				</label>
+			}
+		</div>
+	</div>
+}
+
+// UsersTextInputFragment renders a plain text input inside users-fieldName-fragment.
+// Used as fallback.
+templ UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) {
+	<div id={ "users-" + fieldName + "-fragment" }>
+		<div class="form-control">
+			<label class="label" for={ "frag_" + fieldName }>
+				<span class="label-text font-medium">{ labelText }</span>
+			</label>
+			<input
+				id={ "frag_" + fieldName }
+				type="text"
+				name={ fieldName }
+				placeholder={ placeholder }
+				class="input input-bordered w-full"
+				autocomplete="off"
+			/>
+			if helpText != "" {
+				<label class="label">
+					<span class="label-text-alt">{ helpText }</span>
+				</label>
+			}
+		</div>
+	</div>
+}
+
+// TeamSelectFragment renders the team picker dropped into #team-id-fragment
+// by an SSE response when the profile select changes.
+templ TeamSelectFragment(teams []model.Team, required bool) {
+	<div id="team-id-fragment">
+		<div class="form-control">
+			<label class="label" for="frag_team_id">
+				<span class="label-text font-medium">Filter by Team (optional)</span>
+			</label>
+			<select id="frag_team_id" name="team_id" class="select select-bordered w-full" if required { required }>
+				<option value="">— select a team —</option>
+				for _, t := range teams {
+					<option value={ t.ID }>{ t.Name } ({ t.ID })</option>
+				}
+			</select>
+		</div>
+	</div>
+}
+
+// TeamInputFragment renders a plain text input inside #team-id-fragment.
+// Used as initial state and as fallback when the API is unavailable.
+templ TeamInputFragment(required bool) {
+	<div id="team-id-fragment">
+		<div class="form-control">
+			<label class="label" for="frag_team_id">
+				<span class="label-text font-medium">Filter by Team ID (optional)</span>
+			</label>
+			<input
+				id="frag_team_id"
+				type="text"
+				name="team_id"
+				placeholder="42"
+				class="input input-bordered w-full"
+				if required { required }
+				autocomplete="off"
+			/>
+		</div>
+	</div>
+}
+
+
