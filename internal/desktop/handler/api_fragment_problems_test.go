@@ -31,7 +31,7 @@ func getProblemsFragment(t *testing.T, h http.Handler, profileID, contestID, fie
 }
 
 func TestFragmentProblems_NoProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil, nil)
 	rec := getProblemsFragment(t, h, "", "", "problem_ids")
 
 	if rec.Code != http.StatusOK {
@@ -47,7 +47,7 @@ func TestFragmentProblems_NoProfileID_ReturnsInputFallback(t *testing.T) {
 }
 
 func TestFragmentProblems_InvalidProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil, nil)
 	rec := getProblemsFragment(t, h, "9999", "", "only")
 
 	if rec.Code != http.StatusOK {
@@ -88,7 +88,7 @@ func TestFragmentProblems_NoContestID_ReturnsInputFallback(t *testing.T) {
 	mux := handler.New(pStore)
 	handler.RegisterAPIFragment(mux, pStore, nil, nil, func(_ context.Context, _ profile.ServerProfile, _ string) ([]model.Problem, error) {
 		return []model.Problem{{ID: "1", Label: "A", Name: "HelloWorld"}}, nil
-	})
+	}, nil)
 
 	rec := getProblemsFragment(t, mux, fmt.Sprintf("%d", pid), "", "exclude")
 
@@ -108,7 +108,7 @@ func TestFragmentProblems_APIError_ReturnsInputFallbackWithWarning(t *testing.T)
 	fetch := func(_ context.Context, _ profile.ServerProfile, _ string) ([]model.Problem, error) {
 		return nil, errors.New("connection refused")
 	}
-	h := newFragmentHandler(t, nil, nil, fetch)
+	h := newFragmentHandler(t, nil, nil, fetch, nil)
 	rec := getProblemsFragment(t, h, "1", "2", "problem_ids")
 
 	if rec.Code != http.StatusOK {
@@ -130,7 +130,7 @@ func TestFragmentProblems_Success_ReturnsTagMultiSelect(t *testing.T) {
 			{ID: "2", Label: "B", Name: "AplusB"},
 		}, nil
 	}
-	h := newFragmentHandler(t, nil, nil, fetch)
+	h := newFragmentHandler(t, nil, nil, fetch, nil)
 	rec := getProblemsFragment(t, h, "1", "2", "only")
 
 	if rec.Code != http.StatusOK {

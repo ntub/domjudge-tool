@@ -287,8 +287,8 @@ func TestFragmentUsers_MultiSelect_Include(t *testing.T) {
 	if !strings.Contains(body, `name="include"`) {
 		t.Error("body should contain name include")
 	}
-	if !strings.Contains(body, "multiple") {
-		t.Error("body should contain multiple attribute")
+	if !strings.Contains(body, "window.syncTags") {
+		t.Error("body should contain syncTags script reference")
 	}
 	if !strings.Contains(body, "userA (User Alice)") {
 		t.Error("body should contain options label userA (User Alice)")
