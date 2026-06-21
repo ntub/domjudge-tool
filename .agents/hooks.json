@@ -1,0 +1,32 @@
+{
+  "format-go": {
+    "enabled": true,
+    "PostToolUse": [
+      {
+        "matcher": "replace_file_content|multi_replace_file_content|write_to_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.agents/hooks/format-go.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "guard-bash": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.agents/hooks/guard-bash.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

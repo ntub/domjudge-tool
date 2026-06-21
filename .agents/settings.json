@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "allow": [
+      "command(rg *)",
+      "command(sed *)",
+      "command(wc *)",
+      "command(ls *)",
+      "command(find *)",
+      "command(mkdir *)",
+      "command(just)",
+      "command(just *)",
+      "command(go test:*)",
+      "command(go build:*)",
+      "command(go vet:*)",
+      "command(go mod:*)",
+      "command(go list:*)",
+      "command(go doc:*)",
+      "command(go env:*)",
+      "command(go run:*)",
+      "command(go install:*)",
+      "command(golangci-lint run:*)",
+      "command(gofumpt:*)",
+      "command(gofmt:*)",
+      "command(git status)",
+      "command(git status *)",
+      "command(git log:*)",
+      "command(git diff:*)",
+      "command(git branch:*)",
+      "command(git show:*)",
+      "command(npx -y ctx7@latest *)",
+      "command(npx ctx7@latest *)",
+      "command(~/go/bin/wails3 *)"
+    ],
+    "ask": [
+      "command(git add:*)",
+      "command(git commit:*)",
+      "command(git checkout:*)",
+      "command(git merge:*)",
+      "command(git reset:*)",
+      "command(git push:*)",
+      "command(cp:*)",
+      "command(mv:*)",
+      "command(rm:*)"
+    ],
+    "deny": [
+      "read_file(./.env)",
+      "read_file(./.env.*)",
+      "read_file(./secrets/**)",
+      "read_file(./tmp/**)",
+      "read_file(./domserver.json)",
+      "read_file(./domserver.*.json)",
+      "command(git push --force:*)",
+      "command(git push --force-with-lease:*)",
+      "command(git push -f:*)"
+    ]
+  }
+}
