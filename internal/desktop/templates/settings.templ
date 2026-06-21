@@ -1,0 +1,147 @@
+package templates
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/ntub/domjudge-tool/internal/desktop/profile"
+	"github.com/ntub/domjudge-tool/internal/desktop/settings"
+)
+
+templ SettingsForm(cur settings.AppSettings, profiles []profile.ServerProfile, flash, flashKind string) {
+	@Layout("Settings") {
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="text-2xl font-bold">Settings</h1>
+		</div>
+		if flash != "" {
+			@Flash(flashKind, flash)
+		}
+		<form method="post" action="/settings" class="space-y-6">
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body">
+					<h2 class="card-title text-lg">General</h2>
+					<div class="form-control">
+						<label class="label" for="st_theme">
+							<span class="label-text font-medium">Theme</span>
+						</label>
+						<select id="st_theme" name="theme" class="select select-bordered w-full max-w-xs"
+							onchange="localStorage.setItem('dj-theme',this.value);document.documentElement.setAttribute('data-theme',this.value)">
+							<option value="dark" selected?={ cur.Theme == "dark" }>Dark</option>
+							<option value="light" selected?={ cur.Theme == "light" }>Light</option>
+							<option value="system" selected?={ cur.Theme == "system" }>System</option>
+						</select>
+						<label class="label">
+							<span class="label-text-alt">Applied immediately and saved for future sessions.</span>
+						</label>
+					</div>
+					<div class="form-control">
+						<label class="label" for="st_default_profile">
+							<span class="label-text font-medium">Default Server Profile</span>
+						</label>
+						<select id="st_default_profile" name="default_profile_id" class="select select-bordered w-full max-w-xs">
+							<option value="">— none —</option>
+							for _, p := range profiles {
+								<option value={ fmt.Sprintf("%d", p.ID) } selected?={ cur.DefaultProfileID == p.ID }>{ p.Name }</option>
+							}
+						</select>
+					</div>
+				</div>
+			</div>
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body">
+					<h2 class="card-title text-lg">SMTP Configuration</h2>
+					<p class="text-sm text-base-content/70">Used by Email Tools to send user account emails.</p>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+						<div class="form-control">
+							<label class="label" for="st_smtp_host">
+								<span class="label-text font-medium">Host</span>
+							</label>
+							<input
+								id="st_smtp_host"
+								type="text"
+								name="smtp_host"
+								value={ cur.SMTPHost }
+								placeholder="smtp.example.org"
+								class="input input-bordered w-full"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label" for="st_smtp_port">
+								<span class="label-text font-medium">Port</span>
+							</label>
+							<input
+								id="st_smtp_port"
+								type="number"
+								name="smtp_port"
+								value={ strconv.Itoa(cur.SMTPPort) }
+								min="1"
+								max="65535"
+								class="input input-bordered w-full"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label" for="st_smtp_from">
+								<span class="label-text font-medium">From Email</span>
+							</label>
+							<input
+								id="st_smtp_from"
+								type="email"
+								name="smtp_from_email"
+								value={ cur.SMTPFromEmail }
+								placeholder="noreply@example.org"
+								class="input input-bordered w-full"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label" for="st_smtp_user">
+								<span class="label-text font-medium">Username</span>
+							</label>
+							<input
+								id="st_smtp_user"
+								type="text"
+								name="smtp_username"
+								value={ cur.SMTPUsername }
+								placeholder="optional"
+								class="input input-bordered w-full"
+								autocomplete="off"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label" for="st_smtp_pass">
+								<span class="label-text font-medium">Password</span>
+							</label>
+							<input
+								id="st_smtp_pass"
+								type="text"
+								name="smtp_password"
+								value={ cur.SMTPPassword }
+								placeholder="optional"
+								class="input input-bordered w-full font-mono"
+								autocomplete="new-password"
+							/>
+						</div>
+						<div class="form-control">
+							<label class="label cursor-pointer justify-start gap-3">
+								<input type="checkbox" name="smtp_use_tls" id="st_smtp_tls" class="checkbox" checked?={ cur.SMTPUseTLS }/>
+								<span class="label-text font-medium">Use TLS</span>
+							</label>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="flex justify-end">
+				<button type="submit" class="btn btn-primary">Save Settings</button>
+			</div>
+		</form>
+		<span id="st_saved_theme" data-theme={ cur.Theme } class="hidden"></span>
+		<script>
+			(function(){
+				var saved = document.getElementById('st_saved_theme');
+				var t = localStorage.getItem('dj-theme') || (saved && saved.dataset.theme) || 'dark';
+				document.documentElement.setAttribute('data-theme', t);
+				var sel = document.getElementById('st_theme');
+				if (sel) sel.value = t;
+			})();
+		</script>
+	}
+}

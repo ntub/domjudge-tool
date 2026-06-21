@@ -16,6 +16,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/desktop/handler"
 	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
+	"github.com/ntub/domjudge-tool/internal/desktop/settings"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -36,6 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("oplog store: %v", err)
 	}
+	sStore, err := settings.NewStore(gdb)
+	if err != nil {
+		log.Fatalf("settings store: %v", err)
+	}
 	mux := handler.New(store)
 	handler.RegisterImportUsersTeams(mux, store, oStore, desktopRunImport)
 	handler.RegisterRemoveUsersTeams(mux, store, oStore, desktopRunDelete)
@@ -46,6 +51,7 @@ func main() {
 	handler.RegisterDownloadSubmissions(mux, store, oStore, desktopRunDownloadSubmissions, defaultDownloadOutDir())
 	handler.RegisterHistory(mux, store, oStore)
 	handler.RegisterSetPassword(mux, store, desktopRunSetPassword)
+	handler.RegisterSettings(mux, sStore, store)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
