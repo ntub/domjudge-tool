@@ -19,7 +19,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 					method="post"
 					action="/download-submissions"
 					class="space-y-4"
-					data-signals='{"profileId": ""}'
+					data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q}`, defaultOutDir) }
 				>
 					<div class="form-control">
 						<label class="label" for="ds_profile_id">
@@ -44,15 +44,24 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 						<label class="label" for="ds_out_dir">
 							<span class="label-text font-medium">Output Directory</span>
 						</label>
-						<input
-							id="ds_out_dir"
-							type="text"
-							name="out_dir"
-							value={ defaultOutDir }
-							placeholder="/path/to/submissions"
-							class="input input-bordered w-full"
-							required
-						/>
+						<div class="flex gap-2">
+							<input
+								id="ds_out_dir"
+								type="text"
+								name="out_dir"
+								data-bind:out-dir
+								placeholder="/path/to/submissions"
+								class="input input-bordered grow"
+								required
+							/>
+							<button
+								type="button"
+								class="btn btn-neutral"
+								data-on:click="@get('/api/pick-directory?signal=outDir')"
+							>
+								Browse…
+							</button>
+						</div>
 						<label class="label">
 							<span class="label-text-alt">Absolute path where submission ZIPs will be saved.</span>
 						</label>

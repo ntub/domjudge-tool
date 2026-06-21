@@ -163,6 +163,10 @@ func main() {
 		}, nil
 	})
 
+	handler.RegisterPickDirectory(mux, func(ctx context.Context) (string, error) {
+		return "/tmp/e2e-out", nil
+	})
+
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	log.Printf("E2E server listening → http://%s/", addr)
