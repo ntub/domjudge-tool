@@ -8,10 +8,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 
+	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
+	"github.com/ntub/domjudge-tool/internal/config"
 	"github.com/ntub/domjudge-tool/internal/desktop/assets"
 	"github.com/ntub/domjudge-tool/internal/desktop/db"
 	"github.com/ntub/domjudge-tool/internal/desktop/handler"
@@ -155,27 +160,85 @@ func main() {
 		},
 	)
 
-	handler.RegisterAPIFragment(mux, pStore, func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
-		return []model.Contest{
-			{ID: "1", ShortName: "demo2024", Name: "Demo Contest 2024"},
-			{ID: "2", ShortName: "test2025", Name: "Test Contest 2025"},
-		}, nil
-	}, func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
-		return []model.User{
-			{ID: "1", Username: "admin", Name: "Administrator"},
-			{ID: "2", Username: "user1", Name: "Demo User 1"},
-		}, nil
-	}, func(_ context.Context, _ profile.ServerProfile, _ string) ([]model.Problem, error) {
-		return []model.Problem{
-			{ID: "1", Label: "A", Name: "HelloWorld"},
-			{ID: "2", Label: "B", Name: "AplusB"},
-			{ID: "3", Label: "C", Name: "EasyMath"},
-		}, nil
-	}, func(_ context.Context, _ profile.ServerProfile) ([]model.Team, error) {
-		return []model.Team{
-			{ID: "10", Name: "Team A"},
-			{ID: "20", Name: "Team B"},
-		}, nil
+	handler.RegisterAPIFragment(mux, pStore, func(ctx context.Context, p profile.ServerProfile) ([]model.Contest, error) {
+		if p.Host == "test-station.example.org" {
+			return []model.Contest{
+				{ID: "1", ShortName: "demo2024", Name: "Demo Contest 2024"},
+				{ID: "2", ShortName: "test2025", Name: "Test Contest 2025"},
+			}, nil
+		}
+		cfg := profileToConfig(p)
+		api := apiv4.New(apiv4.Options{
+			BaseURL:    cfg.Host,
+			Username:   cfg.Username,
+			Password:   cfg.Password,
+			DisableSSL: cfg.DisableSSL,
+			Timeout:    derefSecondsDuration(cfg.Timeout),
+		})
+		return api.Contests.List(ctx)
+	}, func(ctx context.Context, p profile.ServerProfile) ([]model.User, error) {
+		if p.Host == "test-station.example.org" {
+			return []model.User{
+				{ID: "1", Username: "admin", Name: "Administrator"},
+				{ID: "2", Username: "user1", Name: "Demo User 1"},
+			}, nil
+		}
+		cfg := profileToConfig(p)
+		api := apiv4.New(apiv4.Options{
+			BaseURL:    cfg.Host,
+			Username:   cfg.Username,
+			Password:   cfg.Password,
+			DisableSSL: cfg.DisableSSL,
+			Timeout:    derefSecondsDuration(cfg.Timeout),
+		})
+		return api.Users.List(ctx, apiv4.UsersListOpts{})
+	}, func(ctx context.Context, p profile.ServerProfile, contestID string) ([]model.Problem, error) {
+		if p.Host == "test-station.example.org" {
+			return []model.Problem{
+				{ID: "1", Label: "A", Name: "HelloWorld"},
+				{ID: "2", Label: "B", Name: "AplusB"},
+				{ID: "3", Label: "C", Name: "EasyMath"},
+			}, nil
+		}
+		cfg := profileToConfig(p)
+		api := apiv4.New(apiv4.Options{
+			BaseURL:    cfg.Host,
+			Username:   cfg.Username,
+			Password:   cfg.Password,
+			DisableSSL: cfg.DisableSSL,
+			Timeout:    derefSecondsDuration(cfg.Timeout),
+		})
+		return api.Contests.ListProblems(ctx, contestID)
+	}, func(ctx context.Context, p profile.ServerProfile) ([]model.Team, error) {
+		if p.Host == "test-station.example.org" {
+			return []model.Team{
+				{ID: "10", Name: "Team A"},
+				{ID: "20", Name: "Team B"},
+			}, nil
+		}
+		cfg := profileToConfig(p)
+		api := apiv4.New(apiv4.Options{
+			BaseURL:    cfg.Host,
+			Username:   cfg.Username,
+			Password:   cfg.Password,
+			DisableSSL: cfg.DisableSSL,
+			Timeout:    derefSecondsDuration(cfg.Timeout),
+		})
+		cid := ""
+		if p.ContestID != nil {
+			cid = *p.ContestID
+		}
+		if cid == "" {
+			contests, err := api.Contests.List(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("list contests: %w", err)
+			}
+			if len(contests) == 0 {
+				return nil, fmt.Errorf("no contests found on server")
+			}
+			cid = contests[0].ID
+		}
+		return api.Teams.List(ctx, cid)
 	})
 
 	handler.RegisterPickDirectory(mux, func(ctx context.Context) (string, error) {
@@ -188,4 +251,41 @@ func main() {
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// profileToConfig converts a desktop ServerProfile to the legacy DomServerClient.
+func profileToConfig(p profile.ServerProfile) *config.DomServerClient {
+	cfg := config.Default()
+	cfg.Host = p.Host
+	cfg.Username = p.Username
+	cfg.Password = p.Password
+	cfg.DisableSSL = p.DisableSSL
+	cfg.Timeout = p.Timeout
+	cfg.MaxConnections = p.MaxConnections
+	cfg.MaxKeepaliveConnections = p.MaxKeepaliveConnections
+	cfg.CategoryID = p.CategoryID
+	cfg.AffiliationID = p.AffiliationID
+	cfg.AffiliationCountry = p.AffiliationCountry
+	cfg.ContestID = p.ContestID
+	cfg.PreferScraper = p.PreferScraper
+	if p.Version != "" {
+		cfg.Version = p.Version
+	}
+	if p.APIVersion != "" {
+		cfg.APIVersion = p.APIVersion
+	}
+	if p.UserRoles != "" && p.UserRoles != "[]" {
+		var roles []int
+		if err := json.Unmarshal([]byte(p.UserRoles), &roles); err == nil {
+			cfg.UserRoles = roles
+		}
+	}
+	return cfg
+}
+
+func derefSecondsDuration(p *float64) time.Duration {
+	if p == nil {
+		return 0
+	}
+	return time.Duration(*p * float64(time.Second))
 }
