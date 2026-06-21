@@ -11,6 +11,7 @@ import (
 
 const (
 	TypeImportUsersTeams = "import-users-teams"
+	TypeRemoveUsersTeams = "remove-users-teams"
 
 	StatusRunning = "running"
 	StatusDone    = "done"
@@ -26,6 +27,7 @@ type OperationLog struct {
 	RowCount    int
 	ErrorMsg    string
 	SummaryJSON string
+	ParamsJSON  string // JSON-encoded input params for the operation
 	CsvPath     string // temp file path; cleared after streaming finishes
 	StartedAt   time.Time
 	FinishedAt  *time.Time

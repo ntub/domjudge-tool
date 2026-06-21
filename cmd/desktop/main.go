@@ -38,6 +38,7 @@ func main() {
 	}
 	mux := handler.New(store)
 	handler.RegisterImportUsersTeams(mux, store, oStore, desktopRunImport)
+	handler.RegisterRemoveUsersTeams(mux, store, oStore, desktopRunDelete)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
