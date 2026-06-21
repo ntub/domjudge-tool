@@ -14,6 +14,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/desktop/assets"
 	"github.com/ntub/domjudge-tool/internal/desktop/db"
 	"github.com/ntub/domjudge-tool/internal/desktop/handler"
+	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -31,7 +32,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("profile store: %v", err)
 	}
+	oStore, err := oplog.NewStore(gdb)
+	if err != nil {
+		log.Fatalf("oplog store: %v", err)
+	}
 	mux := handler.New(store)
+	handler.RegisterImportUsersTeams(mux, store, oStore, desktopRunImport)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {

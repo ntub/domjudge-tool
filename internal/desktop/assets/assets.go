@@ -5,5 +5,5 @@ package assets
 
 import "embed"
 
-//go:embed tailwind.css daisyui.css
+//go:embed tailwind.css daisyui.css datastar.min.js
 var FS embed.FS
