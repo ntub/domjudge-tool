@@ -603,7 +603,7 @@ func triggerSyncTags(fragmentID string) templ.ComponentScript {
 }
 
 // TagMultiSelect renders a multi-select dropdown with tag list.
-func TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOption) templ.Component {
+func TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOption, helpText string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -755,7 +755,30 @@ func TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOptio
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" value=\"\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\" value=\"\"> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if helpText != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "<label class=\"label\"><span class=\"label-text-alt\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var40 string
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(helpText)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 173, Col: 44}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</span></label>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -763,7 +786,7 @@ func TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOptio
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -788,12 +811,275 @@ func tagSelectScriptOnce() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var40 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var40 == nil {
-			templ_7745c5c3_Var40 = templ.NopComponent
+		templ_7745c5c3_Var41 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var41 == nil {
+			templ_7745c5c3_Var41 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<script>\n\t\tif (typeof window.syncTags === 'undefined') {\n\t\t\twindow.syncTags = function(fragmentID) {\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\tif (!select) return;\n\t\t\t\tconst val = select.value;\n\t\t\t\tif (!val) return;\n\t\t\t\t\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tif (!values.includes(val)) {\n\t\t\t\t\tvalues.push(val);\n\t\t\t\t\thidden.value = values.join(',');\n\t\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t}\n\t\t\t\tselect.value = '';\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.deselectTag === 'undefined') {\n\t\t\twindow.deselectTag = function(fragmentID, val) {\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tvalues = values.filter(v => v !== val);\n\t\t\t\thidden.value = values.join(',');\n\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.renderTags === 'undefined') {\n\t\t\twindow.renderTags = function(fragmentID, values, select) {\n\t\t\t\tconst tagsDiv = document.getElementById(fragmentID + '-tags');\n\t\t\t\tif (!tagsDiv) return;\n\t\t\t\ttagsDiv.innerHTML = '';\n\t\t\t\tconst labelMap = {};\n\t\t\t\tif (select) {\n\t\t\t\t\tfor (let i = 0; i < select.options.length; i++) {\n\t\t\t\t\t\tconst opt = select.options[i];\n\t\t\t\t\t\tif (opt.value) {\n\t\t\t\t\t\t\tlabelMap[opt.value] = opt.text;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tvalues.forEach(val => {\n\t\t\t\t\tconst label = labelMap[val] || val;\n\t\t\t\t\tconst badge = document.createElement('div');\n\t\t\t\t\tbadge.className = 'badge badge-primary gap-1 p-3';\n\t\t\t\t\t\n\t\t\t\t\tconst labelSpan = document.createElement('span');\n\t\t\t\t\tlabelSpan.textContent = label;\n\t\t\t\t\tbadge.appendChild(labelSpan);\n\t\t\t\t\t\n\t\t\t\t\tconst btn = document.createElement('button');\n\t\t\t\t\tbtn.type = 'button';\n\t\t\t\t\tbtn.className = 'btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:bg-transparent';\n\t\t\t\t\tbtn.onclick = function() { window.deselectTag(fragmentID, val); };\n\t\t\t\t\tbtn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" class=\"inline-block w-4 h-4 stroke-current\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg>';\n\t\t\t\t\t\n\t\t\t\t\tbadge.appendChild(btn);\n\t\t\t\t\ttagsDiv.appendChild(badge);\n\t\t\t\t});\n\t\t\t};\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<script>\n\t\tif (typeof window.syncTags === 'undefined') {\n\t\t\twindow.syncTags = function(fragmentID) {\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\tif (!select) return;\n\t\t\t\tconst val = select.value;\n\t\t\t\tif (!val) return;\n\t\t\t\t\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tif (!values.includes(val)) {\n\t\t\t\t\tvalues.push(val);\n\t\t\t\t\thidden.value = values.join(',');\n\t\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t}\n\t\t\t\tselect.value = '';\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.deselectTag === 'undefined') {\n\t\t\twindow.deselectTag = function(fragmentID, val) {\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tvalues = values.filter(v => v !== val);\n\t\t\t\thidden.value = values.join(',');\n\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.renderTags === 'undefined') {\n\t\t\twindow.renderTags = function(fragmentID, values, select) {\n\t\t\t\tconst tagsDiv = document.getElementById(fragmentID + '-tags');\n\t\t\t\tif (!tagsDiv) return;\n\t\t\t\ttagsDiv.innerHTML = '';\n\t\t\t\tconst labelMap = {};\n\t\t\t\tif (select) {\n\t\t\t\t\tfor (let i = 0; i < select.options.length; i++) {\n\t\t\t\t\t\tconst opt = select.options[i];\n\t\t\t\t\t\tif (opt.value) {\n\t\t\t\t\t\t\tlabelMap[opt.value] = opt.text;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tvalues.forEach(val => {\n\t\t\t\t\tconst label = labelMap[val] || val;\n\t\t\t\t\tconst badge = document.createElement('div');\n\t\t\t\t\tbadge.className = 'badge badge-primary gap-1 p-3';\n\t\t\t\t\t\n\t\t\t\t\tconst labelSpan = document.createElement('span');\n\t\t\t\t\tlabelSpan.textContent = label;\n\t\t\t\t\tbadge.appendChild(labelSpan);\n\t\t\t\t\t\n\t\t\t\t\tconst btn = document.createElement('button');\n\t\t\t\t\tbtn.type = 'button';\n\t\t\t\t\tbtn.className = 'btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:bg-transparent';\n\t\t\t\t\tbtn.onclick = function() { window.deselectTag(fragmentID, val); };\n\t\t\t\t\tbtn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" class=\"inline-block w-4 h-4 stroke-current\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg>';\n\t\t\t\t\t\n\t\t\t\t\tbadge.appendChild(btn);\n\t\t\t\t\ttagsDiv.appendChild(badge);\n\t\t\t\t});\n\t\t\t};\n\t\t}\n\t</script>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// UsersTextInputFragment renders a plain text input inside users-fieldName-fragment.
+// Used as fallback.
+func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var42 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var42 == nil {
+			templ_7745c5c3_Var42 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<div id=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var43 string
+		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue("users-" + fieldName + "-fragment")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 260, Col: 45}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"><div class=\"form-control\"><label class=\"label\" for=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var44 string
+		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue("frag_" + fieldName)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 262, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "\"><span class=\"label-text font-medium\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var45 string
+		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(labelText)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 263, Col: 52}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "</span></label> <input id=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var46 string
+		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue("frag_" + fieldName)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 266, Col: 28}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "\" type=\"text\" name=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var47 string
+		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldName)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 268, Col: 20}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\" placeholder=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var48 string
+		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(placeholder)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 269, Col: 29}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "\" class=\"input input-bordered w-full\" autocomplete=\"off\"> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if helpText != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<label class=\"label\"><span class=\"label-text-alt\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var49 string
+			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(helpText)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 275, Col: 44}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</span></label>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// TeamSelectFragment renders the team picker dropped into #team-id-fragment
+// by an SSE response when the profile select changes.
+func TeamSelectFragment(teams []model.Team, required bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var50 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var50 == nil {
+			templ_7745c5c3_Var50 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "<div id=\"team-id-fragment\"><div class=\"form-control\"><label class=\"label\" for=\"frag_team_id\"><span class=\"label-text font-medium\">Filter by Team (optional)</span></label> <select id=\"frag_team_id\" name=\"team_id\" class=\"select select-bordered w-full\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if required {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, " required")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "><option value=\"\">— select a team —</option> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		for _, t := range teams {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<option value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var51 string
+			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 293, Col: 25}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var51)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var52 string
+			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 293, Col: 36}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, " (")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var53 string
+			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(t.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 293, Col: 46}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, ")</option>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "</select></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// TeamInputFragment renders a plain text input inside #team-id-fragment.
+// Used as initial state and as fallback when the API is unavailable.
+func TeamInputFragment(required bool) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var54 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var54 == nil {
+			templ_7745c5c3_Var54 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<div id=\"team-id-fragment\"><div class=\"form-control\"><label class=\"label\" for=\"frag_team_id\"><span class=\"label-text font-medium\">Filter by Team ID (optional)</span></label> <input id=\"frag_team_id\" type=\"text\" name=\"team_id\" placeholder=\"42\" class=\"input input-bordered w-full\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if required {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, " required")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, " autocomplete=\"off\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

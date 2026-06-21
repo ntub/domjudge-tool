@@ -12,12 +12,24 @@ templ ExportUsersForm(profiles []profile.ServerProfile) {
 		</div>
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/export-users" class="space-y-4">
+				<form
+					method="post"
+					action="/export-users"
+					class="space-y-4"
+					data-signals='{"profileId": ""}'
+				>
 					<div class="form-control">
 						<label class="label" for="export_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
 						</label>
-						<select id="export_profile_id" name="profile_id" class="select select-bordered w-full" required>
+						<select
+							id="export_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/users?field=ids'); @get('/api/fragment/teams?field=team_id')"
+							required
+						>
 							<option value="">— choose a server —</option>
 							for _, p := range profiles {
 								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
@@ -33,24 +45,11 @@ templ ExportUsersForm(profiles []profile.ServerProfile) {
 							<option value="json">JSON</option>
 						</select>
 					</div>
-					<div class="form-control">
-						<label class="label" for="ids">
-							<span class="label-text font-medium">Filter by User IDs (optional)</span>
-						</label>
-						<input id="ids" type="text" name="ids"
-							placeholder="1, 2, 3 …"
-							class="input input-bordered w-full"/>
-						<label class="label">
-							<span class="label-text-alt">Comma-separated user IDs. Leave blank to export all.</span>
-						</label>
+					<div id="users-ids-fragment">
+						@UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", "Comma-separated user IDs. Leave blank to export all.")
 					</div>
-					<div class="form-control">
-						<label class="label" for="team_id">
-							<span class="label-text font-medium">Filter by Team ID (optional)</span>
-						</label>
-						<input id="team_id" type="text" name="team_id"
-							placeholder="42"
-							class="input input-bordered w-full"/>
+					<div id="team-id-fragment">
+						@TeamInputFragment(false)
 					</div>
 					<div class="card-actions justify-end pt-2">
 						<button type="submit" class="btn btn-primary">Download</button>

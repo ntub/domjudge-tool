@@ -53,6 +53,33 @@ func desktopFetchProblems(ctx context.Context, p profile.ServerProfile, contestI
 	return api.Contests.ListProblems(ctx, contestID)
 }
 
+// desktopFetchTeams is the production TeamsFetchFunc.
+func desktopFetchTeams(ctx context.Context, p profile.ServerProfile) ([]model.Team, error) {
+	cfg := profileToConfig(p)
+	api := apiv4.New(apiv4.Options{
+		BaseURL:    cfg.Host,
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		DisableSSL: cfg.DisableSSL,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
+	})
+	cid := ""
+	if p.ContestID != nil {
+		cid = *p.ContestID
+	}
+	if cid == "" {
+		contests, err := api.Contests.List(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list contests: %w", err)
+		}
+		if len(contests) == 0 {
+			return nil, fmt.Errorf("no contests found on server")
+		}
+		cid = contests[0].ID
+	}
+	return api.Teams.List(ctx, cid)
+}
+
 // desktopPickDirectory triggers a native directory picker on different platforms.
 func desktopPickDirectory(ctx context.Context) (string, error) {
 	var cmd *exec.Cmd

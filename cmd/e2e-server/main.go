@@ -171,6 +171,11 @@ func main() {
 			{ID: "2", Label: "B", Name: "AplusB"},
 			{ID: "3", Label: "C", Name: "EasyMath"},
 		}, nil
+	}, func(_ context.Context, _ profile.ServerProfile) ([]model.Team, error) {
+		return []model.Team{
+			{ID: "10", Name: "Team A"},
+			{ID: "20", Name: "Team B"},
+		}, nil
 	})
 
 	handler.RegisterPickDirectory(mux, func(ctx context.Context) (string, error) {
