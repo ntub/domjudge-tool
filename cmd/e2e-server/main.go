@@ -19,6 +19,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
 	"github.com/ntub/domjudge-tool/internal/desktop/settings"
 	"github.com/ntub/domjudge-tool/internal/importer"
+	"github.com/ntub/domjudge-tool/internal/model"
 	"github.com/ntub/domjudge-tool/internal/util/progress"
 )
 
@@ -153,6 +154,14 @@ func main() {
 			return 2, nil
 		},
 	)
+
+	// API fragment endpoints (nop: return static contests for E2E demo testing).
+	handler.RegisterAPIFragment(mux, pStore, func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
+		return []model.Contest{
+			{ID: "1", ShortName: "demo2024", Name: "Demo Contest 2024"},
+			{ID: "2", ShortName: "test2025", Name: "Test Contest 2025"},
+		}, nil
+	})
 
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 

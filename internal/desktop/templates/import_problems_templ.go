@@ -56,7 +56,7 @@ func ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind strin
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/import-problems\" enctype=\"multipart/form-data\" class=\"space-y-4\"><div class=\"form-control\"><label class=\"label\" for=\"ip_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ip_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/import-problems\" enctype=\"multipart/form-data\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"ip_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ip_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/contests')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -68,7 +68,7 @@ func ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind strin
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%d", p.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 26, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 39, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -81,7 +81,7 @@ func ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind strin
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 26, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 39, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -94,7 +94,7 @@ func ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind strin
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Host)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 26, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 39, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -105,7 +105,20 @@ func ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind strin
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"ip_contest_id\"><span class=\"label-text font-medium\">Contest ID (optional override)</span></label> <input id=\"ip_contest_id\" type=\"text\" name=\"contest_id\" placeholder=\"Leave blank to use profile's contest ID\" class=\"input input-bordered w-full\"> <label class=\"label\"><span class=\"label-text-alt\">Overrides the contest ID from the selected server profile.</span></label></div><div class=\"form-control\"><label class=\"label\" for=\"ip_zip_files\"><span class=\"label-text font-medium\">Problem ZIP Files</span></label> <input id=\"ip_zip_files\" type=\"file\" name=\"zip_files\" accept=\".zip\" multiple class=\"file-input file-input-bordered w-full\" required> <label class=\"label\"><span class=\"label-text-alt\">Select one or more problem package ZIP files to upload.</span></label></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"upsert\" class=\"checkbox\"> <span class=\"label-text\">Upsert — update matching problems, create missing ones</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Import</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = ContestInputFragment(
+				"Leave blank to use profile's contest ID",
+				"Select a server profile to load contests, or enter the ID directly.",
+				"",
+				false,
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"form-control\"><label class=\"label\" for=\"ip_zip_files\"><span class=\"label-text font-medium\">Problem ZIP Files</span></label> <input id=\"ip_zip_files\" type=\"file\" name=\"zip_files\" accept=\".zip\" multiple class=\"file-input file-input-bordered w-full\" required> <label class=\"label\"><span class=\"label-text-alt\">Select one or more problem package ZIP files to upload.</span></label></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"upsert\" class=\"checkbox\"> <span class=\"label-text\">Upsert — update matching problems, create missing ones</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Import</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -152,20 +165,20 @@ func ImportProblemsRun(id int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Import Problems</h1><a href=\"/import-problems\" class=\"btn btn-ghost btn-sm\">← New Import</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Import Problems</h1><a href=\"/import-problems\" class=\"btn btn-ghost btn-sm\">← New Import</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/import-problems/%d/stream')", id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 85, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 89, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\"><progress id=\"import-progress\" class=\"progress progress-primary w-full\" value=\"0\" max=\"100\"></progress> <span id=\"import-count\" class=\"text-sm text-base-content/70\">Starting…</span><div id=\"import-result\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"><progress id=\"import-progress\" class=\"progress progress-primary w-full\" value=\"0\" max=\"100\"></progress> <span id=\"import-count\" class=\"text-sm text-base-content/70\">Starting…</span><div id=\"import-result\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

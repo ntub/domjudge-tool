@@ -1,0 +1,53 @@
+package templates
+
+import "github.com/ntub/domjudge-tool/internal/model"
+
+// ContestSelectFragment renders the contest picker dropped into #contest-fragment
+// by an SSE response when the profile select changes.
+templ ContestSelectFragment(contests []model.Contest, defaultID *string, required bool) {
+	<div id="contest-fragment">
+		<div class="form-control">
+			<label class="label" for="frag_contest_id">
+				<span class="label-text font-medium">Contest</span>
+			</label>
+			<select id="frag_contest_id" name="contest_id" class="select select-bordered w-full" if required { required }>
+				<option value="">— select a contest —</option>
+				for _, c := range contests {
+					if defaultID != nil && *defaultID == c.ID {
+						<option value={ c.ID } selected>{ c.Name } ({ c.ShortName })</option>
+					} else {
+						<option value={ c.ID }>{ c.Name } ({ c.ShortName })</option>
+					}
+				}
+			</select>
+		</div>
+	</div>
+}
+
+// ContestInputFragment renders a plain text input inside #contest-fragment.
+// Used as initial state and as fallback when the API is unavailable.
+// errMsg, when non-empty, shows a warning beside the field.
+templ ContestInputFragment(placeholder, helpText, errMsg string, required bool) {
+	<div id="contest-fragment">
+		<div class="form-control">
+			<label class="label" for="frag_contest_id">
+				<span class="label-text font-medium">Contest ID</span>
+			</label>
+			<input
+				id="frag_contest_id"
+				type="text"
+				name="contest_id"
+				placeholder={ placeholder }
+				class="input input-bordered w-full"
+				if required { required }
+			/>
+			<label class="label">
+				if errMsg != "" {
+					<span class="label-text-alt text-warning">{ errMsg } Enter the contest ID manually.</span>
+				} else {
+					<span class="label-text-alt">{ helpText }</span>
+				}
+			</label>
+		</div>
+	</div>
+}

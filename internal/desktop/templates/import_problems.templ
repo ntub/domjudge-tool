@@ -15,33 +15,37 @@ templ ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind stri
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/import-problems" enctype="multipart/form-data" class="space-y-4">
+				<form
+					method="post"
+					action="/import-problems"
+					enctype="multipart/form-data"
+					class="space-y-4"
+					data-signals='{"profileId": ""}'
+				>
 					<div class="form-control">
 						<label class="label" for="ip_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
 						</label>
-						<select id="ip_profile_id" name="profile_id" class="select select-bordered w-full" required>
+						<select
+							id="ip_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/contests')"
+							required
+						>
 							<option value="">— choose a server —</option>
 							for _, p := range profiles {
 								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
 							}
 						</select>
 					</div>
-					<div class="form-control">
-						<label class="label" for="ip_contest_id">
-							<span class="label-text font-medium">Contest ID (optional override)</span>
-						</label>
-						<input
-							id="ip_contest_id"
-							type="text"
-							name="contest_id"
-							placeholder="Leave blank to use profile's contest ID"
-							class="input input-bordered w-full"
-						/>
-						<label class="label">
-							<span class="label-text-alt">Overrides the contest ID from the selected server profile.</span>
-						</label>
-					</div>
+					@ContestInputFragment(
+						"Leave blank to use profile's contest ID",
+						"Select a server profile to load contests, or enter the ID directly.",
+						"",
+						false,
+					)
 					<div class="form-control">
 						<label class="label" for="ip_zip_files">
 							<span class="label-text font-medium">Problem ZIP Files</span>

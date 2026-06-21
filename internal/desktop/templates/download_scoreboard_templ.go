@@ -46,7 +46,7 @@ func DownloadScoreboardForm(profiles []profile.ServerProfile) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Scoreboard</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/download-scoreboard\" class=\"space-y-4\"><div class=\"form-control\"><label class=\"label\" for=\"ds_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ds_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Scoreboard</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/download-scoreboard\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"ds_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ds_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/contests')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -58,7 +58,7 @@ func DownloadScoreboardForm(profiles []profile.ServerProfile) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%d", p.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 23, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 35, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -71,7 +71,7 @@ func DownloadScoreboardForm(profiles []profile.ServerProfile) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 23, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 35, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -84,7 +84,7 @@ func DownloadScoreboardForm(profiles []profile.ServerProfile) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Host)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 23, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_scoreboard.templ`, Line: 35, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -95,7 +95,20 @@ func DownloadScoreboardForm(profiles []profile.ServerProfile) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"ds_contest_id\"><span class=\"label-text font-medium\">Contest ID</span></label> <input id=\"ds_contest_id\" type=\"text\" name=\"contest_id\" placeholder=\"Leave blank to use profile's contest ID\" class=\"input input-bordered w-full\"> <label class=\"label\"><span class=\"label-text-alt\">Overrides the contest ID from the selected server profile.</span></label></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"exclude_hidden\" class=\"checkbox\"> <span class=\"label-text\">Exclude hidden team categories (e.g. System)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download CSV</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</select></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = ContestInputFragment(
+				"Leave blank to use profile's contest ID",
+				"Select a server profile to load contests, or enter the ID directly.",
+				"",
+				false,
+			).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"exclude_hidden\" class=\"checkbox\"> <span class=\"label-text\">Exclude hidden team categories (e.g. System)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download CSV</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

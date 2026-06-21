@@ -12,33 +12,36 @@ templ DownloadScoreboardForm(profiles []profile.ServerProfile) {
 		</div>
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/download-scoreboard" class="space-y-4">
+				<form
+					method="post"
+					action="/download-scoreboard"
+					class="space-y-4"
+					data-signals='{"profileId": ""}'
+				>
 					<div class="form-control">
 						<label class="label" for="ds_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
 						</label>
-						<select id="ds_profile_id" name="profile_id" class="select select-bordered w-full" required>
+						<select
+							id="ds_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/contests')"
+							required
+						>
 							<option value="">— choose a server —</option>
 							for _, p := range profiles {
 								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
 							}
 						</select>
 					</div>
-					<div class="form-control">
-						<label class="label" for="ds_contest_id">
-							<span class="label-text font-medium">Contest ID</span>
-						</label>
-						<input
-							id="ds_contest_id"
-							type="text"
-							name="contest_id"
-							placeholder="Leave blank to use profile's contest ID"
-							class="input input-bordered w-full"
-						/>
-						<label class="label">
-							<span class="label-text-alt">Overrides the contest ID from the selected server profile.</span>
-						</label>
-					</div>
+					@ContestInputFragment(
+						"Leave blank to use profile's contest ID",
+						"Select a server profile to load contests, or enter the ID directly.",
+						"",
+						false,
+					)
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">
 							<input type="checkbox" name="exclude_hidden" class="checkbox"/>
