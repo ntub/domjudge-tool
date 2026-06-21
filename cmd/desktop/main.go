@@ -45,6 +45,7 @@ func main() {
 	handler.RegisterDownloadScoreboard(mux, store, desktopRunDownloadScoreboard)
 	handler.RegisterDownloadSubmissions(mux, store, oStore, desktopRunDownloadSubmissions, defaultDownloadOutDir())
 	handler.RegisterHistory(mux, store, oStore)
+	handler.RegisterSetPassword(mux, store, desktopRunSetPassword)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
