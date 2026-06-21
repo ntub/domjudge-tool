@@ -37,10 +37,10 @@ build:
 build-desktop:
     @CGO_ENABLED=1 go build -tags desktop -o ./bin/domjudge-tool-app ./cmd/desktop
 
-# Rebuild Tailwind CSS from templ templates (requires tailwindcss v4 in PATH).
+# Rebuild Tailwind CSS from templ templates (uses local npm install in frontend/).
 # Output goes to internal/desktop/assets/tailwind.css — commit that file after running.
 build-desktop-css:
-    @tailwindcss -i ./frontend/input.css -o ./internal/desktop/assets/tailwind.css
+    @./frontend/node_modules/.bin/tailwindcss -i ./frontend/input.css -o ./internal/desktop/assets/tailwind.css
 
 # Regenerate templ Go files from *.templ sources.
 generate-templates:

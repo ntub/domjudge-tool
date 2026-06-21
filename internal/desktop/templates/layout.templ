@@ -12,33 +12,68 @@ templ Layout(title string) {
 		<title>{ title } — domjudge-tool</title>
 		<link href="/static/tailwind.css" rel="stylesheet"/>
 		<link href="/static/daisyui.css" rel="stylesheet"/>
+		<link href="/static/desktop.css" rel="stylesheet"/>
 		<script type="module" src="/static/datastar.min.js"></script>
 	</head>
-	<body class="min-h-screen bg-base-200">
-		<div class="navbar bg-base-100 shadow-sm px-4">
-			<div class="navbar-start">
-				<a href="/" class="text-lg font-bold tracking-tight">domjudge-tool</a>
-			</div>
-			<div class="navbar-center hidden md:flex">
-				<ul class="menu menu-horizontal px-1 gap-1">
-					<li><a href="/profiles" class="font-medium">Servers</a></li>
-					<li><a href="/import-users-teams">Import Users</a></li>
-					<li><a href="/remove-users-teams">Remove Users</a></li>
-					<li><a href="/export-users">Export Users</a></li>
-					<li><a href="/download-problems">Download Problems</a></li>
-					<li><a href="/import-problems">Import Problems</a></li>
-					<li><a href="/download-scoreboard">Download Scoreboard</a></li>
-					<li><a href="/download-submissions">Download Submissions</a></li>
-					<li><a href="/set-password">Set Password</a></li>
-					<li><a href="/email-tools">Email Tools</a></li>
-					<li><a href="/history">History</a></li>
-					<li><a href="/settings">Settings</a></li>
-				</ul>
-			</div>
+	<body class="bg-base-200">
+		<!-- Mobile top bar -->
+		<div class="dj-topbar">
+			<button class="dj-menu-btn" onclick="document.getElementById('dj-sidebar').classList.toggle('open')" aria-label="Toggle navigation">&#9776;</button>
+			<span class="dj-logo-sm">domjudge-tool</span>
 		</div>
-		<main class="container mx-auto px-4 py-8 max-w-5xl">
-			{ children... }
-		</main>
+		<div class="dj-root">
+			<!-- Sidebar -->
+			<nav class="dj-sidebar" id="dj-sidebar">
+				<a href="/" class="dj-logo">domjudge-tool</a>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Servers</p>
+					<a href="/profiles" class="dj-nav-item">Servers</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Users</p>
+					<a href="/import-users-teams" class="dj-nav-item">Import Users</a>
+					<a href="/remove-users-teams" class="dj-nav-item">Remove Users</a>
+					<a href="/export-users" class="dj-nav-item">Export Users</a>
+					<a href="/set-password" class="dj-nav-item">Set Password</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Problems</p>
+					<a href="/download-problems" class="dj-nav-item">Download Problems</a>
+					<a href="/import-problems" class="dj-nav-item">Import Problems</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Contest</p>
+					<a href="/download-scoreboard" class="dj-nav-item">Scoreboard</a>
+					<a href="/download-submissions" class="dj-nav-item">Submissions</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Email</p>
+					<a href="/email-tools" class="dj-nav-item">Email Tools</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">System</p>
+					<a href="/history" class="dj-nav-item">History</a>
+					<a href="/settings" class="dj-nav-item">Settings</a>
+				</div>
+			</nav>
+			<!-- Content -->
+			<main class="dj-content">
+				{ children... }
+			</main>
+		</div>
+		<script>
+			(function(){
+				var path = window.location.pathname;
+				document.querySelectorAll('.dj-nav-item').forEach(function(a){
+					var href = a.getAttribute('href');
+					if(href === '/'){
+						if(path === '/') a.classList.add('active');
+					} else if(path === href || path.startsWith(href + '/')){
+						a.classList.add('active');
+					}
+				});
+			})();
+		</script>
 	</body>
 	</html>
 }

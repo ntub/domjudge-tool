@@ -42,7 +42,7 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — domjudge-tool</title><link href=\"/static/tailwind.css\" rel=\"stylesheet\"><link href=\"/static/daisyui.css\" rel=\"stylesheet\"><script type=\"module\" src=\"/static/datastar.min.js\"></script></head><body class=\"min-h-screen bg-base-200\"><div class=\"navbar bg-base-100 shadow-sm px-4\"><div class=\"navbar-start\"><a href=\"/\" class=\"text-lg font-bold tracking-tight\">domjudge-tool</a></div><div class=\"navbar-center hidden md:flex\"><ul class=\"menu menu-horizontal px-1 gap-1\"><li><a href=\"/profiles\" class=\"font-medium\">Servers</a></li><li><a href=\"/import-users-teams\">Import Users</a></li><li><a href=\"/remove-users-teams\">Remove Users</a></li><li><a href=\"/export-users\">Export Users</a></li><li><a href=\"/download-problems\">Download Problems</a></li><li><a href=\"/import-problems\">Import Problems</a></li><li><a href=\"/download-scoreboard\">Download Scoreboard</a></li><li><a href=\"/download-submissions\">Download Submissions</a></li><li><a href=\"/set-password\">Set Password</a></li><li><a href=\"/email-tools\">Email Tools</a></li><li><a href=\"/history\">History</a></li><li><a href=\"/settings\">Settings</a></li></ul></div></div><main class=\"container mx-auto px-4 py-8 max-w-5xl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — domjudge-tool</title><link href=\"/static/tailwind.css\" rel=\"stylesheet\"><link href=\"/static/daisyui.css\" rel=\"stylesheet\"><link href=\"/static/desktop.css\" rel=\"stylesheet\"><script type=\"module\" src=\"/static/datastar.min.js\"></script></head><body class=\"bg-base-200\"><!-- Mobile top bar --><div class=\"dj-topbar\"><button class=\"dj-menu-btn\" onclick=\"document.getElementById('dj-sidebar').classList.toggle('open')\" aria-label=\"Toggle navigation\">&#9776;</button> <span class=\"dj-logo-sm\">domjudge-tool</span></div><div class=\"dj-root\"><!-- Sidebar --><nav class=\"dj-sidebar\" id=\"dj-sidebar\"><a href=\"/\" class=\"dj-logo\">domjudge-tool</a><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">Servers</p><a href=\"/profiles\" class=\"dj-nav-item\">Servers</a></div><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">Users</p><a href=\"/import-users-teams\" class=\"dj-nav-item\">Import Users</a> <a href=\"/remove-users-teams\" class=\"dj-nav-item\">Remove Users</a> <a href=\"/export-users\" class=\"dj-nav-item\">Export Users</a> <a href=\"/set-password\" class=\"dj-nav-item\">Set Password</a></div><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">Problems</p><a href=\"/download-problems\" class=\"dj-nav-item\">Download Problems</a> <a href=\"/import-problems\" class=\"dj-nav-item\">Import Problems</a></div><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">Contest</p><a href=\"/download-scoreboard\" class=\"dj-nav-item\">Scoreboard</a> <a href=\"/download-submissions\" class=\"dj-nav-item\">Submissions</a></div><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">Email</p><a href=\"/email-tools\" class=\"dj-nav-item\">Email Tools</a></div><div class=\"dj-nav-group\"><p class=\"dj-nav-group-label\">System</p><a href=\"/history\" class=\"dj-nav-item\">History</a> <a href=\"/settings\" class=\"dj-nav-item\">Settings</a></div></nav><!-- Content --><main class=\"dj-content\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -50,7 +50,7 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main></div><script>\n\t\t\t(function(){\n\t\t\t\tvar path = window.location.pathname;\n\t\t\t\tdocument.querySelectorAll('.dj-nav-item').forEach(function(a){\n\t\t\t\t\tvar href = a.getAttribute('href');\n\t\t\t\t\tif(href === '/'){\n\t\t\t\t\t\tif(path === '/') a.classList.add('active');\n\t\t\t\t\t} else if(path === href || path.startsWith(href + '/')){\n\t\t\t\t\t\ta.classList.add('active');\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t})();\n\t\t</script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -105,7 +105,7 @@ func Flash(kind, message string) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/layout.templ`, Line: 49, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/layout.templ`, Line: 84, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
