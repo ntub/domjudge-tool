@@ -19,7 +19,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 					method="post"
 					action="/download-submissions"
 					class="space-y-4"
-					data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q}`, defaultOutDir) }
+					data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q, "contestId": ""}`, defaultOutDir) }
 				>
 					<div class="form-control">
 						<label class="label" for="ds_profile_id">
@@ -66,20 +66,8 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 							<span class="label-text-alt">Absolute path where submission ZIPs will be saved.</span>
 						</label>
 					</div>
-					<div class="form-control">
-						<label class="label" for="ds_problem_ids">
-							<span class="label-text font-medium">Problem IDs (optional)</span>
-						</label>
-						<input
-							id="ds_problem_ids"
-							type="text"
-							name="problem_ids"
-							placeholder="P1, P2 …"
-							class="input input-bordered w-full"
-						/>
-						<label class="label">
-							<span class="label-text-alt">Comma-separated problem IDs to filter. Leave blank to download all.</span>
-						</label>
+					<div id="problems-problem_ids-fragment">
+						@ProblemsTextInputFragment("problem_ids", "Problem IDs (optional)", "P1, P2 …", "Select a contest to load problems.")
 					</div>
 					<div class="form-control">
 						<label class="label" for="ds_mode">

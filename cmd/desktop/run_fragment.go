@@ -40,6 +40,19 @@ func desktopFetchUsers(ctx context.Context, p profile.ServerProfile) ([]model.Us
 	return api.Users.List(ctx, apiv4.UsersListOpts{})
 }
 
+// desktopFetchProblems is the production ProblemsFetchFunc.
+func desktopFetchProblems(ctx context.Context, p profile.ServerProfile, contestID string) ([]model.Problem, error) {
+	cfg := profileToConfig(p)
+	api := apiv4.New(apiv4.Options{
+		BaseURL:    cfg.Host,
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		DisableSSL: cfg.DisableSSL,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
+	})
+	return api.Contests.ListProblems(ctx, contestID)
+}
+
 // desktopPickDirectory triggers a native directory picker on different platforms.
 func desktopPickDirectory(ctx context.Context) (string, error) {
 	var cmd *exec.Cmd

@@ -14,7 +14,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-func newFragmentHandler(t *testing.T, fetchContests handler.ContestsFetchFunc, fetchUsers handler.UsersFetchFunc) http.Handler {
+func newFragmentHandler(t *testing.T, fetchContests handler.ContestsFetchFunc, fetchUsers handler.UsersFetchFunc, fetchProblems handler.ProblemsFetchFunc) http.Handler {
 	t.Helper()
 	gdb, err := db.Open(":memory:")
 	if err != nil {
@@ -40,7 +40,7 @@ func newFragmentHandler(t *testing.T, fetchContests handler.ContestsFetchFunc, f
 	}
 
 	mux := handler.New(pStore)
-	handler.RegisterAPIFragment(mux, pStore, fetchContests, fetchUsers)
+	handler.RegisterAPIFragment(mux, pStore, fetchContests, fetchUsers, fetchProblems)
 	return mux
 }
 
@@ -69,7 +69,7 @@ func getUserFragment(t *testing.T, h http.Handler, profileID string) *httptest.R
 }
 
 func TestFragmentContests_NoProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil)
 	rec := getContestFragment(t, h, "")
 
 	if rec.Code != http.StatusOK {
@@ -85,7 +85,7 @@ func TestFragmentContests_NoProfileID_ReturnsInputFallback(t *testing.T) {
 }
 
 func TestFragmentContests_InvalidProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil)
 	rec := getContestFragment(t, h, "notanumber")
 
 	if rec.Code != http.StatusOK {
@@ -100,7 +100,7 @@ func TestFragmentContests_APIError_ReturnsInputFallbackWithWarning(t *testing.T)
 	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
 		return nil, errors.New("connection refused")
 	}
-	h := newFragmentHandler(t, fetch, nil)
+	h := newFragmentHandler(t, fetch, nil, nil)
 	rec := getContestFragment(t, h, "1")
 
 	if rec.Code != http.StatusOK {
@@ -122,7 +122,7 @@ func TestFragmentContests_Success_ReturnsSelectWithOptions(t *testing.T) {
 			{ID: "2", ShortName: "test2025", Name: "Test Contest"},
 		}, nil
 	}
-	h := newFragmentHandler(t, fetch, nil)
+	h := newFragmentHandler(t, fetch, nil, nil)
 	rec := getContestFragment(t, h, "1")
 
 	if rec.Code != http.StatusOK {
@@ -150,7 +150,7 @@ func TestFragmentContests_DefaultContestPreselected(t *testing.T) {
 			{ID: "2", ShortName: "test2025", Name: "Test Contest"},
 		}, nil
 	}
-	h := newFragmentHandler(t, fetch, nil)
+	h := newFragmentHandler(t, fetch, nil, nil)
 	// Profile has ContestID="1" set (from newFragmentHandler seed).
 	rec := getContestFragment(t, h, "1")
 
@@ -162,7 +162,7 @@ func TestFragmentContests_DefaultContestPreselected(t *testing.T) {
 }
 
 func TestFragmentUsers_NoProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil)
 	rec := getUserFragment(t, h, "")
 
 	if rec.Code != http.StatusOK {
@@ -178,7 +178,7 @@ func TestFragmentUsers_NoProfileID_ReturnsInputFallback(t *testing.T) {
 }
 
 func TestFragmentUsers_InvalidProfileID_ReturnsInputFallback(t *testing.T) {
-	h := newFragmentHandler(t, nil, nil)
+	h := newFragmentHandler(t, nil, nil, nil)
 	rec := getUserFragment(t, h, "notanumber")
 
 	if rec.Code != http.StatusOK {
@@ -193,7 +193,7 @@ func TestFragmentUsers_APIError_ReturnsInputFallbackWithWarning(t *testing.T) {
 	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
 		return nil, errors.New("connection refused")
 	}
-	h := newFragmentHandler(t, nil, fetch)
+	h := newFragmentHandler(t, nil, fetch, nil)
 	rec := getUserFragment(t, h, "1")
 
 	if rec.Code != http.StatusOK {
@@ -215,7 +215,7 @@ func TestFragmentUsers_Success_ReturnsSelectWithOptions(t *testing.T) {
 			{Username: "user1", Name: "Demo User 1"},
 		}, nil
 	}
-	h := newFragmentHandler(t, nil, fetch)
+	h := newFragmentHandler(t, nil, fetch, nil)
 	rec := getUserFragment(t, h, "1")
 
 	if rec.Code != http.StatusOK {

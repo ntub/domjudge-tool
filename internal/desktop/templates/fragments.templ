@@ -1,6 +1,10 @@
 package templates
 
-import "github.com/ntub/domjudge-tool/internal/model"
+import (
+	"strings"
+
+	"github.com/ntub/domjudge-tool/internal/model"
+)
 
 // ContestSelectFragment renders the contest picker dropped into #contest-fragment
 // by an SSE response when the profile select changes.
@@ -10,7 +14,14 @@ templ ContestSelectFragment(contests []model.Contest, defaultID *string, require
 			<label class="label" for="frag_contest_id">
 				<span class="label-text font-medium">Contest</span>
 			</label>
-			<select id="frag_contest_id" name="contest_id" class="select select-bordered w-full" if required { required }>
+			<select
+				id="frag_contest_id"
+				name="contest_id"
+				class="select select-bordered w-full"
+				data-bind:contest-id
+				data-on:change="@get('/api/fragment/problems?field=problem_ids')"
+				if required { required }
+			>
 				<option value="">— select a contest —</option>
 				for _, c := range contests {
 					if defaultID != nil && *defaultID == c.ID {
@@ -99,3 +110,141 @@ templ UsernameInputFragment(placeholder, helpText, errMsg string, required bool)
 	</div>
 }
 
+// ProblemsTextInputFragment renders a text input fallback for problems.
+templ ProblemsTextInputFragment(fieldName, labelText, placeholder, helpText string) {
+	<div id={ "problems-" + fieldName + "-fragment" }>
+		<div class="form-control">
+			<label class="label" for={ "frag_" + fieldName }>
+				<span class="label-text font-medium">{ labelText }</span>
+			</label>
+			<input
+				id={ "frag_" + fieldName }
+				type="text"
+				name={ fieldName }
+				placeholder={ placeholder }
+				class="input input-bordered w-full"
+			/>
+			if helpText != "" {
+				<label class="label">
+					<span class={ "label-text-alt", templ.KV("text-warning", strings.HasPrefix(helpText, "Could not") || strings.HasPrefix(helpText, "Failed") || strings.Contains(helpText, "error") || strings.Contains(helpText, "failed")) }>{ helpText }</span>
+				</label>
+			}
+		</div>
+	</div>
+}
+
+// SelectOption represents an option for TagMultiSelect.
+type SelectOption struct {
+	Value string
+	Label string
+}
+
+// triggerSyncTags is a templ script helper that invokes syncTags.
+script triggerSyncTags(fragmentID string) {
+	window.syncTags(fragmentID);
+}
+
+// TagMultiSelect renders a multi-select dropdown with tag list.
+templ TagMultiSelect(fragmentID, fieldName, labelText string, items []SelectOption) {
+	<div id={ fragmentID }>
+		<div class="form-control">
+			<label class="label">
+				<span class="label-text font-medium">{ labelText }</span>
+			</label>
+			<select
+				id={ fragmentID + "-options" }
+				class="select select-bordered w-full"
+				onchange={ triggerSyncTags(fragmentID) }
+			>
+				<option value="">— select an option —</option>
+				for _, item := range items {
+					<option value={ item.Value }>{ item.Label }</option>
+				}
+			</select>
+			<div id={ fragmentID + "-tags" } class="flex flex-wrap gap-2 mt-2"></div>
+			<input
+				type="hidden"
+				name={ fieldName }
+				id={ fragmentID + "-hidden" }
+				value=""
+			/>
+		</div>
+		@tagSelectScriptOnce()
+	</div>
+}
+
+// tagSelectScriptOnce outputs the helper script.
+templ tagSelectScriptOnce() {
+	<script>
+		if (typeof window.syncTags === 'undefined') {
+			window.syncTags = function(fragmentID) {
+				const select = document.getElementById(fragmentID + '-options');
+				if (!select) return;
+				const val = select.value;
+				if (!val) return;
+				
+				const hidden = document.getElementById(fragmentID + '-hidden');
+				if (!hidden) return;
+				
+				let values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+				if (!values.includes(val)) {
+					values.push(val);
+					hidden.value = values.join(',');
+					hidden.dispatchEvent(new Event('input', { bubbles: true }));
+					hidden.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+				select.value = '';
+				window.renderTags(fragmentID, values, select);
+			};
+		}
+		if (typeof window.deselectTag === 'undefined') {
+			window.deselectTag = function(fragmentID, val) {
+				const hidden = document.getElementById(fragmentID + '-hidden');
+				if (!hidden) return;
+				
+				let values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+				values = values.filter(v => v !== val);
+				hidden.value = values.join(',');
+				hidden.dispatchEvent(new Event('input', { bubbles: true }));
+				hidden.dispatchEvent(new Event('change', { bubbles: true }));
+				
+				const select = document.getElementById(fragmentID + '-options');
+				window.renderTags(fragmentID, values, select);
+			};
+		}
+		if (typeof window.renderTags === 'undefined') {
+			window.renderTags = function(fragmentID, values, select) {
+				const tagsDiv = document.getElementById(fragmentID + '-tags');
+				if (!tagsDiv) return;
+				tagsDiv.innerHTML = '';
+				const labelMap = {};
+				if (select) {
+					for (let i = 0; i < select.options.length; i++) {
+						const opt = select.options[i];
+						if (opt.value) {
+							labelMap[opt.value] = opt.text;
+						}
+					}
+				}
+				values.forEach(val => {
+					const label = labelMap[val] || val;
+					const badge = document.createElement('div');
+					badge.className = 'badge badge-primary gap-1 p-3';
+					
+					const labelSpan = document.createElement('span');
+					labelSpan.textContent = label;
+					badge.appendChild(labelSpan);
+					
+					const btn = document.createElement('button');
+					btn.type = 'button';
+					btn.className = 'btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:bg-transparent';
+					btn.onclick = function() { window.deselectTag(fragmentID, val); };
+					btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+					
+					badge.appendChild(btn);
+					tagsDiv.appendChild(badge);
+				});
+			};
+		}
+	</script>
+}

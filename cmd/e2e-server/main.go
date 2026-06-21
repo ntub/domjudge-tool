@@ -165,6 +165,12 @@ func main() {
 			{ID: "1", Username: "admin", Name: "Administrator"},
 			{ID: "2", Username: "user1", Name: "Demo User 1"},
 		}, nil
+	}, func(_ context.Context, _ profile.ServerProfile, _ string) ([]model.Problem, error) {
+		return []model.Problem{
+			{ID: "1", Label: "A", Name: "HelloWorld"},
+			{ID: "2", Label: "B", Name: "AplusB"},
+			{ID: "3", Label: "C", Name: "EasyMath"},
+		}, nil
 	})
 
 	handler.RegisterPickDirectory(mux, func(ctx context.Context) (string, error) {

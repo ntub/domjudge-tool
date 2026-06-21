@@ -28,6 +28,16 @@ func (r *ContestsResource) Get(ctx context.Context, cid string) (*model.Contest,
 	return &out, nil
 }
 
+// ListProblems returns all problems in contest cid from
+// GET /api/v4/contests/{cid}/problems.
+func (r *ContestsResource) ListProblems(ctx context.Context, cid string) ([]model.Problem, error) {
+	var out []model.Problem
+	if err := r.c.getJSON(ctx, fmt.Sprintf("/contests/%s/problems", cid), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Resolve converts a contest hint into a DOMjudge internal numeric id. Numeric
 // hints pass through without a request; non-numeric hints are matched against
 // contest shortnames.

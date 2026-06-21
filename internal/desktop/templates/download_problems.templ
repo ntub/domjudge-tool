@@ -15,12 +15,19 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/download-problems" class="space-y-4" data-signals={ fmt.Sprintf(`{"outDir": %q}`, defaultOutDir) }>
+				<form method="post" action="/download-problems" class="space-y-4" data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q}`, defaultOutDir) }>
 					<div class="form-control">
 						<label class="label" for="dp_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
 						</label>
-						<select id="dp_profile_id" name="profile_id" class="select select-bordered w-full" required>
+						<select
+							id="dp_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/problems?field=only') && @get('/api/fragment/problems?field=exclude')"
+							required
+						>
 							<option value="">— choose a server —</option>
 							for _, p := range profiles {
 								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
@@ -53,32 +60,11 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 							<span class="label-text-alt">Absolute path where ZIPs will be saved.</span>
 						</label>
 					</div>
-					<div class="form-control">
-						<label class="label" for="dp_only">
-							<span class="label-text font-medium">Only Problem IDs (optional)</span>
-						</label>
-						<input
-							id="dp_only"
-							type="text"
-							name="only"
-							placeholder="A, B, C …"
-							class="input input-bordered w-full"
-						/>
-						<label class="label">
-							<span class="label-text-alt">Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set).</span>
-						</label>
+					<div id="problems-only-fragment">
+						@ProblemsTextInputFragment("only", "Only Problem IDs (optional)", "A, B, C …", "Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set).")
 					</div>
-					<div class="form-control">
-						<label class="label" for="dp_exclude">
-							<span class="label-text font-medium">Exclude Problem IDs (optional)</span>
-						</label>
-						<input
-							id="dp_exclude"
-							type="text"
-							name="exclude"
-							placeholder="X, Y …"
-							class="input input-bordered w-full"
-						/>
+					<div id="problems-exclude-fragment">
+						@ProblemsTextInputFragment("exclude", "Exclude Problem IDs (optional)", "X, Y …", "")
 					</div>
 					<div class="card-actions justify-end pt-2">
 						<button type="submit" class="btn btn-primary">Download</button>
