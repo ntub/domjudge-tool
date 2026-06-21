@@ -52,6 +52,8 @@ func main() {
 	handler.RegisterHistory(mux, store, oStore)
 	handler.RegisterSetPassword(mux, store, desktopRunSetPassword)
 	handler.RegisterSettings(mux, sStore, store)
+	handler.RegisterEmailTools(mux, sStore, oStore,
+		desktopEmailScaffold, desktopEmailValidate, desktopEmailRender, desktopEmailSend)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
