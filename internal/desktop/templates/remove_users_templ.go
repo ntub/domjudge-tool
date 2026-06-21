@@ -150,14 +150,14 @@ func RemoveUsersRun(oplogID int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Remove Progress</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-on-load=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Remove Progress</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/remove-users-teams/%d/stream')", oplogID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/remove_users.templ`, Line: 72, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/remove_users.templ`, Line: 72, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {

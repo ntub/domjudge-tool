@@ -105,7 +105,7 @@ templ DownloadSubmissionsRun(id int64) {
 		</div>
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body space-y-4"
-				data-on-load={ fmt.Sprintf("@get('/download-submissions/%d/stream')", id) }>
+				data-init={ fmt.Sprintf("@get('/download-submissions/%d/stream')", id) }>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
 				<span id="import-count" class="text-sm text-base-content/70">Starting…</span>
 				<div id="import-result"></div>

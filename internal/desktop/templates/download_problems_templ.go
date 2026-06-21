@@ -165,14 +165,14 @@ func DownloadProblemsRun(id int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Problems</h1><a href=\"/download-problems\" class=\"btn btn-ghost btn-sm\">← New Download</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-on-load=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Problems</h1><a href=\"/download-problems\" class=\"btn btn-ghost btn-sm\">← New Download</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/download-problems/%d/stream')", id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_problems.templ`, Line: 91, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_problems.templ`, Line: 91, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {

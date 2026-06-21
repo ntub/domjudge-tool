@@ -51,7 +51,7 @@ templ ImportUsersRun(oplogID int64) {
 		</div>
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body space-y-4"
-				data-on-load={ fmt.Sprintf("@get('/import-users-teams/%d/stream')", oplogID) }>
+				data-init={ fmt.Sprintf("@get('/import-users-teams/%d/stream')", oplogID) }>
 				<div class="flex items-center justify-between">
 					<span class="font-medium">Progress</span>
 					<span id="import-count" class="text-sm text-base-content/60">starting…</span>

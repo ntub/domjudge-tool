@@ -152,14 +152,14 @@ func ImportProblemsRun(id int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Import Problems</h1><a href=\"/import-problems\" class=\"btn btn-ghost btn-sm\">← New Import</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-on-load=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Import Problems</h1><a href=\"/import-problems\" class=\"btn btn-ghost btn-sm\">← New Import</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/import-problems/%d/stream')", id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 85, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/import_problems.templ`, Line: 85, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
