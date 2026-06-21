@@ -57,7 +57,7 @@ func SetPasswordForm(profiles []profile.ServerProfile, flash, flashKind string) 
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/set-password\" class=\"space-y-4\"><div class=\"form-control\"><label class=\"label\" for=\"sp_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"sp_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/set-password\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"sp_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"sp_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/users')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -69,7 +69,7 @@ func SetPasswordForm(profiles []profile.ServerProfile, flash, flashKind string) 
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%d", p.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 27, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 39, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -82,7 +82,7 @@ func SetPasswordForm(profiles []profile.ServerProfile, flash, flashKind string) 
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 27, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 39, Col: 58}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 				if templ_7745c5c3_Err != nil {
@@ -95,7 +95,7 @@ func SetPasswordForm(profiles []profile.ServerProfile, flash, flashKind string) 
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(p.Host)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 27, Col: 70}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 39, Col: 70}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -106,7 +106,15 @@ func SetPasswordForm(profiles []profile.ServerProfile, flash, flashKind string) 
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"sp_username\"><span class=\"label-text font-medium\">Username</span></label> <input id=\"sp_username\" type=\"text\" name=\"username\" placeholder=\"e.g. user1\" class=\"input input-bordered w-full\" required autocomplete=\"off\"></div><div class=\"form-control\"><label class=\"label\" for=\"sp_password\"><span class=\"label-text font-medium\">New Password</span></label> <input id=\"sp_password\" type=\"text\" name=\"password\" placeholder=\"Leave blank to generate automatically\" class=\"input input-bordered w-full font-mono\" autocomplete=\"new-password\"> <label class=\"label\"><span class=\"label-text-alt\">Leave blank to auto-generate a secure password.</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Set Password</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = UsernameInputFragment("e.g. user1", "Select a server profile to load users, or enter the username directly.", "", true).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"form-control\"><label class=\"label\" for=\"sp_password\"><span class=\"label-text font-medium\">New Password</span></label> <input id=\"sp_password\" type=\"text\" name=\"password\" placeholder=\"Leave blank to generate automatically\" class=\"input input-bordered w-full font-mono\" autocomplete=\"new-password\"> <label class=\"label\"><span class=\"label-text-alt\">Leave blank to auto-generate a secure password.</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Set Password</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -153,58 +161,58 @@ func SetPasswordDone(username, password string, generated bool) templ.Component 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Set Password</h1><a href=\"/set-password\" class=\"btn btn-ghost btn-sm\">← Set Another</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\"><div class=\"alert alert-success\"><span>Password updated successfully for <strong>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Set Password</h1><a href=\"/set-password\" class=\"btn btn-ghost btn-sm\">← Set Another</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\"><div class=\"alert alert-success\"><span>Password updated successfully for <strong>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 79, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 78, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</strong>.</span></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</strong>.</span></div><div class=\"form-control\"><label class=\"label\"><span class=\"label-text font-medium\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if generated {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "Generated Password")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "Generated Password")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "Password Set")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "Password Set")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</span></label><div class=\"flex items-center gap-2\"><input type=\"text\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></label><div class=\"flex items-center gap-2\"><input type=\"text\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(password)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 94, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/set_password.templ`, Line: 93, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"input input-bordered w-full font-mono\" readonly></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" class=\"input input-bordered w-full font-mono\" readonly></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if generated {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<label class=\"label\"><span class=\"label-text-alt text-warning\">Copy this password — it will not be shown again.</span></label>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"label\"><span class=\"label-text-alt text-warning\">Copy this password — it will not be shown again.</span></label>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

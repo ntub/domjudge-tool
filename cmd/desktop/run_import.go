@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"time"
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
 	"github.com/ntub/domjudge-tool/internal/client/web/gatewayfactory"
@@ -90,4 +91,11 @@ func profileToConfig(p profile.ServerProfile) *config.DomServerClient {
 		}
 	}
 	return cfg
+}
+
+func derefSecondsDuration(p *float64) time.Duration {
+	if p == nil {
+		return 0
+	}
+	return time.Duration(*p * float64(time.Second))
 }

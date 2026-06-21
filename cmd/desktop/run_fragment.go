@@ -18,7 +18,20 @@ func desktopFetchContests(ctx context.Context, p profile.ServerProfile) ([]model
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		DisableSSL: cfg.DisableSSL,
-		Timeout:    cfg.Timeout,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
 	})
 	return api.Contests.List(ctx)
+}
+
+// desktopFetchUsers is the production UsersFetchFunc.
+func desktopFetchUsers(ctx context.Context, p profile.ServerProfile) ([]model.User, error) {
+	cfg := profileToConfig(p)
+	api := apiv4.New(apiv4.Options{
+		BaseURL:    cfg.Host,
+		Username:   cfg.Username,
+		Password:   cfg.Password,
+		DisableSSL: cfg.DisableSSL,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
+	})
+	return api.Users.List(ctx, apiv4.UsersListOpts{})
 }

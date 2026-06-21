@@ -29,7 +29,7 @@ func desktopRunImportProblems(
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		DisableSSL: cfg.DisableSSL,
-		Timeout:    cfg.Timeout,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
 	})
 
 	if api.Imports == nil {

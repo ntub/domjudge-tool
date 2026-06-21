@@ -155,11 +155,15 @@ func main() {
 		},
 	)
 
-	// API fragment endpoints (nop: return static contests for E2E demo testing).
 	handler.RegisterAPIFragment(mux, pStore, func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
 		return []model.Contest{
 			{ID: "1", ShortName: "demo2024", Name: "Demo Contest 2024"},
 			{ID: "2", ShortName: "test2025", Name: "Test Contest 2025"},
+		}, nil
+	}, func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
+		return []model.User{
+			{ID: "1", Username: "admin", Name: "Administrator"},
+			{ID: "2", Username: "user1", Name: "Demo User 1"},
 		}, nil
 	})
 

@@ -26,7 +26,7 @@ func desktopRunDownloadScoreboard(
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		DisableSSL: cfg.DisableSSL,
-		Timeout:    cfg.Timeout,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
 	})
 
 	header, rows, err := scoreboard.Download(ctx, api, opts.ContestID, opts.ExcludeHidden)

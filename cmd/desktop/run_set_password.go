@@ -28,7 +28,7 @@ func desktopRunSetPassword(
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		DisableSSL: cfg.DisableSSL,
-		Timeout:    cfg.Timeout,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
 	})
 
 	users, err := api.Users.List(ctx, apiv4.UsersListOpts{})

@@ -26,7 +26,7 @@ func desktopRunDownloadSubmissions(
 		Username:   cfg.Username,
 		Password:   cfg.Password,
 		DisableSSL: cfg.DisableSSL,
-		Timeout:    cfg.Timeout,
+		Timeout:    derefSecondsDuration(cfg.Timeout),
 	})
 
 	n, err := submissions.Download(ctx, api, opts.ContestID, submissions.Options{
