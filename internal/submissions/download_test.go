@@ -318,6 +318,47 @@ func TestDownload_CtxCancelled(t *testing.T) {
 	}
 }
 
+func TestDownload_ProblemIDsFilter(t *testing.T) {
+	dst := t.TempDir()
+	zipBody := makeContestZip(t, "src")
+	jtAC := "JT-AC"
+	f := newFixture(t, fakeContest{
+		Teams:          []model.Team{{ID: "1", Name: "alpha"}},
+		Problems:       []model.Problem{{ID: "P1", ShortName: "easy"}, {ID: "P2", ShortName: "hard"}},
+		JudgementTypes: []model.JudgementType{{ID: "JT-AC", Name: "Accepted"}},
+		Submissions: []model.Submission{
+			{ID: "S1", TeamID: "1", ProblemID: "P1"},
+			{ID: "S2", TeamID: "1", ProblemID: "P2"},
+		},
+		Judgements: []model.Judgement{
+			{ID: "J1", SubmissionID: "S1", JudgementTypeID: &jtAC},
+			{ID: "J2", SubmissionID: "S2", JudgementTypeID: &jtAC},
+		},
+		ZipBodyByID: map[string][]byte{"S1": zipBody, "S2": zipBody},
+	})
+	defer f.srv.Close()
+
+	count, err := submissions.Download(context.Background(), f.api, "contestX", submissions.Options{
+		Mode:       2,
+		OutputPath: dst,
+		ProblemIDs: []string{"P1"},
+	})
+	if err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("count = %d, want 1 (only P1 downloaded)", count)
+	}
+	want := filepath.Join(dst, "problem_easy", "team_alpha", "accepted_S1.zip")
+	if _, err := os.Stat(want); err != nil {
+		t.Errorf("expected S1 zip at %s: %v", want, err)
+	}
+	unwanted := filepath.Join(dst, "problem_hard", "team_alpha", "accepted_S2.zip")
+	if _, err := os.Stat(unwanted); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("S2 zip should not exist (filtered out by ProblemIDs); stat err = %v", err)
+	}
+}
+
 func TestDownload_PathPrefix(t *testing.T) {
 	tmp := t.TempDir()
 	dst := filepath.Join(tmp, "mygrading")

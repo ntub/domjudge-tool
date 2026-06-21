@@ -36,6 +36,11 @@ type Options struct {
 	// Mirrors Python `is_extract`.
 	Extract bool
 
+	// ProblemIDs, when non-nil and non-empty, restricts the download to
+	// submissions whose ProblemID matches one of the listed IDs. Empty
+	// (nil or zero-length) means all problems — Python parity default.
+	ProblemIDs []string
+
 	// Reporter is the optional progress sink. Library code never
 	// constructs a Reporter; the CLI root PreRunE is the only
 	// production construct site. Nil is treated as [progress.Nop] so

@@ -10,10 +10,11 @@ import (
 )
 
 const (
-	TypeImportUsersTeams = "import-users-teams"
-	TypeRemoveUsersTeams = "remove-users-teams"
-	TypeDownloadProblems = "download-problems"
-	TypeImportProblems   = "import-problems"
+	TypeImportUsersTeams    = "import-users-teams"
+	TypeRemoveUsersTeams    = "remove-users-teams"
+	TypeDownloadProblems    = "download-problems"
+	TypeImportProblems      = "import-problems"
+	TypeDownloadSubmissions = "download-submissions"
 
 	StatusRunning = "running"
 	StatusDone    = "done"

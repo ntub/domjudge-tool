@@ -44,6 +44,19 @@ func Download(ctx context.Context, api *apiv4.Client, cid string, opts Options) 
 	if err != nil {
 		return 0, fmt.Errorf("submissions: list: %w", err)
 	}
+	if len(opts.ProblemIDs) > 0 {
+		pidSet := make(map[string]struct{}, len(opts.ProblemIDs))
+		for _, id := range opts.ProblemIDs {
+			pidSet[id] = struct{}{}
+		}
+		filtered := make([]model.Submission, 0, len(subs))
+		for i := range subs {
+			if _, ok := pidSet[subs[i].ProblemID]; ok {
+				filtered = append(filtered, subs[i])
+			}
+		}
+		subs = filtered
+	}
 
 	rep := opts.Reporter
 	if rep == nil {

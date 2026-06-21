@@ -43,6 +43,7 @@ func main() {
 	handler.RegisterDownloadProblems(mux, store, oStore, desktopRunDownload, defaultDownloadOutDir())
 	handler.RegisterImportProblems(mux, store, oStore, desktopRunImportProblems)
 	handler.RegisterDownloadScoreboard(mux, store, desktopRunDownloadScoreboard)
+	handler.RegisterDownloadSubmissions(mux, store, oStore, desktopRunDownloadSubmissions, defaultDownloadOutDir())
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
