@@ -54,7 +54,7 @@ func main() {
 	handler.RegisterSettings(mux, sStore, store)
 	handler.RegisterEmailTools(mux, sStore, oStore,
 		desktopEmailScaffold, desktopEmailValidate, desktopEmailRender, desktopEmailSend)
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
 		if err := http.ListenAndServe("127.0.0.1"+port, mux); err != nil {
