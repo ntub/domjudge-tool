@@ -15,7 +15,7 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/download-problems" class="space-y-4">
+				<form method="post" action="/download-problems" class="space-y-4" data-signals={ fmt.Sprintf(`{"outDir": %q}`, defaultOutDir) }>
 					<div class="form-control">
 						<label class="label" for="dp_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
@@ -31,15 +31,24 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 						<label class="label" for="out_dir">
 							<span class="label-text font-medium">Output Directory</span>
 						</label>
-						<input
-							id="out_dir"
-							type="text"
-							name="out_dir"
-							value={ defaultOutDir }
-							placeholder="/path/to/export_problems"
-							class="input input-bordered w-full"
-							required
-						/>
+						<div class="flex gap-2">
+							<input
+								id="out_dir"
+								type="text"
+								name="out_dir"
+								data-bind:out-dir
+								placeholder="/path/to/export_problems"
+								class="input input-bordered grow"
+								required
+							/>
+							<button
+								type="button"
+								class="btn btn-neutral"
+								data-on:click="@get('/api/pick-directory?signal=outDir')"
+							>
+								Browse…
+							</button>
+						</div>
 						<label class="label">
 							<span class="label-text-alt">Absolute path where ZIPs will be saved.</span>
 						</label>

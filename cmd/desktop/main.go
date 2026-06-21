@@ -55,6 +55,7 @@ func main() {
 	handler.RegisterEmailTools(mux, sStore, oStore,
 		desktopEmailScaffold, desktopEmailValidate, desktopEmailRender, desktopEmailSend)
 	handler.RegisterAPIFragment(mux, store, desktopFetchContests, desktopFetchUsers)
+	handler.RegisterPickDirectory(mux, desktopPickDirectory)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	go func() {
