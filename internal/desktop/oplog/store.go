@@ -78,6 +78,20 @@ func (s *Store) List(ctx context.Context) ([]OperationLog, error) {
 	return rows, err
 }
 
+// ListFiltered returns rows filtered by optional opType (empty = all) and
+// profileID (0 = all), ordered newest first.
+func (s *Store) ListFiltered(ctx context.Context, opType string, profileID uint) ([]OperationLog, error) {
+	q := s.db.WithContext(ctx).Order("id desc")
+	if opType != "" {
+		q = q.Where("type = ?", opType)
+	}
+	if profileID > 0 {
+		q = q.Where("profile_id = ?", profileID)
+	}
+	var rows []OperationLog
+	return rows, q.Find(&rows).Error
+}
+
 // FinishOK marks a row as done with a row count and summary JSON.
 func (s *Store) FinishOK(ctx context.Context, id uint, rowCount int, summaryJSON string) error {
 	now := time.Now()

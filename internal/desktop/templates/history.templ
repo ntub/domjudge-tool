@@ -1,0 +1,151 @@
+package templates
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
+)
+
+// HistoryFilter holds the active filter values for the history list.
+type HistoryFilter struct {
+	Type      string
+	ProfileID uint
+}
+
+templ HistoryList(entries []oplog.OperationLog, profileNames map[uint]string, filter HistoryFilter) {
+	@Layout("History") {
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="text-2xl font-bold">Operation History</h1>
+		</div>
+		<div class="card bg-base-100 shadow-sm mb-4">
+			<div class="card-body py-3">
+				<form method="get" action="/history" class="flex flex-wrap gap-3 items-end">
+					<div class="form-control">
+						<label class="label" for="h_type">
+							<span class="label-text">Type</span>
+						</label>
+						<select id="h_type" name="type" class="select select-bordered select-sm">
+							<option value="">— all types —</option>
+							<option value={ oplog.TypeImportUsersTeams } selected?={ filter.Type == oplog.TypeImportUsersTeams }>{ oplog.TypeImportUsersTeams }</option>
+							<option value={ oplog.TypeRemoveUsersTeams } selected?={ filter.Type == oplog.TypeRemoveUsersTeams }>{ oplog.TypeRemoveUsersTeams }</option>
+							<option value={ oplog.TypeDownloadProblems } selected?={ filter.Type == oplog.TypeDownloadProblems }>{ oplog.TypeDownloadProblems }</option>
+							<option value={ oplog.TypeImportProblems } selected?={ filter.Type == oplog.TypeImportProblems }>{ oplog.TypeImportProblems }</option>
+							<option value={ oplog.TypeDownloadSubmissions } selected?={ filter.Type == oplog.TypeDownloadSubmissions }>{ oplog.TypeDownloadSubmissions }</option>
+						</select>
+					</div>
+					<button type="submit" class="btn btn-sm btn-ghost">Filter</button>
+					if filter.Type != "" || filter.ProfileID != 0 {
+						<a href="/history" class="btn btn-sm btn-ghost">Clear</a>
+					}
+				</form>
+			</div>
+		</div>
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-0">
+				if len(entries) == 0 {
+					<p class="text-base-content/60 p-6">No operations recorded yet.</p>
+				} else {
+					<div class="overflow-x-auto">
+						<table class="table table-zebra">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Type</th>
+									<th>Server</th>
+									<th>Status</th>
+									<th>Rows</th>
+									<th>Started</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, e := range entries {
+									<tr>
+										<td class="text-base-content/50 text-xs">{ fmt.Sprintf("%d", e.ID) }</td>
+										<td><span class="badge badge-ghost text-xs font-mono">{ e.Type }</span></td>
+										<td>{ profileNames[e.ProfileID] }</td>
+										<td>@historyStatusBadge(e.Status)</td>
+										<td class="tabular-nums">{ fmt.Sprintf("%d", e.RowCount) }</td>
+										<td class="text-xs text-base-content/70">{ historyFmtTime(e.StartedAt) }</td>
+										<td>
+											<a href={ templ.SafeURL("/history/" + fmt.Sprintf("%d", e.ID)) } class="btn btn-xs btn-ghost">Detail →</a>
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ HistoryDetail(entry oplog.OperationLog, profileName string) {
+	@Layout("History — Detail") {
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="text-2xl font-bold">Operation Detail</h1>
+			<a href="/history" class="btn btn-ghost btn-sm">← History</a>
+		</div>
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body space-y-4">
+				<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+					<dt class="font-semibold text-base-content/70">ID</dt>
+					<dd>{ fmt.Sprintf("%d", entry.ID) }</dd>
+					<dt class="font-semibold text-base-content/70">Type</dt>
+					<dd><span class="badge badge-ghost font-mono">{ entry.Type }</span></dd>
+					<dt class="font-semibold text-base-content/70">Server</dt>
+					<dd>{ profileName }</dd>
+					<dt class="font-semibold text-base-content/70">Status</dt>
+					<dd>@historyStatusBadge(entry.Status)</dd>
+					<dt class="font-semibold text-base-content/70">Rows</dt>
+					<dd>{ fmt.Sprintf("%d", entry.RowCount) }</dd>
+					<dt class="font-semibold text-base-content/70">Started</dt>
+					<dd>{ historyFmtTime(entry.StartedAt) }</dd>
+					if entry.FinishedAt != nil {
+						<dt class="font-semibold text-base-content/70">Finished</dt>
+						<dd>{ historyFmtTime(*entry.FinishedAt) }</dd>
+					}
+					if entry.ErrorMsg != "" {
+						<dt class="font-semibold text-base-content/70">Error</dt>
+						<dd class="text-error">{ entry.ErrorMsg }</dd>
+					}
+				</dl>
+				if entry.SummaryJSON != "" && entry.SummaryJSON != "{}" {
+					<div>
+						<p class="text-sm font-semibold text-base-content/70 mb-1">Summary</p>
+						<pre class="bg-base-200 rounded p-3 text-xs overflow-x-auto">{ entry.SummaryJSON }</pre>
+					</div>
+				}
+				if entry.ParamsJSON != "" && entry.ParamsJSON != "{}" {
+					<div>
+						<p class="text-sm font-semibold text-base-content/70 mb-1">Parameters</p>
+						<pre class="bg-base-200 rounded p-3 text-xs overflow-x-auto">{ entry.ParamsJSON }</pre>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+func historyStatusBadge(status string) templ.Component {
+	class := "badge badge-sm "
+	switch status {
+	case oplog.StatusDone:
+		class += "badge-success"
+	case oplog.StatusError:
+		class += "badge-error"
+	default:
+		class += "badge-warning"
+	}
+	return templ.Raw(`<span class="` + class + `">` + strings.ToUpper(status) + `</span>`)
+}
+
+func historyFmtTime(t time.Time) string {
+	if t.IsZero() {
+		return "—"
+	}
+	return t.Local().Format("2006-01-02 15:04:05")
+}
