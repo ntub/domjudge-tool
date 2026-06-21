@@ -13,6 +13,7 @@ const (
 	TypeImportUsersTeams = "import-users-teams"
 	TypeRemoveUsersTeams = "remove-users-teams"
 	TypeDownloadProblems = "download-problems"
+	TypeImportProblems   = "import-problems"
 
 	StatusRunning = "running"
 	StatusDone    = "done"

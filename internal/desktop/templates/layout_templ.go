@@ -42,7 +42,7 @@ func Layout(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — domjudge-tool</title><link href=\"/static/tailwind.css\" rel=\"stylesheet\"><link href=\"/static/daisyui.css\" rel=\"stylesheet\"><script type=\"module\" src=\"/static/datastar.min.js\"></script></head><body class=\"min-h-screen bg-base-200\"><div class=\"navbar bg-base-100 shadow-sm px-4\"><div class=\"navbar-start\"><a href=\"/\" class=\"text-lg font-bold tracking-tight\">domjudge-tool</a></div><div class=\"navbar-center hidden md:flex\"><ul class=\"menu menu-horizontal px-1 gap-1\"><li><a href=\"/profiles\" class=\"font-medium\">Servers</a></li><li><a href=\"/import-users-teams\">Import Users</a></li><li><a href=\"/remove-users-teams\">Remove Users</a></li><li><a href=\"/export-users\">Export Users</a></li><li><a href=\"/download-problems\">Download Problems</a></li><li><a href=\"/history\">History</a></li><li><a href=\"/settings\">Settings</a></li></ul></div></div><main class=\"container mx-auto px-4 py-8 max-w-5xl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " — domjudge-tool</title><link href=\"/static/tailwind.css\" rel=\"stylesheet\"><link href=\"/static/daisyui.css\" rel=\"stylesheet\"><script type=\"module\" src=\"/static/datastar.min.js\"></script></head><body class=\"min-h-screen bg-base-200\"><div class=\"navbar bg-base-100 shadow-sm px-4\"><div class=\"navbar-start\"><a href=\"/\" class=\"text-lg font-bold tracking-tight\">domjudge-tool</a></div><div class=\"navbar-center hidden md:flex\"><ul class=\"menu menu-horizontal px-1 gap-1\"><li><a href=\"/profiles\" class=\"font-medium\">Servers</a></li><li><a href=\"/import-users-teams\">Import Users</a></li><li><a href=\"/remove-users-teams\">Remove Users</a></li><li><a href=\"/export-users\">Export Users</a></li><li><a href=\"/download-problems\">Download Problems</a></li><li><a href=\"/import-problems\">Import Problems</a></li><li><a href=\"/history\">History</a></li><li><a href=\"/settings\">Settings</a></li></ul></div></div><main class=\"container mx-auto px-4 py-8 max-w-5xl\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -105,7 +105,7 @@ func Flash(kind, message string) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/layout.templ`, Line: 41, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/layout.templ`, Line: 42, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
