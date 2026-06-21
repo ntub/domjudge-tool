@@ -12,6 +12,7 @@ import (
 const (
 	TypeImportUsersTeams = "import-users-teams"
 	TypeRemoveUsersTeams = "remove-users-teams"
+	TypeDownloadProblems = "download-problems"
 
 	StatusRunning = "running"
 	StatusDone    = "done"

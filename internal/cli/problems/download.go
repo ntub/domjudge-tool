@@ -3,17 +3,14 @@ package problems
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ntub/domjudge-tool/internal/cli"
 	"github.com/ntub/domjudge-tool/internal/client/web"
 	"github.com/ntub/domjudge-tool/internal/config"
-	"github.com/ntub/domjudge-tool/internal/model"
-	"github.com/ntub/domjudge-tool/internal/util/pathx"
+	iproblems "github.com/ntub/domjudge-tool/internal/problems"
 )
 
 // defaultFolder mirrors Python `_problems.py:18` — when the operator
@@ -62,6 +59,8 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 			if out == "" {
 				out = defaultFolder
 			}
+			// Create the output dir eagerly — mirrors original behaviour where
+			// the folder is created even when scopedEmpty short-circuits.
 			if err := os.MkdirAll(out, 0o755); err != nil {
 				return fmt.Errorf("download-problems: mkdir %s: %w", out, err)
 			}
@@ -79,28 +78,14 @@ func NewDownloadProblemsCmd(deps Deps) *cobra.Command {
 			if err := gw.Login(ctx); err != nil {
 				return fmt.Errorf("download-problems: login: %w", err)
 			}
-			items, err := gw.GetProblems(ctx, web.ProblemFilter{Exclude: exclude, Only: effectiveOnly})
-			if err != nil {
-				return fmt.Errorf("download-problems: list: %w", err)
-			}
 
 			rep := cli.ReporterFromContext(ctx)
-			rep.Start(len(items), "downloading")
-			defer rep.Finish()
-
-			for _, p := range items {
-				if err := ctx.Err(); err != nil {
-					return fmt.Errorf("download-problems: %w", err)
-				}
-				if p.ExportFilePath == nil || *p.ExportFilePath == "" {
-					continue
-				}
-				if err := writeProblemZip(ctx, gw, out, p); err != nil {
-					return err
-				}
-				rep.Tick()
+			filter := web.ProblemFilter{Exclude: exclude, Only: effectiveOnly}
+			result, err := iproblems.Download(ctx, gw, filter, out, rep)
+			if err != nil {
+				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Processed %d problems.\n", len(items))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Processed %d problems.\n", result.Downloaded+result.Skipped)
 			return nil
 		},
 	}
@@ -128,38 +113,15 @@ func resolveDownloadOnly(
 	if api == nil || api.Problems == nil {
 		return nil, false, fmt.Errorf("download-problems: api problems resource unavailable")
 	}
-	problems, err := api.Problems.List(ctx, *cfg.ContestID)
+	probs, err := api.Problems.List(ctx, *cfg.ContestID)
 	if err != nil {
 		return nil, false, fmt.Errorf("download-problems: contest %s problems: %w", *cfg.ContestID, err)
 	}
-	ids := make([]string, 0, len(problems))
-	for _, p := range problems {
+	ids := make([]string, 0, len(probs))
+	for _, p := range probs {
 		if p.ID != "" {
 			ids = append(ids, p.ID)
 		}
 	}
 	return ids, len(ids) == 0, nil
-}
-
-// writeProblemZip streams gw.Download(*p.ExportFilePath) into a
-// path-safe `${folder}/${p.ID}_${p.Name}.zip`. The caller has already
-// guarded against a nil/empty export path.
-func writeProblemZip(ctx context.Context, gw web.Gateway, folder string, p model.ProblemItem) error {
-	rc, err := gw.Download(ctx, *p.ExportFilePath)
-	if err != nil {
-		return fmt.Errorf("download-problems: download %s: %w", *p.ExportFilePath, err)
-	}
-	defer func() { _ = rc.Close() }()
-
-	filename := pathx.SafeFilename(fmt.Sprintf("%s_%s.zip", p.ID, p.Name))
-	dst := filepath.Join(folder, filename)
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("download-problems: create %s: %w", dst, err)
-	}
-	defer func() { _ = out.Close() }()
-	if _, err := io.Copy(out, rc); err != nil {
-		return fmt.Errorf("download-problems: write %s: %w", dst, err)
-	}
-	return nil
 }
