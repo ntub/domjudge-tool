@@ -46,7 +46,7 @@ func ExportUsersForm(profiles []profile.ServerProfile) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Export Users</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/export-users\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"export_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"export_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/users?field=ids'); @get('/api/fragment/teams?field=team_id')\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Export Users</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/export-users\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"export_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"export_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/export-users-init')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -95,7 +95,7 @@ func ExportUsersForm(profiles []profile.ServerProfile) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"format\"><span class=\"label-text font-medium\">Format</span></label> <select id=\"format\" name=\"format\" class=\"select select-bordered w-full\"><option value=\"csv\">CSV</option> <option value=\"json\">JSON</option></select></div><div id=\"users-ids-fragment\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"format\"><span class=\"label-text font-medium\">Format</span></label> <select id=\"format\" name=\"format\" class=\"select select-bordered w-full\"><option value=\"csv\">CSV</option> <option value=\"json\">JSON</option></select></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -103,15 +103,11 @@ func ExportUsersForm(profiles []profile.ServerProfile) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div><div id=\"team-id-fragment\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = TeamInputFragment(false).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

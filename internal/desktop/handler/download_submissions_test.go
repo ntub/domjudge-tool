@@ -2,11 +2,13 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -74,6 +76,58 @@ func TestDownloadSubmissionsSubmit_RedirectsToRun(t *testing.T) {
 	loc := w.Header().Get("Location")
 	if !strings.HasPrefix(loc, "/download-submissions/") || !strings.HasSuffix(loc, "/run") {
 		t.Errorf("Location=%q, want /download-submissions/{id}/run", loc)
+	}
+}
+
+func TestDownloadSubmissionsSubmit_ModeZero(t *testing.T) {
+	env := newDownloadEnv(t)
+	pid, err := env.profileStore.Create(context.Background(), profile.ServerProfile{
+		Name: "sub-mode", Host: "https://test-station.example.org", Username: "u", Password: "p",
+	})
+	if err != nil {
+		t.Fatalf("create profile: %v", err)
+	}
+
+	mux := handler.New(env.profileStore)
+	handler.RegisterDownloadSubmissions(mux, env.profileStore, env.oplogStore, nil, "")
+
+	form := url.Values{
+		"profile_id": {fmt.Sprintf("%d", pid)},
+		"contest_id": {"1"},
+		"out_dir":    {"/tmp/subs"},
+		"mode":       {"0"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/download-submissions",
+		strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("status=%d, want 303", w.Code)
+	}
+
+	loc := w.Header().Get("Location")
+	if !strings.HasPrefix(loc, "/download-submissions/") || !strings.HasSuffix(loc, "/run") {
+		t.Fatalf("Location=%q, want /download-submissions/{id}/run", loc)
+	}
+	idRaw := strings.TrimSuffix(strings.TrimPrefix(loc, "/download-submissions/"), "/run")
+	id, err := strconv.ParseInt(idRaw, 10, 64)
+	if err != nil {
+		t.Fatalf("location id parse: %v", err)
+	}
+
+	entry, err := env.oplogStore.Get(context.Background(), uint(id))
+	if err != nil {
+		t.Fatalf("get oplog entry: %v", err)
+	}
+
+	var opts handler.DownloadSubmissionsOpts
+	if err := json.Unmarshal([]byte(entry.ParamsJSON), &opts); err != nil {
+		t.Fatalf("unmarshal params: %v", err)
+	}
+	if opts.Mode != 0 {
+		t.Errorf("mode=%d, want 0", opts.Mode)
 	}
 }
 

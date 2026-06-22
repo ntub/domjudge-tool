@@ -126,7 +126,7 @@ func DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, fl
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"form-control\"><label class=\"label\" for=\"ds_out_dir\"><span class=\"label-text font-medium\">Output Directory</span></label><div class=\"flex gap-2\"><input id=\"ds_out_dir\" type=\"text\" name=\"out_dir\" data-bind:out-dir placeholder=\"/path/to/submissions\" class=\"input input-bordered grow\" required> <button type=\"button\" class=\"btn btn-neutral\" data-on:click=\"@get('/api/pick-directory?signal=outDir')\">Browse…</button></div><label class=\"label\"><span class=\"label-text-alt\">Absolute path where submission ZIPs will be saved.</span></label></div><div id=\"problems-problem_ids-fragment\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"form-control\"><label class=\"label\" for=\"ds_out_dir\"><span class=\"label-text font-medium\">Output Directory</span></label><div class=\"flex gap-2\"><input id=\"ds_out_dir\" type=\"text\" name=\"out_dir\" data-bind:out-dir placeholder=\"/path/to/submissions\" class=\"input input-bordered grow\" required> <button type=\"button\" class=\"btn btn-neutral\" data-on:click=\"@get('/api/pick-directory?signal=outDir')\">Browse…</button></div><label class=\"label\"><span class=\"label-text-alt\">Absolute path where submission ZIPs will be saved.</span></label></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -134,7 +134,7 @@ func DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, fl
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><div class=\"form-control\"><label class=\"label\" for=\"ds_mode\"><span class=\"label-text font-medium\">Folder Layout</span></label> <select id=\"ds_mode\" name=\"mode\" class=\"select select-bordered w-full\"><option value=\"2\" selected>Problem-first (problem_X/team_Y)</option> <option value=\"1\">Team-first (team_Y/problem_X)</option> <option value=\"0\">Contest folder (contest_ID)</option></select></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"extract\" id=\"ds_extract\" class=\"checkbox\" checked> <span class=\"label-text\">Extract source files (unzip in place)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"form-control\"><label class=\"label\" for=\"ds_mode\"><span class=\"label-text font-medium\">Folder Layout</span></label> <select id=\"ds_mode\" name=\"mode\" class=\"select select-bordered w-full\"><option value=\"2\" selected>Problem-first (problem_X/team_Y)</option> <option value=\"1\">Team-first (team_Y/problem_X)</option> <option value=\"0\">Contest folder (contest_ID)</option></select></div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"extract\" id=\"ds_extract\" class=\"checkbox\" checked> <span class=\"label-text\">Extract source files (unzip in place)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -188,7 +188,7 @@ func DownloadSubmissionsRun(id int64) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/download-submissions/%d/stream')", id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_submissions.templ`, Line: 105, Col: 74}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_submissions.templ`, Line: 103, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {

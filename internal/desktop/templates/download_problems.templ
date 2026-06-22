@@ -25,7 +25,7 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 							name="profile_id"
 							class="select select-bordered w-full"
 							data-bind:profile-id
-							data-on:change="@get('/api/fragment/problems?field=only') && @get('/api/fragment/problems?field=exclude')"
+							data-on:change="@get('/api/fragment/problems?field=only,exclude')"
 							required
 						>
 							<option value="">— choose a server —</option>
@@ -60,12 +60,8 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 							<span class="label-text-alt">Absolute path where ZIPs will be saved.</span>
 						</label>
 					</div>
-					<div id="problems-only-fragment">
-						@ProblemsTextInputFragment("only", "Only Problem IDs (optional)", "A, B, C …", "Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set).")
-					</div>
-					<div id="problems-exclude-fragment">
-						@ProblemsTextInputFragment("exclude", "Exclude Problem IDs (optional)", "X, Y …", "")
-					</div>
+					@ProblemsTextInputFragment("only", "Only Problem IDs (optional)", "A, B, C …", "Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set).")
+					@ProblemsTextInputFragment("exclude", "Exclude Problem IDs (optional)", "X, Y …", "")
 					<div class="card-actions justify-end pt-2">
 						<button type="submit" class="btn btn-primary">Download</button>
 					</div>

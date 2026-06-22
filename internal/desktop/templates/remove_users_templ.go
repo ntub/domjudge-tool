@@ -54,7 +54,7 @@ func RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string) 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/remove-users-teams\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"remove_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"remove_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/users?field=include'); @get('/api/fragment/users?field=exclude')\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " <div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body\"><form method=\"post\" action=\"/remove-users-teams\" class=\"space-y-4\" data-signals='{\"profileId\": \"\"}'><div class=\"form-control\"><label class=\"label\" for=\"remove_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"remove_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/users?field=include,exclude')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -103,7 +103,7 @@ func RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string) 
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div><div id=\"users-include-fragment\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</select></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -111,15 +111,11 @@ func RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string) 
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><div id=\"users-exclude-fragment\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", "Protected users (admin, judgehost, server account) are always excluded.").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"dry_run\" id=\"dry_run\" class=\"checkbox checkbox-warning\"> <span class=\"label-text font-medium\">Dry-run (preview only, no changes)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-error\">Remove Users &amp; Teams</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"form-control\"><label class=\"label cursor-pointer justify-start gap-3\"><input type=\"checkbox\" name=\"dry_run\" id=\"dry_run\" class=\"checkbox checkbox-warning\"> <span class=\"label-text font-medium\">Dry-run (preview only, no changes)</span></label></div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-error\">Remove Users &amp; Teams</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -166,20 +162,20 @@ func RemoveUsersRun(oplogID int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Remove Progress</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Remove Progress</h1></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/remove-users-teams/%d/stream')", oplogID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/remove_users.templ`, Line: 68, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/remove_users.templ`, Line: 64, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"><div class=\"flex items-center justify-between\"><span class=\"font-medium\">Progress</span> <span id=\"remove-count\" class=\"text-sm text-base-content/60\">starting…</span></div><progress id=\"remove-progress\" class=\"progress progress-error w-full\" value=\"0\" max=\"100\"></progress><div id=\"remove-result\"></div></div></div><div class=\"mt-4\"><a href=\"/remove-users-teams\" class=\"btn btn-ghost btn-sm\">← Back</a></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"><div class=\"flex items-center justify-between\"><span class=\"font-medium\">Progress</span> <span id=\"remove-count\" class=\"text-sm text-base-content/60\">starting…</span></div><progress id=\"remove-progress\" class=\"progress progress-error w-full\" value=\"0\" max=\"100\"></progress><div id=\"remove-result\"></div></div></div><div class=\"mt-4\"><a href=\"/remove-users-teams\" class=\"btn btn-ghost btn-sm\">← Back</a></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

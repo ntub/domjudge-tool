@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/starfederation/datastar-go/datastar"
 
@@ -43,6 +44,7 @@ func RegisterAPIFragment(
 	mux.HandleFunc("GET /api/fragment/users", fragmentUsers(store, fetchUsers))
 	mux.HandleFunc("GET /api/fragment/problems", fragmentProblems(store, fetchProblems))
 	mux.HandleFunc("GET /api/fragment/teams", fragmentTeams(store, fetchTeams))
+	mux.HandleFunc("GET /api/fragment/export-users-init", fragmentExportUsersInit(store, fetchUsers, fetchTeams))
 }
 
 // contestsSignals holds the subset of Datastar signals we need.
@@ -103,12 +105,39 @@ type usersSignals struct {
 	ProfileId string `json:"profileId"` //nolint:revive // camelCase matches Datastar signal name
 }
 
+// userNameItems builds SelectOption slices for username-keyed fields (include/exclude).
+func userNameItems(users []model.User) []templates.SelectOption {
+	items := make([]templates.SelectOption, 0, len(users))
+	for i := range users {
+		u := &users[i]
+		label := u.Username
+		if u.Name != "" {
+			label = fmt.Sprintf("%s (%s)", u.Username, u.Name)
+		}
+		items = append(items, templates.SelectOption{Label: label, Value: u.Username})
+	}
+	return items
+}
+
+// userIDItems builds SelectOption slices for ID-keyed fields (ids).
+func userIDItems(users []model.User) []templates.SelectOption {
+	items := make([]templates.SelectOption, 0, len(users))
+	for i := range users {
+		u := &users[i]
+		items = append(items, templates.SelectOption{
+			Label: fmt.Sprintf("%s (%s)", u.Username, u.ID),
+			Value: u.ID,
+		})
+	}
+	return items
+}
+
 func fragmentUsers(store *profile.Store, fetch UsersFetchFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sse := datastar.NewSSE(w, r)
 		required := r.URL.Query().Get("required") == "true"
 		field := r.URL.Query().Get("field")
-		isMulti := field == "include" || field == "exclude" || field == "ids"
+		isMulti := field == "include" || field == "exclude" || field == "ids" || field == "include,exclude"
 
 		var sigs usersSignals
 		if err := datastar.ReadSignals(r, &sigs); err != nil {
@@ -118,6 +147,22 @@ func fragmentUsers(store *profile.Store, fetch UsersFetchFunc) http.HandlerFunc 
 		// Fall back to direct query param when signals are absent (e.g. direct browser hit).
 		if sigs.ProfileId == "" {
 			sigs.ProfileId = r.URL.Query().Get("profile_id")
+		}
+
+		// patchIncludeExcludeFallback patches both include and exclude with text inputs.
+		patchIncludeExcludeFallback := func(errMsg string) {
+			includeHelp := "Comma-separated. Leave blank to delete all non-protected users."
+			excludeHelp := "Protected users (admin, judgehost, server account) are always excluded."
+			if errMsg != "" {
+				includeHelp = errMsg + " Enter usernames manually."
+				excludeHelp = errMsg + " Enter usernames manually."
+			}
+			_ = sse.PatchElementTempl(
+				templates.UsersTextInputFragment("include", "Include (usernames to delete)", "user1, user2, … (blank = all non-protected)", includeHelp),
+			)
+			_ = sse.PatchElementTempl(
+				templates.UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", excludeHelp),
+			)
 		}
 
 		fallback := func(errMsg string) {
@@ -131,6 +176,11 @@ func fragmentUsers(store *profile.Store, fetch UsersFetchFunc) http.HandlerFunc 
 				_ = sse.PatchElementTempl(
 					templates.UsernameInputFragment("e.g. user1", msg, "", required),
 				)
+				return
+			}
+
+			if field == "include,exclude" {
+				patchIncludeExcludeFallback(errMsg)
 				return
 			}
 
@@ -183,52 +233,29 @@ func fragmentUsers(store *profile.Store, fetch UsersFetchFunc) http.HandlerFunc 
 		}
 
 		if isMulti {
-			var items []templates.SelectOption
-			var fragmentID string
+			if field == "include,exclude" {
+				nameItems := userNameItems(users)
+				_ = sse.PatchElementTempl(
+					templates.TagMultiSelect("users-include-fragment", "include", "Include (usernames to delete)", nameItems, "Leave blank to delete all non-protected users."),
+				)
+				_ = sse.PatchElementTempl(
+					templates.TagMultiSelect("users-exclude-fragment", "exclude", "Exclude (usernames to keep)", nameItems, "Protected users (admin, judgehost, server account) are always excluded."),
+				)
+				return
+			}
+
 			switch field {
 			case "include":
-				fragmentID = "users-include-fragment"
-				for i := range users {
-					u := &users[i]
-					label := u.Username
-					if u.Name != "" {
-						label = fmt.Sprintf("%s (%s)", u.Username, u.Name)
-					}
-					items = append(items, templates.SelectOption{
-						Label: label,
-						Value: u.Username,
-					})
-				}
 				_ = sse.PatchElementTempl(
-					templates.TagMultiSelect(fragmentID, "include", "Include (usernames to delete)", items, "Select one or more users to delete. Hold Ctrl/Cmd to multi-select. Leave blank to delete all non-protected users."),
+					templates.TagMultiSelect("users-include-fragment", "include", "Include (usernames to delete)", userNameItems(users), "Leave blank to delete all non-protected users."),
 				)
 			case "exclude":
-				fragmentID = "users-exclude-fragment"
-				for i := range users {
-					u := &users[i]
-					label := u.Username
-					if u.Name != "" {
-						label = fmt.Sprintf("%s (%s)", u.Username, u.Name)
-					}
-					items = append(items, templates.SelectOption{
-						Label: label,
-						Value: u.Username,
-					})
-				}
 				_ = sse.PatchElementTempl(
-					templates.TagMultiSelect(fragmentID, "exclude", "Exclude (usernames to keep)", items, "Protected users (admin, judgehost, server account) are always excluded."),
+					templates.TagMultiSelect("users-exclude-fragment", "exclude", "Exclude (usernames to keep)", userNameItems(users), "Protected users (admin, judgehost, server account) are always excluded."),
 				)
 			case "ids":
-				fragmentID = "users-ids-fragment"
-				for i := range users {
-					u := &users[i]
-					items = append(items, templates.SelectOption{
-						Label: fmt.Sprintf("%s (%s)", u.Username, u.ID),
-						Value: u.ID,
-					})
-				}
 				_ = sse.PatchElementTempl(
-					templates.TagMultiSelect(fragmentID, "ids", "Filter by User IDs (optional)", items, "Select user IDs. Hold Ctrl/Cmd to multi-select. Leave blank to export all."),
+					templates.TagMultiSelect("users-ids-fragment", "ids", "Filter by User IDs (optional)", userIDItems(users), "Leave blank to export all."),
 				)
 			}
 			return
@@ -240,42 +267,120 @@ func fragmentUsers(store *profile.Store, fetch UsersFetchFunc) http.HandlerFunc 
 	}
 }
 
+// fragmentExportUsersInit handles GET /api/fragment/export-users-init.
+// It fetches users and teams in a single SSE response, patching both
+// #users-ids-fragment and #team-id-fragment so the export users page
+// only needs one @get() action (avoiding Datastar's per-element abort).
+func fragmentExportUsersInit(store *profile.Store, fetchUsers UsersFetchFunc, fetchTeams TeamsFetchFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sse := datastar.NewSSE(w, r)
+
+		var sigs usersSignals
+		if err := datastar.ReadSignals(r, &sigs); err != nil {
+			slog.Debug("fragment/export-users-init: read signals", "err", err)
+		}
+		if sigs.ProfileId == "" {
+			sigs.ProfileId = r.URL.Query().Get("profile_id")
+		}
+
+		usersFallback := func(errMsg string) {
+			help := "Comma-separated user IDs. Leave blank to export all."
+			if errMsg != "" {
+				help = errMsg + " Enter user IDs manually."
+			}
+			_ = sse.PatchElementTempl(
+				templates.UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", help),
+			)
+		}
+		teamsFallback := func() {
+			_ = sse.PatchElementTempl(templates.TeamInputFragment(false))
+		}
+
+		profileID, err := strconv.ParseInt(sigs.ProfileId, 10, 64)
+		if err != nil || profileID <= 0 {
+			usersFallback("")
+			teamsFallback()
+			return
+		}
+
+		p, err := store.Get(r.Context(), profileID)
+		if err != nil {
+			slog.Debug("fragment/export-users-init: get profile", "id", profileID, "err", err)
+			usersFallback("Profile not found.")
+			teamsFallback()
+			return
+		}
+
+		// Patch users fragment.
+		if users, err := fetchUsers(r.Context(), p); err != nil {
+			slog.Warn("fragment/export-users-init: fetch users", "profile", p.Name, "err", err)
+			usersFallback("Could not load users from the server.")
+		} else {
+			_ = sse.PatchElementTempl(
+				templates.TagMultiSelect("users-ids-fragment", "ids", "Filter by User IDs (optional)", userIDItems(users), "Leave blank to export all."),
+			)
+		}
+
+		// Patch teams fragment.
+		if teams, err := fetchTeams(r.Context(), p); err != nil {
+			slog.Warn("fragment/export-users-init: fetch teams", "profile", p.Name, "err", err)
+			teamsFallback()
+		} else {
+			_ = sse.PatchElementTempl(templates.TeamSelectFragment(teams, false))
+		}
+	}
+}
+
 // problemsSignals holds the subset of Datastar signals we need for problems.
 type problemsSignals struct {
 	ProfileId string `json:"profileId"` //nolint:revive // camelCase matches Datastar signal name
 	ContestId string `json:"contestId"` //nolint:revive // camelCase matches Datastar signal name
 }
 
+type problemFieldMeta struct {
+	name, label, placeholder, helpText, fragmentID string
+}
+
+// problemFieldsByName returns the metadata for the given problem field name.
+// Returns (meta, true) on success, (zero, false) for unknown field names.
+func problemFieldByName(name string) (problemFieldMeta, bool) {
+	switch name {
+	case "problem_ids":
+		return problemFieldMeta{"problem_ids", "Problem IDs (optional)", "P1, P2 …", "Select a contest to load problems.", "problems-problem_ids-fragment"}, true
+	case "only":
+		return problemFieldMeta{"only", "Only Problem IDs (optional)", "A, B, C …", "Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set).", "problems-only-fragment"}, true
+	case "exclude":
+		return problemFieldMeta{"exclude", "Exclude Problem IDs (optional)", "X, Y …", "", "problems-exclude-fragment"}, true
+	}
+	return problemFieldMeta{}, false
+}
+
+// parseProblemFields parses a comma-separated list of field names, returning
+// metadata for each. Returns (nil, false) if any name is unknown.
+func parseProblemFields(raw string) ([]problemFieldMeta, bool) {
+	parts := strings.Split(raw, ",")
+	out := make([]problemFieldMeta, 0, len(parts))
+	for _, p := range parts {
+		m, ok := problemFieldByName(strings.TrimSpace(p))
+		if !ok {
+			return nil, false
+		}
+		out = append(out, m)
+	}
+	return out, true
+}
+
 func fragmentProblems(store *profile.Store, fetch ProblemsFetchFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sse := datastar.NewSSE(w, r)
-		field := r.URL.Query().Get("field")
-
-		var fieldName, label, placeholder, helpText, fragmentID string
-		switch field {
-		case "problem_ids":
-			fieldName = "problem_ids"
-			label = "Problem IDs (optional)"
-			placeholder = "P1, P2 …"
-			helpText = "Select a contest to load problems."
-			fragmentID = "problems-problem_ids-fragment"
-		case "only":
-			fieldName = "only"
-			label = "Only Problem IDs (optional)"
-			placeholder = "A, B, C …"
-			helpText = "Comma-separated problem IDs to include. Leave blank to download all (uses profile contest ID if set)."
-			fragmentID = "problems-only-fragment"
-		case "exclude":
-			fieldName = "exclude"
-			label = "Exclude Problem IDs (optional)"
-			placeholder = "X, Y …"
-			helpText = ""
-			fragmentID = "problems-exclude-fragment"
-		default:
-			slog.Debug("fragment/problems: invalid field", "field", field)
+		// Validate field(s) BEFORE starting the SSE stream so http.Error still works.
+		fields, ok := parseProblemFields(r.URL.Query().Get("field"))
+		if !ok {
+			slog.Debug("fragment/problems: invalid field", "field", r.URL.Query().Get("field"))
 			http.Error(w, "invalid field", http.StatusBadRequest)
 			return
 		}
+
+		sse := datastar.NewSSE(w, r)
 
 		var sigs problemsSignals
 		if err := datastar.ReadSignals(r, &sigs); err != nil {
@@ -290,20 +395,29 @@ func fragmentProblems(store *profile.Store, fetch ProblemsFetchFunc) http.Handle
 			sigs.ContestId = r.URL.Query().Get("contest_id")
 		}
 
+		// fallback patches all configured fields with text input fragments.
+		fallback := func(errMsg string) {
+			for _, f := range fields {
+				help := f.helpText
+				if errMsg != "" {
+					help = errMsg
+				}
+				_ = sse.PatchElementTempl(
+					templates.ProblemsTextInputFragment(f.name, f.label, f.placeholder, help),
+				)
+			}
+		}
+
 		profileID, err := strconv.ParseInt(sigs.ProfileId, 10, 64)
 		if err != nil || profileID <= 0 {
-			_ = sse.PatchElementTempl(
-				templates.ProblemsTextInputFragment(fieldName, label, placeholder, helpText),
-			)
+			fallback("")
 			return
 		}
 
 		p, err := store.Get(r.Context(), profileID)
 		if err != nil {
 			slog.Debug("fragment/problems: get profile", "id", profileID, "err", err)
-			_ = sse.PatchElementTempl(
-				templates.ProblemsTextInputFragment(fieldName, label, placeholder, "Profile not found."),
-			)
+			fallback("Profile not found.")
 			return
 		}
 
@@ -313,19 +427,14 @@ func fragmentProblems(store *profile.Store, fetch ProblemsFetchFunc) http.Handle
 		}
 
 		if contestID == "" {
-			_ = sse.PatchElementTempl(
-				templates.ProblemsTextInputFragment(fieldName, label, placeholder, helpText),
-			)
+			fallback("")
 			return
 		}
 
 		problems, err := fetch(r.Context(), p, contestID)
 		if err != nil {
 			slog.Warn("fragment/problems: fetch problems", "profile", p.Name, "contest", contestID, "err", err)
-			warningMsg := "Could not load problems from the server: " + err.Error()
-			_ = sse.PatchElementTempl(
-				templates.ProblemsTextInputFragment(fieldName, label, placeholder, warningMsg),
-			)
+			fallback("Could not load problems from the server: " + err.Error())
 			return
 		}
 
@@ -348,9 +457,11 @@ func fragmentProblems(store *profile.Store, fetch ProblemsFetchFunc) http.Handle
 			}
 		}
 
-		_ = sse.PatchElementTempl(
-			templates.TagMultiSelect(fragmentID, fieldName, label, options, ""),
-		)
+		for _, f := range fields {
+			_ = sse.PatchElementTempl(
+				templates.TagMultiSelect(f.fragmentID, f.name, f.label, options, ""),
+			)
+		}
 	}
 }
 

@@ -50,11 +50,13 @@ func main() {
 	}
 
 	// Seed one demo profile so dropdowns are non-empty.
+	cid := "1"
 	_, err = pStore.Create(context.Background(), profile.ServerProfile{
-		Name:     "Demo Server",
-		Host:     "test-station.example.org",
-		Username: "admin",
-		Password: "secret",
+		Name:      "Demo Server",
+		Host:      "test-station.example.org",
+		Username:  "admin",
+		Password:  "secret",
+		ContestID: &cid,
 	})
 	if err != nil {
 		log.Fatalf("seed profile: %v", err)
@@ -114,7 +116,7 @@ func main() {
 	handler.RegisterDownloadScoreboard(mux, pStore, func(
 		_ context.Context, _ profile.ServerProfile, _ handler.DownloadScoreboardOpts, w io.Writer,
 	) error {
-		_, _ = io.WriteString(w, `[{"rank":1,"team":"Team A","score":100}]`)
+		_, _ = io.WriteString(w, "Rank,Team,Score\r\n1,Team A,100\r\n")
 		return nil
 	})
 

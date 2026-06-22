@@ -28,7 +28,7 @@ templ RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string)
 							name="profile_id"
 							class="select select-bordered w-full"
 							data-bind:profile-id
-							data-on:change="@get('/api/fragment/users?field=include'); @get('/api/fragment/users?field=exclude')"
+							data-on:change="@get('/api/fragment/users?field=include,exclude')"
 							required
 						>
 							<option value="">— choose a server —</option>
@@ -37,12 +37,8 @@ templ RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string)
 							}
 						</select>
 					</div>
-					<div id="users-include-fragment">
-						@UsersTextInputFragment("include", "Include (usernames to delete)", "user1, user2, … (blank = all non-protected)", "Comma-separated. Leave blank to delete all non-protected users.")
-					</div>
-					<div id="users-exclude-fragment">
-						@UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", "Protected users (admin, judgehost, server account) are always excluded.")
-					</div>
+					@UsersTextInputFragment("include", "Include (usernames to delete)", "user1, user2, … (blank = all non-protected)", "Comma-separated. Leave blank to delete all non-protected users.")
+					@UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", "Protected users (admin, judgehost, server account) are always excluded.")
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">
 							<input type="checkbox" name="dry_run" id="dry_run" class="checkbox checkbox-warning"/>

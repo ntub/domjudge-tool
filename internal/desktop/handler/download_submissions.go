@@ -94,7 +94,7 @@ func downloadSubmissionsSubmit(profileStore *profile.Store, oplogStore *oplog.St
 		}
 
 		mode := 2
-		if m, err := strconv.Atoi(r.FormValue("mode")); err == nil && m > 0 {
+		if m, err := strconv.Atoi(r.FormValue("mode")); err == nil && m >= 0 && m <= 2 {
 			mode = m
 		}
 

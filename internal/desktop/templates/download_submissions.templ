@@ -66,9 +66,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 							<span class="label-text-alt">Absolute path where submission ZIPs will be saved.</span>
 						</label>
 					</div>
-					<div id="problems-problem_ids-fragment">
-						@ProblemsTextInputFragment("problem_ids", "Problem IDs (optional)", "P1, P2 …", "Select a contest to load problems.")
-					</div>
+					@ProblemsTextInputFragment("problem_ids", "Problem IDs (optional)", "P1, P2 …", "Select a contest to load problems.")
 					<div class="form-control">
 						<label class="label" for="ds_mode">
 							<span class="label-text font-medium">Folder Layout</span>

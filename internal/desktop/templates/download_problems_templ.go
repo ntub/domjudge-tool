@@ -69,7 +69,7 @@ func DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flash
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"form-control\"><label class=\"label\" for=\"dp_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"dp_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/problems?field=only') && @get('/api/fragment/problems?field=exclude')\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"form-control\"><label class=\"label\" for=\"dp_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"dp_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/problems?field=only,exclude')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -118,7 +118,7 @@ func DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flash
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"out_dir\"><span class=\"label-text font-medium\">Output Directory</span></label><div class=\"flex gap-2\"><input id=\"out_dir\" type=\"text\" name=\"out_dir\" data-bind:out-dir placeholder=\"/path/to/export_problems\" class=\"input input-bordered grow\" required> <button type=\"button\" class=\"btn btn-neutral\" data-on:click=\"@get('/api/pick-directory?signal=outDir')\">Browse…</button></div><label class=\"label\"><span class=\"label-text-alt\">Absolute path where ZIPs will be saved.</span></label></div><div id=\"problems-only-fragment\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</select></div><div class=\"form-control\"><label class=\"label\" for=\"out_dir\"><span class=\"label-text font-medium\">Output Directory</span></label><div class=\"flex gap-2\"><input id=\"out_dir\" type=\"text\" name=\"out_dir\" data-bind:out-dir placeholder=\"/path/to/export_problems\" class=\"input input-bordered grow\" required> <button type=\"button\" class=\"btn btn-neutral\" data-on:click=\"@get('/api/pick-directory?signal=outDir')\">Browse…</button></div><label class=\"label\"><span class=\"label-text-alt\">Absolute path where ZIPs will be saved.</span></label></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -126,15 +126,11 @@ func DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flash
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div><div id=\"problems-exclude-fragment\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
 			templ_7745c5c3_Err = ProblemsTextInputFragment("exclude", "Exclude Problem IDs (optional)", "X, Y …", "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div><div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<div class=\"card-actions justify-end pt-2\"><button type=\"submit\" class=\"btn btn-primary\">Download</button></div></form></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -181,20 +177,20 @@ func DownloadProblemsRun(id int64) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Problems</h1><a href=\"/download-problems\" class=\"btn btn-ghost btn-sm\">← New Download</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex items-center justify-between mb-6\"><h1 class=\"text-2xl font-bold\">Download Problems</h1><a href=\"/download-problems\" class=\"btn btn-ghost btn-sm\">← New Download</a></div><div class=\"card bg-base-100 shadow-sm\"><div class=\"card-body space-y-4\" data-init=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("@get('/download-problems/%d/stream')", id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_problems.templ`, Line: 86, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/download_problems.templ`, Line: 82, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><progress id=\"import-progress\" class=\"progress progress-primary w-full\" value=\"0\" max=\"100\"></progress> <span id=\"import-count\" class=\"text-sm text-base-content/70\">Starting…</span><div id=\"import-result\"></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"><progress id=\"import-progress\" class=\"progress progress-primary w-full\" value=\"0\" max=\"100\"></progress> <span id=\"import-count\" class=\"text-sm text-base-content/70\">Starting…</span><div id=\"import-result\"></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

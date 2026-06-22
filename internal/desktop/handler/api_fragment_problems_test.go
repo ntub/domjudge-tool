@@ -153,3 +153,33 @@ func TestFragmentProblems_Success_ReturnsTagMultiSelect(t *testing.T) {
 		t.Error("body should contain helper script reference")
 	}
 }
+
+func TestFragmentProblems_InvalidField_Returns400(t *testing.T) {
+	h := newFragmentHandler(t, nil, nil, nil, nil)
+	rec := getProblemsFragment(t, h, "", "", "bogus")
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", rec.Code)
+	}
+}
+
+func TestFragmentProblems_CombinedFields_PatchesBothFragments(t *testing.T) {
+	fetch := func(_ context.Context, _ profile.ServerProfile, _ string) ([]model.Problem, error) {
+		return []model.Problem{
+			{ID: "1", Label: "A", Name: "HelloWorld"},
+		}, nil
+	}
+	h := newFragmentHandler(t, nil, nil, fetch, nil)
+	rec := getProblemsFragment(t, h, "1", "2", "only,exclude")
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "problems-only-fragment") {
+		t.Error("body should contain only fragment ID")
+	}
+	if !strings.Contains(body, "problems-exclude-fragment") {
+		t.Error("body should contain exclude fragment ID")
+	}
+}

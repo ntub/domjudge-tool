@@ -424,3 +424,86 @@ func TestFragmentTeams_ErrorFallback(t *testing.T) {
 		t.Error("body should contain text input fallback")
 	}
 }
+
+func TestFragmentUsers_CombinedIncludeExclude_PatchesBothFragments(t *testing.T) {
+	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
+		return []model.User{
+			{ID: "1", Username: "userA", Name: "User Alice"},
+		}, nil
+	}
+	h := newFragmentHandler(t, nil, fetch, nil, nil)
+	rec := getUserFragmentWithField(t, h, "1", "include,exclude")
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `id="users-include-fragment"`) {
+		t.Error("body should contain users-include-fragment")
+	}
+	if !strings.Contains(body, `id="users-exclude-fragment"`) {
+		t.Error("body should contain users-exclude-fragment")
+	}
+	if !strings.Contains(body, "userA (User Alice)") {
+		t.Error("body should contain option label")
+	}
+}
+
+func getExportUsersInitFragment(t *testing.T, h http.Handler, profileID string) *httptest.ResponseRecorder {
+	t.Helper()
+	target := "/api/fragment/export-users-init"
+	if profileID != "" {
+		target += "?profile_id=" + profileID
+	}
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestFragmentExportUsersInit_Success_PatchesBothFragments(t *testing.T) {
+	fetchUsers := func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
+		return []model.User{{ID: "1", Username: "admin", Name: "Admin"}}, nil
+	}
+	fetchTeams := func(_ context.Context, _ profile.ServerProfile) ([]model.Team, error) {
+		return []model.Team{{ID: "10", Name: "Team A"}}, nil
+	}
+	h := newFragmentHandler(t, nil, fetchUsers, nil, fetchTeams)
+	rec := getExportUsersInitFragment(t, h, "1")
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `id="users-ids-fragment"`) {
+		t.Error("body should contain users-ids-fragment")
+	}
+	if !strings.Contains(body, `id="team-id-fragment"`) {
+		t.Error("body should contain team-id-fragment")
+	}
+	if !strings.Contains(body, "admin (1)") {
+		t.Error("body should contain user option label")
+	}
+	if !strings.Contains(body, "Team A (10)") {
+		t.Error("body should contain team option label")
+	}
+}
+
+func TestFragmentExportUsersInit_NoProfile_ReturnsBothFallbacks(t *testing.T) {
+	h := newFragmentHandler(t, nil, nil, nil, nil)
+	rec := getExportUsersInitFragment(t, h, "")
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `id="users-ids-fragment"`) {
+		t.Error("body should contain users-ids-fragment fallback")
+	}
+	if !strings.Contains(body, `id="team-id-fragment"`) {
+		t.Error("body should contain team-id-fragment fallback")
+	}
+	if !strings.Contains(body, `type="text"`) {
+		t.Error("body should contain text input fallbacks")
+	}
+}

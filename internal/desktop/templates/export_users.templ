@@ -27,7 +27,7 @@ templ ExportUsersForm(profiles []profile.ServerProfile) {
 							name="profile_id"
 							class="select select-bordered w-full"
 							data-bind:profile-id
-							data-on:change="@get('/api/fragment/users?field=ids'); @get('/api/fragment/teams?field=team_id')"
+							data-on:change="@get('/api/fragment/export-users-init')"
 							required
 						>
 							<option value="">— choose a server —</option>
@@ -45,12 +45,8 @@ templ ExportUsersForm(profiles []profile.ServerProfile) {
 							<option value="json">JSON</option>
 						</select>
 					</div>
-					<div id="users-ids-fragment">
-						@UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", "Comma-separated user IDs. Leave blank to export all.")
-					</div>
-					<div id="team-id-fragment">
-						@TeamInputFragment(false)
-					</div>
+					@UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", "Comma-separated user IDs. Leave blank to export all.")
+					@TeamInputFragment(false)
 					<div class="card-actions justify-end pt-2">
 						<button type="submit" class="btn btn-primary">Download</button>
 					</div>
