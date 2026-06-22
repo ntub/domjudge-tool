@@ -30,7 +30,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 							name="profile_id"
 							class="select select-bordered w-full"
 							data-bind:profile-id
-							data-on:change="@get('/api/fragment/contests?required=true')"
+							data-on:change="@get('/api/fragment/contests?required=true&follow_problems=true')"
 							required
 						>
 							<option value="">— choose a server —</option>

@@ -56,6 +56,7 @@ func fragmentContests(store *profile.Store, fetch ContestsFetchFunc) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		sse := datastar.NewSSE(w, r)
 		required := r.URL.Query().Get("required") == "true"
+		followProblems := r.URL.Query().Get("follow_problems") == "true"
 
 		var sigs contestsSignals
 		if err := datastar.ReadSignals(r, &sigs); err != nil {
@@ -95,7 +96,7 @@ func fragmentContests(store *profile.Store, fetch ContestsFetchFunc) http.Handle
 		}
 
 		_ = sse.PatchElementTempl(
-			templates.ContestSelectFragment(contests, p.ContestID, required),
+			templates.ContestSelectFragment(contests, p.ContestID, required, followProblems),
 		)
 	}
 }

@@ -6,9 +6,10 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-// ContestSelectFragment renders the contest picker dropped into #contest-fragment
-// by an SSE response when the profile select changes.
-templ ContestSelectFragment(contests []model.Contest, defaultID *string, required bool) {
+// ContestSelectFragment renders the contest picker dropped into #contest-fragment.
+// When followProblems is true, changing or loading the select also patches the
+// problems-problem_ids-fragment (only used on the Download Submissions screen).
+templ ContestSelectFragment(contests []model.Contest, defaultID *string, required bool, followProblems bool) {
 	<div id="contest-fragment">
 		<div class="form-control">
 			<label class="label" for="frag_contest_id">
@@ -19,7 +20,10 @@ templ ContestSelectFragment(contests []model.Contest, defaultID *string, require
 				name="contest_id"
 				class="select select-bordered w-full"
 				data-bind:contest-id
-				data-on:change="@get('/api/fragment/problems?field=problem_ids')"
+				if followProblems {
+					data-on:change="@get('/api/fragment/problems?field=problem_ids')"
+					data-on:load="@get('/api/fragment/problems?field=problem_ids')"
+				}
 				if required { required }
 			>
 				<option value="">— select a contest —</option>

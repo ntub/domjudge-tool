@@ -69,7 +69,7 @@ func DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, fl
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"form-control\"><label class=\"label\" for=\"ds_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ds_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/contests?required=true')\" required><option value=\"\">— choose a server —</option> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><div class=\"form-control\"><label class=\"label\" for=\"ds_profile_id\"><span class=\"label-text font-medium\">Server Profile</span></label> <select id=\"ds_profile_id\" name=\"profile_id\" class=\"select select-bordered w-full\" data-bind:profile-id data-on:change=\"@get('/api/fragment/contests?required=true&follow_problems=true')\" required><option value=\"\">— choose a server —</option> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -46,9 +46,21 @@ func newFragmentHandler(t *testing.T, fetchContests handler.ContestsFetchFunc, f
 
 func getContestFragment(t *testing.T, h http.Handler, profileID string) *httptest.ResponseRecorder {
 	t.Helper()
+	return getContestFragmentOpts(t, h, profileID, false)
+}
+
+func getContestFragmentOpts(t *testing.T, h http.Handler, profileID string, followProblems bool) *httptest.ResponseRecorder {
+	t.Helper()
 	target := "/api/fragment/contests"
+	var params []string
 	if profileID != "" {
-		target += "?profile_id=" + profileID
+		params = append(params, "profile_id="+profileID)
+	}
+	if followProblems {
+		params = append(params, "follow_problems=true")
+	}
+	if len(params) > 0 {
+		target += "?" + strings.Join(params, "&")
 	}
 	req := httptest.NewRequest(http.MethodGet, target, nil)
 	rec := httptest.NewRecorder()
@@ -189,6 +201,38 @@ func TestFragmentContests_DefaultContestPreselected(t *testing.T) {
 	// The option for ID "1" should have selected attribute.
 	if !strings.Contains(body, `selected`) {
 		t.Error("body should contain selected option for profile default contest")
+	}
+}
+
+func TestFragmentContests_WithoutFollowProblems_NoProblemsHandlers(t *testing.T) {
+	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
+		return []model.Contest{{ID: "1", ShortName: "icpc2024", Name: "ICPC 2024"}}, nil
+	}
+	h := newFragmentHandler(t, fetch, nil, nil, nil)
+	rec := getContestFragment(t, h, "1")
+
+	body := rec.Body.String()
+	if strings.Contains(body, "api/fragment/problems") {
+		t.Error("body should NOT contain problems URL when follow_problems is false")
+	}
+}
+
+func TestFragmentContests_WithFollowProblems_HasProblemsHandlers(t *testing.T) {
+	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.Contest, error) {
+		return []model.Contest{{ID: "1", ShortName: "icpc2024", Name: "ICPC 2024"}}, nil
+	}
+	h := newFragmentHandler(t, fetch, nil, nil, nil)
+	rec := getContestFragmentOpts(t, h, "1", true)
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "api/fragment/problems") {
+		t.Error("body should contain problems URL when follow_problems=true")
+	}
+	if !strings.Contains(body, "data-on:load") {
+		t.Error("body should contain data-on:load for auto-load on inject (BUG-4 fix)")
+	}
+	if !strings.Contains(body, "data-on:change") {
+		t.Error("body should contain data-on:change for subsequent contest changes")
 	}
 }
 
