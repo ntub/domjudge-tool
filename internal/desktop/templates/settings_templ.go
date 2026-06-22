@@ -187,7 +187,7 @@ func SettingsForm(cur settings.AppSettings, profiles []profile.ServerProfile, fl
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" placeholder=\"optional\" class=\"input input-bordered w-full\" autocomplete=\"off\"></div><div class=\"form-control\"><label class=\"label\" for=\"st_smtp_pass\"><span class=\"label-text font-medium\">Password</span></label> <input id=\"st_smtp_pass\" type=\"text\" name=\"smtp_password\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" placeholder=\"optional\" class=\"input input-bordered w-full\" autocomplete=\"off\"></div><div class=\"form-control\"><label class=\"label\" for=\"st_smtp_pass\"><span class=\"label-text font-medium\">Password</span></label> <input id=\"st_smtp_pass\" type=\"password\" name=\"smtp_password\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
