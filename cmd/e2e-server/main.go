@@ -243,9 +243,7 @@ func main() {
 		return api.Teams.List(ctx, cid)
 	})
 
-	handler.RegisterPickDirectory(mux, func(ctx context.Context) (string, error) {
-		return "/tmp/e2e-out", nil
-	})
+	handler.RegisterPickDirectory(mux, handler.DesktopPickDirectory)
 
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 

@@ -823,7 +823,7 @@ func tagSelectScriptOnce() templ.Component {
 			templ_7745c5c3_Var41 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<script>\n\t\tif (typeof window.syncTags === 'undefined') {\n\t\t\twindow.syncTags = function(fragmentID) {\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\tif (!select) return;\n\t\t\t\tconst val = select.value;\n\t\t\t\tif (!val) return;\n\t\t\t\t\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tif (!values.includes(val)) {\n\t\t\t\t\tvalues.push(val);\n\t\t\t\t\thidden.value = values.join(',');\n\t\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t}\n\t\t\t\tselect.value = '';\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.deselectTag === 'undefined') {\n\t\t\twindow.deselectTag = function(fragmentID, val) {\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tvalues = values.filter(v => v !== val);\n\t\t\t\thidden.value = values.join(',');\n\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.renderTags === 'undefined') {\n\t\t\twindow.renderTags = function(fragmentID, values, select) {\n\t\t\t\tconst tagsDiv = document.getElementById(fragmentID + '-tags');\n\t\t\t\tif (!tagsDiv) return;\n\t\t\t\ttagsDiv.innerHTML = '';\n\t\t\t\tconst labelMap = {};\n\t\t\t\tif (select) {\n\t\t\t\t\tfor (let i = 0; i < select.options.length; i++) {\n\t\t\t\t\t\tconst opt = select.options[i];\n\t\t\t\t\t\tif (opt.value) {\n\t\t\t\t\t\t\tlabelMap[opt.value] = opt.text;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tvalues.forEach(val => {\n\t\t\t\t\tconst label = labelMap[val] || val;\n\t\t\t\t\tconst badge = document.createElement('div');\n\t\t\t\t\tbadge.className = 'badge badge-primary gap-1 p-3';\n\t\t\t\t\t\n\t\t\t\t\tconst labelSpan = document.createElement('span');\n\t\t\t\t\tlabelSpan.textContent = label;\n\t\t\t\t\tbadge.appendChild(labelSpan);\n\t\t\t\t\t\n\t\t\t\t\tconst btn = document.createElement('button');\n\t\t\t\t\tbtn.type = 'button';\n\t\t\t\t\tbtn.className = 'btn btn-ghost btn-xs p-0 min-h-0 h-auto hover:bg-transparent';\n\t\t\t\t\tbtn.onclick = function() { window.deselectTag(fragmentID, val); };\n\t\t\t\t\tbtn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" class=\"inline-block w-4 h-4 stroke-current\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M6 18L18 6M6 6l12 12\"></path></svg>';\n\t\t\t\t\t\n\t\t\t\t\tbadge.appendChild(btn);\n\t\t\t\t\ttagsDiv.appendChild(badge);\n\t\t\t\t});\n\t\t\t};\n\t\t}\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<script>\n\t\tif (typeof window.syncTags === 'undefined') {\n\t\t\twindow.syncTags = function(fragmentID) {\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\tif (!select) return;\n\t\t\t\tconst val = select.value;\n\t\t\t\tif (!val) return;\n\t\t\t\t\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tif (!values.includes(val)) {\n\t\t\t\t\tvalues.push(val);\n\t\t\t\t\thidden.value = values.join(',');\n\t\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t}\n\t\t\t\tselect.value = '';\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.deselectTag === 'undefined') {\n\t\t\twindow.deselectTag = function(fragmentID, val) {\n\t\t\t\tconst hidden = document.getElementById(fragmentID + '-hidden');\n\t\t\t\tif (!hidden) return;\n\t\t\t\t\n\t\t\t\tlet values = hidden.value ? hidden.value.split(',').map(s => s.trim()).filter(Boolean) : [];\n\t\t\t\tvalues = values.filter(v => v !== val);\n\t\t\t\thidden.value = values.join(',');\n\t\t\t\thidden.dispatchEvent(new Event('input', { bubbles: true }));\n\t\t\t\thidden.dispatchEvent(new Event('change', { bubbles: true }));\n\t\t\t\t\n\t\t\t\tconst select = document.getElementById(fragmentID + '-options');\n\t\t\t\twindow.renderTags(fragmentID, values, select);\n\t\t\t};\n\t\t}\n\t\tif (typeof window.renderTags === 'undefined') {\n\t\t\twindow.renderTags = function(fragmentID, values, select) {\n\t\t\t\tconst tagsDiv = document.getElementById(fragmentID + '-tags');\n\t\t\t\tif (!tagsDiv) return;\n\t\t\t\ttagsDiv.innerHTML = '';\n\t\t\t\tconst labelMap = {};\n\t\t\t\tif (select) {\n\t\t\t\t\tfor (let i = 0; i < select.options.length; i++) {\n\t\t\t\t\t\tconst opt = select.options[i];\n\t\t\t\t\t\tif (opt.value) {\n\t\t\t\t\t\t\tlabelMap[opt.value] = opt.text;\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tvalues.forEach(val => {\n\t\t\t\t\tconst label = labelMap[val] || val;\n\t\t\t\t\tconst badge = document.createElement('div');\n\t\t\t\t\tbadge.className = 'badge badge-primary gap-1 p-3';\n\t\t\t\t\t\n\t\t\t\t\tconst labelSpan = document.createElement('span');\n\t\t\t\t\tlabelSpan.textContent = label;\n\t\t\t\t\tbadge.appendChild(labelSpan);\n\t\t\t\t\t\n\t\t\t\t\tconst btn = document.createElement('button');\n\t\t\t\t\tbtn.type = 'button';\n\t\t\t\t\tbtn.style.cursor = 'pointer';\n\t\t\t\t\tbtn.setAttribute('aria-label', 'Remove');\n\t\t\t\t\tbtn.onmouseenter = function() { btn.style.opacity = '0.7'; };\n\t\t\t\t\tbtn.onmouseleave = function() { btn.style.opacity = ''; };\n\t\t\t\t\tbtn.onclick = function() { window.deselectTag(fragmentID, val); };\n\t\t\t\t\tbtn.innerHTML = '<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 18L18 6M6 6l12 12\"></path></svg>';\n\t\t\t\t\t\n\t\t\t\t\tbadge.appendChild(btn);\n\t\t\t\t\ttagsDiv.appendChild(badge);\n\t\t\t\t});\n\t\t\t};\n\t\t}\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -861,7 +861,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue("users-" + fieldName + "-fragment")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 264, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 267, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 		if templ_7745c5c3_Err != nil {
@@ -874,7 +874,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue("frag_" + fieldName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 266, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 269, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 		if templ_7745c5c3_Err != nil {
@@ -887,7 +887,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(labelText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 267, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 270, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -900,7 +900,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue("frag_" + fieldName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 270, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 273, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 		if templ_7745c5c3_Err != nil {
@@ -913,7 +913,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 272, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 275, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 		if templ_7745c5c3_Err != nil {
@@ -926,7 +926,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.ResolveAttributeValue(placeholder)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 273, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 276, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 		if templ_7745c5c3_Err != nil {
@@ -944,7 +944,7 @@ func UsersTextInputFragment(fieldName, labelText, placeholder, helpText string) 
 			var templ_7745c5c3_Var49 string
 			templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(helpText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 279, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 282, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 			if templ_7745c5c3_Err != nil {
@@ -1008,7 +1008,7 @@ func TeamSelectFragment(teams []model.Team, required bool) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 297, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 300, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var51)
 			if templ_7745c5c3_Err != nil {
@@ -1021,7 +1021,7 @@ func TeamSelectFragment(teams []model.Team, required bool) templ.Component {
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(t.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 297, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 300, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -1034,7 +1034,7 @@ func TeamSelectFragment(teams []model.Team, required bool) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(t.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 297, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 300, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1099,7 +1099,7 @@ func TeamInputFragment(required bool, errMsg string) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(errMsg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 324, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/desktop/templates/fragments.templ`, Line: 327, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 			if templ_7745c5c3_Err != nil {
