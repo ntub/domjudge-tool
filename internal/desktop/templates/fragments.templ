@@ -303,7 +303,8 @@ templ TeamSelectFragment(teams []model.Team, required bool) {
 
 // TeamInputFragment renders a plain text input inside #team-id-fragment.
 // Used as initial state and as fallback when the API is unavailable.
-templ TeamInputFragment(required bool) {
+// errMsg, when non-empty, shows a warning beside the field.
+templ TeamInputFragment(required bool, errMsg string) {
 	<div id="team-id-fragment">
 		<div class="form-control">
 			<label class="label" for="frag_team_id">
@@ -318,6 +319,11 @@ templ TeamInputFragment(required bool) {
 				if required { required }
 				autocomplete="off"
 			/>
+			if errMsg != "" {
+				<label class="label">
+					<span class="label-text-alt text-warning">{ errMsg } Enter the team ID manually.</span>
+				</label>
+			}
 		</div>
 	</div>
 }

@@ -46,7 +46,7 @@ templ ExportUsersForm(profiles []profile.ServerProfile) {
 						</select>
 					</div>
 					@UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", "Comma-separated user IDs. Leave blank to export all.")
-					@TeamInputFragment(false)
+					@TeamInputFragment(false, "")
 					<div class="card-actions justify-end pt-2">
 						<button type="submit" class="btn btn-primary">Download</button>
 					</div>

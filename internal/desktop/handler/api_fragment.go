@@ -293,14 +293,14 @@ func fragmentExportUsersInit(store *profile.Store, fetchUsers UsersFetchFunc, fe
 				templates.UsersTextInputFragment("ids", "Filter by User IDs (optional)", "1, 2, 3 …", help),
 			)
 		}
-		teamsFallback := func() {
-			_ = sse.PatchElementTempl(templates.TeamInputFragment(false))
+		teamsFallback := func(errMsg string) {
+			_ = sse.PatchElementTempl(templates.TeamInputFragment(false, errMsg))
 		}
 
 		profileID, err := strconv.ParseInt(sigs.ProfileId, 10, 64)
 		if err != nil || profileID <= 0 {
 			usersFallback("")
-			teamsFallback()
+			teamsFallback("")
 			return
 		}
 
@@ -308,7 +308,7 @@ func fragmentExportUsersInit(store *profile.Store, fetchUsers UsersFetchFunc, fe
 		if err != nil {
 			slog.Debug("fragment/export-users-init: get profile", "id", profileID, "err", err)
 			usersFallback("Profile not found.")
-			teamsFallback()
+			teamsFallback("Profile not found.")
 			return
 		}
 
@@ -325,7 +325,7 @@ func fragmentExportUsersInit(store *profile.Store, fetchUsers UsersFetchFunc, fe
 		// Patch teams fragment.
 		if teams, err := fetchTeams(r.Context(), p); err != nil {
 			slog.Warn("fragment/export-users-init: fetch teams", "profile", p.Name, "err", err)
-			teamsFallback()
+			teamsFallback("Could not load teams from the server.")
 		} else {
 			_ = sse.PatchElementTempl(templates.TeamSelectFragment(teams, false))
 		}
@@ -488,27 +488,21 @@ func fragmentTeams(store *profile.Store, fetch TeamsFetchFunc) http.HandlerFunc 
 
 		profileID, err := strconv.ParseInt(sigs.ProfileId, 10, 64)
 		if err != nil || profileID <= 0 {
-			_ = sse.PatchElementTempl(
-				templates.TeamInputFragment(required),
-			)
+			_ = sse.PatchElementTempl(templates.TeamInputFragment(required, ""))
 			return
 		}
 
 		p, err := store.Get(r.Context(), profileID)
 		if err != nil {
 			slog.Debug("fragment/teams: get profile", "id", profileID, "err", err)
-			_ = sse.PatchElementTempl(
-				templates.TeamInputFragment(required),
-			)
+			_ = sse.PatchElementTempl(templates.TeamInputFragment(required, "Profile not found."))
 			return
 		}
 
 		teams, err := fetch(r.Context(), p)
 		if err != nil {
 			slog.Warn("fragment/teams: fetch teams", "profile", p.Name, "err", err)
-			_ = sse.PatchElementTempl(
-				templates.TeamInputFragment(required),
-			)
+			_ = sse.PatchElementTempl(templates.TeamInputFragment(required, "Could not load teams from the server."))
 			return
 		}
 

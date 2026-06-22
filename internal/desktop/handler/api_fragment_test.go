@@ -450,7 +450,7 @@ func TestFragmentTeams_Success(t *testing.T) {
 	}
 }
 
-func TestFragmentTeams_ErrorFallback(t *testing.T) {
+func TestFragmentTeams_ErrorFallback_ShowsWarning(t *testing.T) {
 	fetch := func(_ context.Context, _ profile.ServerProfile) ([]model.Team, error) {
 		return nil, errors.New("offline")
 	}
@@ -466,6 +466,9 @@ func TestFragmentTeams_ErrorFallback(t *testing.T) {
 	}
 	if !strings.Contains(body, `type="text"`) {
 		t.Error("body should contain text input fallback")
+	}
+	if !strings.Contains(body, "Could not load teams") {
+		t.Error("body should contain error warning (BUG-6 fix)")
 	}
 }
 
