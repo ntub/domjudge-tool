@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -96,5 +97,25 @@ func TestPickDirectory_Cancel(t *testing.T) {
 
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("expected status 204, got %d", rec.Code)
+	}
+}
+
+func TestPickDirectory_InvalidSignal_FallsBackToOutDir(t *testing.T) {
+	picker := func(ctx context.Context) (string, error) {
+		return "/some/path", nil
+	}
+
+	mux := http.NewServeMux()
+	handler.RegisterPickDirectory(mux, picker)
+
+	for _, bad := range []string{"../evil", "foo bar", "signal;drop", "<script>", "a.b"} {
+		req := httptest.NewRequest(http.MethodGet, "/api/pick-directory?signal="+url.QueryEscape(bad), nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		body := rec.Body.String()
+		if !strings.Contains(body, "outDir") {
+			t.Errorf("signal %q: expected fallback to outDir, got %q", bad, body)
+		}
 	}
 }
