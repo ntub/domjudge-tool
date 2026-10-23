@@ -28,7 +28,7 @@ web gateway.
 the archive for your platform, extract it, and place `domjudge-tool` on
 your `$PATH`.
 
-**Install from source** (requires Go ≥ 1.23):
+**Install from source** (requires Go ≥ 1.27.3):
 
 ```bash
 go install github.com/ntub/domjudge-tool/cmd/domjudge-tool@latest
@@ -135,7 +135,7 @@ for the rationale and the full operation-to-transport table.
 ## Development setup
 
 ```bash
-# Prereqs: go ≥ 1.23, just, git, optionally lefthook + gofumpt + golangci-lint + trufflehog.
+# Prereqs: go ≥ 1.27.3, just, git, optionally lefthook + gofumpt + golangci-lint + trufflehog.
 just setup
 just build
 ./bin/domjudge-tool

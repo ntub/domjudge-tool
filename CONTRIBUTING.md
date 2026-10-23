@@ -7,7 +7,7 @@ workflow: setup, branching, commits, tests, PRs, and releases.
 
 | Tool                 | Version            | Required?                        |
 | -------------------- | ------------------ | -------------------------------- |
-| Go                   | ≥ 1.23             | Yes                              |
+| Go                   | ≥ 1.27.3           | Yes                              |
 | just                 | latest             | Yes (task runner)                |
 | git                  | ≥ 2.30             | Yes                              |
 | lefthook             | latest             | Strongly recommended (git hooks) |

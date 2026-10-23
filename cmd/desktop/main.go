@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	"github.com/ntub/domjudge-tool/internal/desktop/assets"
 	"github.com/ntub/domjudge-tool/internal/desktop/db"
 	"github.com/ntub/domjudge-tool/internal/desktop/handler"
 	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
 	"github.com/ntub/domjudge-tool/internal/desktop/settings"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 const port = ":9900"

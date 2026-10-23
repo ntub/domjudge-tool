@@ -22,16 +22,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
-
+          cache-dependency-path: go.sum
       - name: Install gofumpt
         run: go install mvdan.cc/gofumpt@latest
 
@@ -50,12 +50,9 @@ jobs:
         run: go vet ./...
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          # Project .golangci.yml uses the v2 schema; v6 of the action
-          # supports v2 — pin a recent v2 release rather than `latest` so
-          # behaviour stays reproducible across runs.
-          version: v2.1.6
+          version: v2.15.0
 
       - name: Install TruffleHog
         shell: bash
@@ -82,17 +79,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: go.sum
 
       - name: goreleaser snapshot
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           args: release --snapshot --clean

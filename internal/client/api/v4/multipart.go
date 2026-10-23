@@ -80,7 +80,7 @@ func (c *Client) postMultipart(ctx context.Context, path string, fields map[stri
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+path, pr)
 	if err != nil {
 		_ = pr.CloseWithError(err)
-		<-writeErr
+		<-writeErr //nolint:errcheck // draining background writer on early abort
 		return fmt.Errorf("build multipart request: %w", err)
 	}
 	req.Header.Set("Authorization", c.authHeader)
@@ -89,7 +89,7 @@ func (c *Client) postMultipart(ctx context.Context, path string, fields map[stri
 	resp, err := c.postHTTP.Do(req)
 	if err != nil {
 		_ = pr.CloseWithError(err)
-		<-writeErr
+		<-writeErr //nolint:errcheck // draining background writer on early abort
 		return fmt.Errorf("post multipart: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()

@@ -1,6 +1,6 @@
 # 0004. goquery pinned at v1.10.3 for Go 1.23 compatibility
 
-- **Status:** Accepted
+- **Status:** Superseded by 0015
 - **Date:** 2026-05-04
 - **Deciders:** @project-maintainer
 

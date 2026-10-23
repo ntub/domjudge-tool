@@ -67,7 +67,9 @@ formatters:
         - prefix(github.com/ntub/domjudge-tool)
       custom-order: true
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true
+        clothe-returns: true
 
 issues:
   max-issues-per-linter: 0

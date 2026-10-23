@@ -1,6 +1,6 @@
 # 0003. Cobra pinned at v1.8.x for Go 1.23 compatibility
 
-- **Status:** Accepted
+- **Status:** Superseded by 0015
 - **Date:** 2026-05-04
 - **Deciders:** @project-maintainer
 

@@ -47,8 +47,8 @@ adr/
 | --- | ------ | ----- |
 | [0001](0001-go-module-path.md) | Accepted | Go module path |
 | [0002](0002-tdd-collaboration-model.md) | Accepted | TDD collaboration model |
-| [0003](0003-cobra-version-pin.md) | Accepted | Cobra version pin |
-| [0004](0004-goquery-version-pin.md) | Accepted | goquery version pin |
+| [0003](0003-cobra-version-pin.md) | Superseded by 0015 | Cobra version pin |
+| [0004](0004-goquery-version-pin.md) | Superseded by 0015 | goquery version pin |
 | [0005](0005-python-quirk-preservation.md) | Accepted | Python quirk preservation |
 | [0006](0006-api-first-with-scraper-fallback.md) | Accepted | API-first with scraper fallback |
 | [0007](0007-scoreboard-cell-format-and-categories.md) | Accepted | Scoreboard cell format and categories |
@@ -58,6 +58,8 @@ adr/
 | [0011](0011-import-problems-upsert.md) | Accepted | Import problems upsert |
 | [0012](0012-phase3-local-datastore.md) | Proposed | Phase 3 desktop local datastore |
 | [0013](0013-phase3-frontend-stack.md) | Proposed | Phase 3 desktop frontend stack |
+| [0014](0014-go-toolchain-bump-for-phase3.md) | Accepted | Go toolchain bump for Phase 3 |
+| [0015](0015-security-runtime-and-dependency-upgrades.md) | Proposed | Security runtime and dependency upgrades |
 
 ## Style
 

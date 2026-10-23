@@ -47,7 +47,7 @@ Reply in zh-TW; the rest in en-US.
   involved, fetch current docs with Context7:
   `npx -y ctx7@latest library "<name>" "<question>"`, then
   `npx -y ctx7@latest docs <library-id> "<question>"`.
-- Do not add dependencies unless they are necessary, compatible with Go 1.23,
+- Do not add dependencies unless they are necessary, compatible with Go 1.27.3,
   and consistent with this repo's phase plan.
 
 ## Commands
@@ -77,9 +77,8 @@ Reply in zh-TW; the rest in en-US.
 
 ## Go Rules
 
-- Go 1.23+ is the module target. Do not upgrade the module directive casually.
-- `goquery` stays pinned at v1.10.3 unless an ADR changes the Go-version
-  tradeoff.
+- Go 1.27.3 is the module target. Do not upgrade the module directive casually.
+- `goquery` is on v1.13.0 per ADR 0015; do not downgrade or change without an ADR.
 - Wrap errors with `%w`; use `errors.Is` / `errors.As` for sentinel errors.
 - I/O functions take `ctx context.Context` as the first parameter.
 - Do not use `init()` except for registry wiring.
