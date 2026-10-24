@@ -183,7 +183,7 @@ Download problem packages:
 domjudge-tool \
   --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
   download-problems \
-  --path /path/to/domjudge-tool/tmp/live-test/problems
+  --folder /path/to/domjudge-tool/tmp/live-test/problems
 ```
 
 ## Upload Problem Packages
@@ -255,10 +255,14 @@ domjudge-tool send-user-accounts \
   /path/to/domjudge-tool/tmp/live-test/import-users-teams-out.csv \
   /path/to/domjudge-tool/tmp/live-test/email-template \
   --from-email contest@example.org \
-  --smtp-host smtp.example.org \
-  --smtp-port 587 \
+  --host smtp.example.org \
+  --port 465 --use-ssl \
   --smtp-username contest@example.org
 ```
+
+Review the rendered messages before sending. This example uses TLS on
+connect; STARTTLS on port 587 is not supported. Supply SMTP credentials
+locally, and never commit credential CSVs or rendered messages.
 
 ## Live Test Pattern
 
@@ -283,5 +287,5 @@ Before committing docs, scripts, fixtures, or generated outputs, run the
 privacy gate:
 
 ```bash
-just privacy-check
+mise run privacy-check
 ```

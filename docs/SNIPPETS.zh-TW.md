@@ -180,7 +180,7 @@ domjudge-tool \
 domjudge-tool \
   --config /path/to/domjudge-tool/tmp/live-test/domserver.json \
   download-problems \
-  --path /path/to/domjudge-tool/tmp/live-test/problems
+  --folder /path/to/domjudge-tool/tmp/live-test/problems
 ```
 
 ## Upload Problem Packages
@@ -250,10 +250,14 @@ domjudge-tool send-user-accounts \
   /path/to/domjudge-tool/tmp/live-test/import-users-teams-out.csv \
   /path/to/domjudge-tool/tmp/live-test/email-template \
   --from-email contest@example.org \
-  --smtp-host smtp.example.org \
-  --smtp-port 587 \
+  --host smtp.example.org \
+  --port 465 --use-ssl \
   --smtp-username contest@example.org
 ```
+
+寄出前先檢查已產生的信件。此範例使用連線建立時即啟用的 TLS；
+目前不支援 port 587 的 STARTTLS。SMTP 密碼請在本機提供，
+不要提交含密碼的 CSV 或產生的信件。
 
 ## Live Test Pattern
 
@@ -277,5 +281,5 @@ domjudge-tool \
 提交 docs、scripts、fixtures 或 generated outputs 前，先跑 privacy gate：
 
 ```bash
-just privacy-check
+mise run privacy-check
 ```

@@ -1,22 +1,20 @@
 # NNNN. Short title in title case
 
-- **Status:** Proposed | Accepted | Deprecated | Superseded by NNNN
+- **Status:** Proposed | Accepted
 - **Date:** YYYY-MM-DD
 - **Deciders:** @handle, @handle
 
 ## Context
 
-What problem are we solving? What constraints, prior art, and forces are
-in play? Keep this section factual — it's the snapshot a future reader
-needs to understand what we knew at decision time.
+What problem does this decision address? Describe the constraints and the
+non-obvious rationale that still apply. Keep implementation descriptions
+current; omit completed task plans and spike logs.
 
 ## Decision
 
-We will <do the thing>.
-
-State the decision in one or two sentences, in past tense if already
-accepted. Then list the alternatives we considered and why we passed on
-each.
+State the selected design and its active contract in present tense. Separate
+implementation state from merge, verification, and release status when they
+differ. Then list the alternatives considered and why each was rejected.
 
 ### Alternatives considered
 
@@ -29,7 +27,7 @@ What follows from this decision — both the good and the cost we accept.
 
 - Positive: …
 - Negative: …
-- Follow-ups: any tasks this creates (TODO links, issues to file).
+- Constraints: compatibility, security, and operational limits to preserve.
 
 ## References
 

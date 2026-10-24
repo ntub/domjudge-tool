@@ -1,53 +1,59 @@
 # 0015. Security Runtime and Dependency Upgrades
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-23
 - **Supersedes:** 0003, 0004, and the toolchain selection in 0014
 
 ## Context
 
-The module declares Go 1.26.0, while the development toolchain is Go 1.27.2.
-The baseline `govulncheck ./...` reports seven reachable vulnerabilities:
+The toolchain and dependencies need a security-maintenance policy that
+follows supported, patched releases without changing the tool's behavior.
+The older individual Cobra/goquery pins and desktop toolchain selection no
+longer describe the build and have been retired.
+
+The security refresh addresses findings recorded before the upgrade:
 GO-2026-6809 in `crypto/x509`, GO-2026-5970 in `golang.org/x/text`, and
 GO-2026-5025, GO-2026-5027, GO-2026-5028, GO-2026-5029, and GO-2026-5030 in
-`golang.org/x/net/html`. Existing CLI tests and the macOS desktop build pass
-before upgrading.
+`golang.org/x/net/html`. These are the reason for the refresh, not a claim
+about current scanner output.
 
-The frontend build uses Node.js without a repository version requirement.
-Its npm lockfile reports five high-severity findings. Tailwind CLI 4.3.3
-still pins `@parcel/watcher` 2.5.1, whose `micromatch` dependency brings in
-`braces` with no patched release for GHSA-vfj7-8cjw-p6xm. Watcher 2.6.0
-replaces that chain with `picomatch`. `source-map-js` has a patched 1.2.2
-release.
-
-The old Cobra and goquery pins protected a Go 1.23 baseline that ADR 0014
-already raised for Phase 3. Keeping those pins no longer protects the
-current build baseline.
+Frontend asset builds also need a patched Node.js baseline and reproducible
+npm dependencies. The Tailwind CLI's original watcher dependency chain
+included `micromatch` and `braces`, affected by GHSA-vfj7-8cjw-p6xm. The
+selected watcher uses `picomatch`; the lockfile also carries the patched
+`source-map-js`. Removing the vulnerable chain is preferable to suppressing
+audit findings or downgrading the CSS toolchain.
 
 ## Decision
 
-We selected Go 1.27.3 as the minimum language/toolchain version, including
-the October `crypto/x509` security fix. CI reads the exact version from
-`go.mod`. We selected Node.js 24.22.1, the current patched Active LTS
-release, for frontend asset builds; Node.js is not an application runtime.
+Use **Go 1.27.3 or newer** for source builds, including the October
+`crypto/x509` fix. The `go.mod` `go` directive is the module baseline;
+`mise.toml` pins the same exact toolchain for contributors and CI
+(see [ADR 0017](0017-mise-toolchain-and-tag-release.md)).
 
-We lifted the Cobra and goquery pins and selected current non-retracted
-stable releases for Go dependencies. The desktop shell already depends on
-pre-release Wails v3; its upgrade follows the current v3 beta rather than
-changing framework or reverting to Wails v2. Wails remains pre-release and
-requires a tagged desktop build in addition to the normal CLI checks.
+Prefer released, non-retracted stable dependency versions, with security
+patches taking priority. The current manifest selects Cobra 1.10.2 and
+goquery 1.13.0; their obsolete standalone pin decisions do not constrain
+upgrades. Review breaking changes and adapt affected source logic while
+preserving the contracts below.
 
-We selected Tailwind CSS and CLI 4.3.3 and a narrowly scoped npm override
-of `@tailwindcss/cli`'s watcher to 2.6.0. This keeps the CLI on its current
-release while removing the unpatched dependency chain. Reassess the
-override when upstream ships a fixed watcher dependency; do not suppress
-audit findings or downgrade Tailwind to satisfy the scanner.
+The Desktop already uses pre-release Wails v3. That explicit architecture
+exception tracks the selected v3 beta rather than changing frameworks or
+reverting to Wails v2. Tagged Desktop builds need their own native
+dependencies and checks in addition to the default CLI path.
 
-We upgraded CI actions to current releases using Node.js 24 and the
-linter to a version supporting Go 1.27. GitHub-hosted runners meet the
-minimum Actions Runner 2.327.1 requirement. Go setup keeps its cache keyed
-on `go.sum` explicitly because newer setup-go versions default to
-`go.mod`.
+Use **Node.js 24.22.1 or a later patched 24.x release** for frontend asset
+builds. `mise.toml` records the selected build runtime; Node.js is not
+an application runtime. Install with the committed npm lockfile.
+
+Tailwind CSS and CLI 4.3.3 remain selected. `frontend/package.json` overrides
+`@parcel/watcher` to 2.6.0 to remove the affected chain. Reassess that override
+when upstream removes the need; do not hide findings or downgrade Tailwind
+to satisfy an audit.
+
+The configured CI actions and linter selections must support the Go/Node
+baselines. CI installs them from `mise.lock`; updating workflow files does
+not itself establish that CI has run.
 
 Compatibility checks preserve the existing `encoding/json` API, CLI
 commands and flags, `domserver.json`, CSV column order, DOMjudge v7/v8
@@ -61,12 +67,17 @@ and Windows; no insecure compatibility overrides are introduced.
   Go or Node.js installed.
 - Frontend contributors use Node.js 24.22.1 or a later patched 24.x release
   and install from the committed npm lockfile.
-- Source compatibility is verified against unchanged fixtures and tests,
-  including the desktop build tag. Dependencies and generated assets must
-  agree with their generators.
-- Vulnerability checks cover the default build, desktop-tagged code, and
-  npm development dependencies. Native desktop support on other operating
-  systems still requires their respective platform SDKs.
+- Upgrade acceptance requires unchanged compatibility fixtures and tests,
+  including the Desktop build tag. Generated assets and their generators
+  must agree; presence of an upgrade in the working tree is not evidence
+  that a particular check passed.
+- Vulnerability checks must cover the default build, desktop-tagged code,
+  and npm development dependencies. Each native Desktop target still
+  requires its own platform SDKs and native acceptance.
+- HTML parser upgrades preserve behavior against the existing sanitized
+  scraper fixtures. Any necessary recapture follows the fixture privacy
+  protocol and secret/PII gates before commit; raw production captures are
+  not replacement fixtures.
 - No package boundaries, CLI contracts, database schema, or DOMjudge
   transport policy change as part of this upgrade.
 
@@ -78,5 +89,10 @@ and Windows; no insecure compatibility overrides are introduced.
 - [Node.js supported releases](https://nodejs.org/en/about/previous-releases)
 - [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
 - [goquery changelog](https://github.com/PuerkitoBio/goquery#changelog)
-- [setup-go migration](https://github.com/actions/setup-go#breaking-changes-in-v6)
-- [ADR 0014](0014-go-toolchain-bump-for-phase3.md)
+- [Current Go manifest](../../go.mod) and [module checksums](../../go.sum).
+- [Toolchain pins](../../mise.toml),
+  [dependency policy](../../frontend/package.json), and
+  [lockfile](../../frontend/package-lock.json).
+- [CI toolchain configuration](../../.github/workflows/ci.yml).
+- [Desktop architecture](0013-phase3-frontend-stack.md).
+- [Fixture maintenance and privacy gates](../TESTING.md).

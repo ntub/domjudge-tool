@@ -6,17 +6,14 @@
 
 ## Context
 
-`import-problems` currently has two explicit modes:
+Create-only `import-problems` omits the optional `problem` multipart field;
+`--problem-id` imports exactly one ZIP with an explicit update target.
+Repeated folder imports also need a way to reconcile existing contest
+problems without one command per ZIP.
 
-1. Normal imports omit the optional `problem` multipart form field and ask
-   DOMjudge to create a new contest problem from package metadata.
-2. `--problem-id` imports exactly one ZIP and sends `problem=<id>` as an
-   update-only escape hatch.
-
-That split keeps creates and updates understandable, but it makes repeated
-folder imports awkward. A second run against the same contest can fail with
-`problem.externalid: This value is already used` even when the operator's
-intent is to update the contest's existing problem package.
+A repeated create can fail with `problem.externalid: This value is already
+used`. That error does not identify a safe update target: the duplicate may
+be a global problem outside the configured contest.
 
 DOMjudge does not expose a native "bulk upsert problem packages" operation.
 The v4 API can list the problems linked to one contest through
@@ -32,17 +29,16 @@ supported path.
 
 ## Decision
 
-We decided to add `import-problems --upsert` as tool-side, contest-scoped
-reconciliation. It first indexes the configured contest's existing problems
-with `GET /api/v4/contests/{cid}/problems`, then imports each ZIP as either
-an update of a matched contest problem or a create of a missing contest
-problem.
+`import-problems --upsert` performs tool-side, contest-scoped reconciliation.
+It indexes the configured contest's existing problems with
+`GET /api/v4/contests/{cid}/problems`, then imports each ZIP as an update of
+a matched contest problem or a create of a missing contest problem.
 
 `--upsert` is mutually exclusive with `--problem-id`. `--problem-id` remains
 the explicit single-ZIP update path; `--upsert` owns folder-friendly
 create-or-update behavior.
 
-The first implementation uses this matching contract:
+The matching contract is:
 
 1. Derive a package identity for each ZIP.
    - On DOMjudge 8.x, prefer `domjudge-problem.ini` `externalid` when it is
@@ -65,8 +61,7 @@ The first implementation uses this matching contract:
    import using the existing create path.
 5. If the create fails because a problem with the same external id exists
    globally but is not linked to the contest, fail with the DOMjudge error
-   body. The first version does not auto-link, unlink, or delete global
-   problems.
+   body. Upsert does not auto-link, unlink, or delete global problems.
 
 The multipart file field remains version-specific:
 
@@ -96,10 +91,10 @@ whose unsupported prefix was removed during sanitization.
   The duplicate external id might refer to a global problem that is not linked
   to the configured contest. Retrying as an update would hide that distinction
   and could mutate the wrong problem package.
-- **Search and auto-link global problems on duplicate external id.** Rejected
-  for the first version. Linking and deleting global problem catalog entries
-  have version-specific and destructive edge cases, especially after ADR 0010
-  confirmed that DOMjudge 8.3.1 contest DELETE is unlink-only.
+- **Search and auto-link global problems on duplicate external id.** Rejected:
+  linking and deleting global problem catalog entries have version-specific
+  and destructive edge cases, especially because ADR 0010 establishes that
+  DOMjudge 8.3.1 contest DELETE is unlink-only.
 - **Match ZIPs only by filename.** Rejected for DOMjudge 8.x because
   `domjudge-problem.ini` `externalid` is the authoritative package identity
   on the supported create path. Filename fallback remains necessary for 7.x
@@ -120,12 +115,15 @@ whose unsupported prefix was removed during sanitization.
 - Negative: matching depends on package identity discipline. If an operator
   renames ZIP files on DOMjudge 7.x, the CLI treats them as different
   problems because 7.3 does not reliably honour ini `externalid`.
-- Follow-up: if DOMjudge later exposes stable global problem lookup/link
-  APIs across supported versions, write a superseding ADR before adding an
-  auto-link mode.
+- Adding global lookup/link behavior requires a replacement decision that
+  addresses version-specific scope and destructive effects; it is not an
+  implicit part of upsert.
 
 ## References
 
 - [0006. API-first with scraper fallback](0006-api-first-with-scraper-fallback.md)
 - [0010](0010-problem-package-contest-scoping-and-import.md)
 - [`docs/CLI.md`](../CLI.md)
+- [Contest index and target selection](../../internal/problems/import.go#L116)
+  (`internal/problems/import.go:116`).
+- [Package identity and filename fallbacks](../../internal/problems/import.go#L189).

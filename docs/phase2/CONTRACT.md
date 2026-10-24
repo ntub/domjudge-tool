@@ -1,325 +1,220 @@
-# Phase 2 — 契約測試與 fixture 規範（CONTRACT）
+# DOMjudge 8.3.1 Compatibility and Fixture Contract
 
-> 這份文件平行於 `docs/phase1.5/CONTRACT.md` 與
-> `testdata/web/v7/CAPTURE.md`。Phase 2 的 fixture 分成兩類：
-> DOMjudge 8.3.1 API JSON 與 jury HTML。兩者都必須先抓、清洗、通過 PII
-> gate，才可以成為 v8 decoder / scraper 的測試輸入。
+DOMjudge 8.3.1 support is implemented through the CLI `v1.6.0` milestone.
+This document maintains its decoder, scraper, problem-package, fixture,
+and live-write contracts. It supplements the shared
+[API and fixture contract](../phase1.5/CONTRACT.md); it is not an execution
+plan for adding v8 support.
 
-## 1. 為什麼 Phase 2 更需要 contract fixture
+## 1. Version selection and compatibility boundary
 
-DOMjudge 8.3.1 live investigation 已確認 API v4 不是完全等形：
+`internal/client/web/gatewayfactory` selects a complete `web.Gateway`
+from the existing `domserver.json.version` field:
 
-- `time_limit` 從 Go 目前期待的 int 變成 live JSON `5.0`。
-- `/api/v4/version` 的 `api_version` 從 string expectation 變成 int。
-- OpenAPI under-described：文件沒列出的欄位，live response 仍可能存在。
-- 部分欄位 silent drift：decode 不炸，但值可能落在舊 struct 欄位之外。
+- `7.3` and `7.3.*` select `web/v7`.
+- `8.3` and `8.3.*` select `web/v8`.
+- Other values return `gatewayfactory.ErrUnsupportedVersion`.
 
-因此 Phase 2 不能用「手寫一份看起來合理的 JSON」測 decoder。必須把 live
-response sanitize 後存成 fixture，讓 decoder 與 downstream use-case 都對同
-一份資料跑。
+These are routing predicates, not evidence that every upstream patch has
+been validated. The supported v8 baseline is **8.3.1**. There is no runtime
+version probe or auto-detection; the default configuration remains
+`version="7.3.2"` and `api_version="v4"`.
 
-## 2. fixture 目錄規格
+Keep the shared [compatibility locks](../ROADMAP.md#compatibility-contracts):
+CLI command/flag/output names, config schema/defaults/nullability, existing
+CSV order, and the v7 delete quirks. Both clients implement the full
+Gateway, including real import-related methods; no unsupported import
+stubs remain in the intended implementation.
 
-```text
-testdata/
-├── api/
-│   └── v4/
-│       ├── ...                    # v7 fixture，保留
-│       └── v8/
-│           ├── CAPTURE_API_V8.md
-│           ├── version.json
-│           ├── contests.json
-│           ├── contest_<cid>/
-│           │   ├── contest.json
-│           │   ├── problems.json
-│           │   ├── teams.json
-│           │   ├── organizations.json
-│           │   ├── groups.json
-│           │   ├── scoreboard.json
-│           │   ├── submissions.json
-│           │   ├── submission_<id>.json
-│           │   └── source_code_<id>.json
-│           └── imports/
-│               ├── groups_request.json
-│               ├── organizations_request.json
-│               ├── teams_request.json
-│               ├── accounts_request.json
-│               └── sanctioned_write_notes.md
-└── web/
-    └── v8/
-        ├── CAPTURE.md
-        ├── login.html
-        ├── problems.html
-        ├── users.html
-        ├── user_delete_confirm.html
-        ├── teams.html
-        ├── team_delete_confirm.html
-        └── problem_export_response.headers
-```
+The current Go/dependency versions come from `go.mod`, not the obsolete
+Phase 2 Go 1.23/Cobra/goquery pins.
 
-`<cid>` 與 `<id>` 是 placeholder；committed fixture 可使用 generic numbers。
-不要把 live contest title、shortname、host 或 raw identifier 寫進檔名。
+## 2. API response contracts
 
-## 3. API JSON capture protocol
+| Response / field | Implemented compatibility |
+| ---------------- | ------------------------- |
+| Problem `time_limit` | `model.Problem` and `ProblemItem` retain an `int`; accept integer numbers and integral floats such as `5.0`. Reject fractional values such as `1.5` rather than truncating. Null maps to zero. |
+| `/api/v4/version` `api_version` | Accept a JSON string or integer; preserve the string result (`"v4"` from the v7 fixture, `"4"` from v8). Null maps to an empty string. |
+| Submission `source-code` | Decode an array of `{id, submission_id, filename, source}` objects, not a single object. |
+| Problem metadata | Keep fixture coverage for `ordinal`, `test_data_count`, and `externalid`; an incomplete OpenAPI description is not proof that a field is absent. |
+| Contest/submission external IDs | v8 uses `external_id`; current shipped consumers do not depend on those optional external IDs. Do not invent an unused model migration merely to match names. |
+| Organization / team / judgement | Missing `url`/`twitter_hashtag`, `members`, or `judgehost` must not break currently used fields or downstream workflows. |
 
-### 3.1 環境變數
+Keep narrow field decoders and the standard JSON decoder's tolerance of
+unknown additive fields. Do not use a global loose-map parser or
+`DisallowUnknownFields` to address isolated type drift. Preserve v7
+fixtures alongside v8 fixtures.
 
-設定只放 shell / `.env.local`，不要 commit：
+`internal/client/api/v4/cross_version_test.go` covers string/integer API
+versions, integer/integral-float time limits, rejected fractional limits,
+and fixture decoding across resources. Client and consuming use-case tests
+must protect the fields the application actually reads, not merely assert
+that JSON decoding succeeds.
+
+## 3. Write routing and jury form contracts
+
+The default importer uses the scraper for user/team create and update on
+both server families. On v8 it also performs affiliation, per-row password,
+and email writes through the scraper. Standalone v8 `set-password` is
+scraper-routed. See the
+[current transport table](../phase1.5/CONTRACT.md#5-current-transport-and-importer-behavior)
+for the distinct v7 standalone password path.
+
+Bulk `accounts.json` import is unsuitable for the v8 baseline because email
+is dropped. The documented single-entity user API routes do not establish
+that updates preserve all required fields; they are not a replacement for
+the implemented scraper path. Users/teams have no REST DELETE replacement
+in the supported 8.3.1 contract.
+
+Maintain these fixture-backed form differences:
+
+| Flow | Required behavior |
+| ---- | ----------------- |
+| Fresh team/user | `team[addUserForTeam]=create-new-user`, `team[newUsername]`, and `team[penalty]=0`. |
+| Existing team | Replay the edit form snapshot; preserve its existing `team[penalty]` instead of resetting it. |
+| Team identity | `team[name]` contains the username and `team[displayName]` the display name. |
+| Password | Override `user[plainPassword]` and the requested enabled value. Non-empty role overrides use repeated `user[user_roles][]` keys; nil/empty roles preserve checked snapshot roles. |
+| Email | Write `user[email]` through the user edit form, not the team add form. |
+| Affiliation | Preserve the v8 `team_affiliation[internalcomments]` snapshot field; list parsing uses the v8 fixture's shifted columns. |
+| Delete | Fetch the row's confirmation page, require a POST form, replay its fields/CSRF placeholder, then POST to the captured delete URL. |
+
+Login is required before gateway operations. Read/write redirects to
+`/login` return `web.ErrLoginFailed`; they must not look like successful
+empty results. Staying on an add/edit form after POST indicates a failed
+create/update. Replay textareas and all selected values so unrelated form
+state is not silently lost.
+
+The scraper delete predicate lowercases membership values and preserves
+empty-include-as-no-op behavior. A matching row excluded by the exclude
+set is skipped. Keep v7's named inverted-filter regression tests unchanged
+and protect the v8 behavior with its own fixture-driven request tests.
+
+## 4. Problem packages
+
+Full problem ZIP export still uses the authenticated jury path
+`GET /jury/problems/{id}/export`. API problem metadata and samples ZIPs
+are not interchangeable with the full package. Contest selection is
+API-assisted before applying the scraper download filter.
+
+Problem imports POST to `/api/v4/contests/{cid}/problems`:
+
+- DOMjudge 7.x uses multipart file field `zip[]`; 8.x uses `zip`.
+- New creates omit the optional `problem` value.
+- Updates include `problem=<existing internal problem id>`.
+- `--upsert` is tool-side reconciliation, not a native bulk-upsert API.
+  It indexes only the selected contest's problem list by internal ID and
+  external ID; ambiguous identities fail instead of selecting a target
+  silently.
+- On v8, package `domjudge-problem.ini` `externalid` is preferred for
+  matching. Filename-derived identities are the fallback. Preserve the
+  implementation's bounded identity read and its version-aware upload
+  filename when updating an existing package.
+
+`internal/problems/import.go` and API multipart tests define the current
+create/update distinction. Existing command names, flags, and filenames do
+not change to accommodate the server's field-name difference.
+
+## 5. Fixture capture and contract tests
+
+### 5.1 Maintained layout
+
+| Directory | Current contents |
+| --------- | ---------------- |
+| `testdata/api/v4/v8/` | `version.json`, `info.json`, `users.json`, `contests.json`, and `CAPTURE_API_V8.md`. |
+| `testdata/api/v4/v8/contest_1/` | Contest, problems, teams, organizations, groups, scoreboard, submissions, and source-code JSON fixtures. |
+| `testdata/web/v8/` | Login/landing, problem list/export headers, user/team lists and delete confirmations, team add/edit/view, user edit, and affiliation add/list HTML plus `CAPTURE.md`. |
+
+Existing v7 fixtures stay in their original directories. Capture only
+synthetic/sample submission source. Generic file IDs preserve relationships
+without exposing live contest titles, participant identifiers, or station
+hosts.
+
+### 5.2 Capture rules
+
+Use an explicitly authorized, synthetic-data station. Default to GET-only
+capture: version/info, contests, contest metadata, users, problems, teams,
+organizations, groups, scoreboard, submissions, and synthetic source code.
+Authenticated jury GETs may capture add/edit/delete-confirm forms without
+submitting them. Reading a confirmation page is not evidence that deletion
+was exercised.
+
+Raw API responses belong in ignored `tmp/raw_api_v4_v8/`; raw jury HTML,
+headers, cookies, and tokens belong in ignored `tmp/raw_web_v8/` or another
+private location. Never record the actual station hostname or credentials
+in tracked capture notes. Refer to it generically as the live 8.3.1
+station; reserved `*.example.org` addresses are examples only.
+
+Apply the shared
+[sanitization rules](../phase1.5/CONTRACT.md#34-sanitization-rules), including
+encoded email attributes, CSRF/session placeholders, source-code content,
+and ZIP entry metadata. `sanitize_api.py` only sanitizes JSON; copied HTML,
+headers, and binary files require separate review.
+
+Record response types and drift findings in the adjacent capture notes.
+Keep captured observations separate from assumptions and synthetic edge
+cases. A refresh for another patch version must not silently redefine the
+supported baseline.
+
+### 5.3 Privacy and test boundaries
+
+The current project-specific scanner already covers API and web fixtures,
+including `.html`, `.headers`, and ZIP entries. Do not retain the old
+instruction to add that support as future Phase 2 work.
 
 ```bash
-export DJ_BASE="https://test-station.example.org"
-export DJ_USER="<username>"
-export DJ_PASS="<password>"
-export DJ_CID="<cid>"
+python3 scripts/check_pii_api.py testdata/api/v4/v8 testdata/web/v8
+mise run api-fixture-check
+mise run privacy-check
 ```
 
-`test-station.example.org` 是保留範例；實際 live host 不得寫進 repo。任何
-capture note 只能稱為 **the live 8.3.1 station**。
+Every finding blocks committing the fixture. The full privacy task also
+runs the repository secret/history scan. All committed hosts, email, names,
+IDs, tokens, timestamps, and addresses must be reserved examples or
+non-identifying placeholders.
 
-### 3.2 GET-only capture
+Tests use standard-library `testing` and `httptest.Server`. Serve the
+sanitized HTML/JSON and assert method, path/query, multipart field names,
+filenames, posted form values, and errors. Keep both server families'
+regressions. Never replace deterministic delete correctness tests with a
+live deletion experiment, and never contact a live server from a test.
 
-P2-0 預設只允許 GET：
+## 6. Live write safety
 
-```bash
-RAW="tmp/raw_api_v4_v8"
-mkdir -p "$RAW/contest_$DJ_CID"
+DOMjudge **users, teams, groups, and organizations are global resources**.
+Selecting a contest does not confine a write/delete sweep to that contest.
+Default to read-only investigation. A live mutation requires all of:
 
-curl_json() {
-  curl -sS --fail --user "$DJ_USER:$DJ_PASS" "$DJ_BASE$1" | jq . > "$2"
-}
+1. Explicit operator authorization for the exact station, writable scope,
+   operations, and values at the point of action.
+2. A unique synthetic prefix, for example
+   `phase2-synthetic-<timestamp>-<case>`, used for every created resource.
+3. A GET/HTML-derived predicted match set reviewed before any delete POST.
+   Every selected row must belong to that synthetic prefix; no existing
+   real users, teams, groups, or organizations may be included.
+4. A cleanup plan and readback verifying the intended field changes and
+   the absence of unintended changes.
 
-curl_json "/api/v4/version" "$RAW/version.json"
-curl_json "/api/v4/contests" "$RAW/contests.json"
-curl_json "/api/v4/contests/$DJ_CID" "$RAW/contest_$DJ_CID/contest.json"
-curl_json "/api/v4/contests/$DJ_CID/problems" "$RAW/contest_$DJ_CID/problems.json"
-curl_json "/api/v4/contests/$DJ_CID/teams" "$RAW/contest_$DJ_CID/teams.json"
-curl_json "/api/v4/contests/$DJ_CID/organizations" "$RAW/contest_$DJ_CID/organizations.json"
-curl_json "/api/v4/contests/$DJ_CID/groups" "$RAW/contest_$DJ_CID/groups.json"
-curl_json "/api/v4/contests/$DJ_CID/scoreboard?allteams=true" "$RAW/contest_$DJ_CID/scoreboard.json"
-curl_json "/api/v4/contests/$DJ_CID/submissions" "$RAW/contest_$DJ_CID/submissions.json"
-```
+The predicted match set includes the operation, include/exclude filters,
+selected IDs/names, and non-matching row count. Account for the preserved
+empty-include semantics; do not infer a target set from contest selection
+or command success alone.
 
-若抓 `source-code`，只選 synthetic / sample submission，不抓真實學生提交：
+Keep actual approval/evidence privately. A sanitized capture note records
+only the server version, generic contest ID, synthetic prefix, allowed
+operations, whether the predicted match set was approved, observed
+readback, and cleanup result. Do not name the real operator or station.
 
-```bash
-curl_json "/api/v4/contests/$DJ_CID/submissions/<id>/source-code" \
-  "$RAW/contest_$DJ_CID/source_code_<id>.json"
-```
+After an authorized write test, remove only its synthetic resources under
+the approved cleanup scope, then list/read them again. Record residual
+synthetic groups/organizations when the supported UI/API cannot remove
+them. Never claim cleanup without readback or use broad live deletion as
+a diagnostic shortcut.
 
-### 3.3 drift confirmation checklist
+## 7. Maintenance
 
-把下列結果寫進 `testdata/api/v4/v8/CAPTURE_API_V8.md`：
-
-- `provider.version` / `domjudge.apiversion`。
-- `/api/v4/version` `api_version` 的 JSON type。
-- `problems[].time_limit` 的 JSON type 與 sample value。
-- `source-code` 是 array 還是 object。
-- `problems` 是否有 `ordinal`、`test_data_count`、`externalid`。
-- Contest / submission 是否使用 `external_id`。
-- Organization 是否缺 `url` / `twitter_hashtag`。
-- Team 是否缺 `members`。
-- Judgement 是否缺 `judgehost`。
-
-## 4. jury HTML capture protocol
-
-HTML fixture 必須從 authenticated jury flow 抓，但 committed file 不得含
-cookie、CSRF、real host 或 PII。
-
-需要的頁面：
-
-| Fixture | 用途 |
-|---------|------|
-| `login.html` | `web/v8.Login` form / CSRF parser |
-| `problems.html` | `GetProblems` list parser |
-| `problem_export_response.headers` | `Download` problem ZIP metadata / content disposition |
-| `users.html` | `DeleteUsers` row selector 與 delete link parser |
-| `user_delete_confirm.html` | user delete confirm POST form |
-| `teams.html` | `DeleteTeams` row selector 與 delete link parser |
-| `team_delete_confirm.html` | team delete confirm POST form |
-
-Capture 時可用 browser devtools、`curl --cookie-jar` 或小腳本，但 raw output
-只放 `tmp/raw_web_v8/`。Sanitized fixture 才能放進 `testdata/web/v8/`。
-
-## 5. Sanitization checklist
-
-所有 API JSON 與 HTML fixture 都跑同一份 checklist：
-
-| # | 規則 | Sanitized value |
-|---|------|-----------------|
-| 1 | 真實 hostname / URL | `example.org`、`test-station.example.org`、`prod-station.example.org` |
-| 2 | credentials / password / API key | `REDACTED` |
-| 3 | cookies / session id | `TEST_COOKIE` 或移除 |
-| 4 | CSRF token | `TEST_CSRF_TOKEN` |
-| 5 | email | `user1@example.org`、`user2@example.org` |
-| 6 | private / real IP | `192.0.2.1` 或 `203.0.113.10` |
-| 7 | student id / course id / cohort token | `student001`、`course001` |
-| 8 | CJK real names / school-specific names | `Sample001`、`Sample University` |
-| 9 | phone / contact info | `+1-555-0100` 或移除 |
-| 10 | live contest title / shortname | `ContestX` |
-| 11 | timestamps tied to people | `2026-01-01T00:00:00+00:00` |
-| 12 | source code from real submissions | 不 commit；只允許 synthetic sample |
-
-PII gate 至少檢查：
-
-```text
-non-example.org email
-private IP ranges
-raw live hostname tokens
-Bearer / Basic credentials
-password-like key/value pairs
-CSRF-looking random tokens not equal TEST_CSRF_TOKEN
-CJK text that was not intentionally kept as generic prose
-8+ digit student-id-like numbers
-```
-
-P2-0 的 project-specific PII gate 必須同時掃描：
-
-```text
-testdata/api/v4/v8/     # JSON and existing API fixture types
-testdata/web/v8/        # .html and .headers jury web fixtures
-```
-
-目前 `scripts/check_pii_api.py` 只由 `Justfile` 的 `api-fixture-check` 掃
-`testdata/api/v4`，且 fixture suffix 沒有涵蓋 `.html` / `.headers`。因此在
-任何 `testdata/web/v8/` HTML / headers fixture commit 前，P2-0 必須先擴充
-這個 scanner 讓它接受 web dir 與這些 file types，或新增 sibling scanner
-並接進 `privacy-check` recipe。Web gate 必須涵蓋 non-`example.org`
-emails、CSRF-looking tokens、CJK names、8+ digit student-id-like numbers、
-raw hostnames、credentials。
-
-任何命中都不能 commit。
-
-## 6. Live contest write protocol
-
-### 6.1 何時允許 write
-
-Phase 2 預設 GET-only。只有下列情況可以 write：
-
-- P2-0 或 P2-5 需要驗證 v8 import body / delete mechanics。
-- Operator 指定 single sanctioned writable contest。
-- 本次測試資料使用 unique synthetic prefix。
-- 已產生 predicted match set，且 operator explicit sign-off。
-
-### 6.2 Synthetic prefix
-
-所有 live-created resource 都必須使用同一個 prefix：
-
-```text
-phase2-synthetic-<yyyymmddhhmm>-<shortcase>
-```
-
-例如：
-
-```text
-phase2-synthetic-202606040930-team01
-phase2-synthetic-202606040930-user01
-phase2-synthetic-202606040930-org01
-phase2-synthetic-202606040930-group01
-```
-
-不要使用真實姓名、學號、課程代碼或 email。Email 如必要只用
-`user1@example.org`。
-
-### 6.3 Predicted match set
-
-在任何 delete POST 前，先用 GET / HTML parse 產生 predicted match set：
-
-```text
-operation: DeleteTeams
-include: [phase2-synthetic-202606040930]
-exclude: []
-predicted rows:
-- id: <id>, name: phase2-synthetic-202606040930-team01
-- id: <id>, name: phase2-synthetic-202606040930-team02
-non-matching rows observed: <count>
-```
-
-Sign-off 前必須確認：
-
-- predicted rows 全部都是本次 synthetic prefix。
-- 沒有任何 real user / team / group / org 在 predicted rows。
-- include / exclude 條件和 `v7.py:161` quirk 的 preserved semantics 不衝突。
-- cleanup plan 已寫好。
-
-### 6.4 Operator sign-off
-
-Capture note 使用這種格式：
-
-```text
-Live write sign-off
-Station: the live 8.3.1 station
-Contest: <cid>
-Synthetic prefix: phase2-synthetic-<timestamp>
-Allowed operations: import groups/orgs/teams/accounts, delete synthetic users/teams
-Predicted match set reviewed: yes
-Operator sign-off: yes, by @project-maintainer, YYYY-MM-DD HH:MM local time
-Cleanup completed: yes/no
-```
-
-不要寫真實 hostname、帳號、email、學生資料。
-
-### 6.5 Cleanup
-
-Write test 結束後立即 cleanup：
-
-1. Delete synthetic users。
-2. Delete synthetic teams。
-3. 若 DOMjudge UI / API 支援，清掉 synthetic groups / organizations；若不支
-   援，capture note 要記錄 residual synthetic rows。
-4. 再跑一次 GET / HTML list，確認 predicted synthetic rows 為 0 或只剩已
-   記錄的 residual rows。
-
-## 7. 客戶端 contract tests
-
-API decoder test 模式：
-
-```go
-func TestProblemsResource_List_DecodesV8Fixture(t *testing.T) {
-    raw := mustReadFixture(t, "../../../../testdata/api/v4/v8/contest_1/problems.json")
-    srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodGet || r.URL.Path != "/api/v4/contests/1/problems" {
-            t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
-        }
-        w.Header().Set("Content-Type", "application/json")
-        _, _ = w.Write(raw)
-    }))
-    t.Cleanup(srv.Close)
-
-    c := v4.New(v4.Options{BaseURL: srv.URL, Username: "example-user", Password: "REDACTED"})
-    problems, err := c.Problems.List(t.Context(), "1")
-    if err != nil {
-        t.Fatalf("List: %v", err)
-    }
-    if len(problems) == 0 {
-        t.Fatalf("problems should not be empty")
-    }
-}
-```
-
-HTML scraper test 模式：
-
-- `httptest.Server` 回傳 sanitized HTML。
-- Test 斷言 method / path / form fields / CSRF placeholder。
-- 不連 live station。
-- 不用 testify；錯誤用 `if err != nil { t.Fatal(err) }`。
-
-## 8. 不要做的事
-
-- 不要把 raw capture 從 `tmp/` commit。
-- 不要在 fixture 檔名或 Markdown note 寫真實 station hostname。
-- 不要用 live delete 取代 `httptest` correctness test。
-- 不要把 v7 fixture 覆蓋成 v8 fixture；v8 一律放 `testdata/api/v4/v8/` 與
-  `testdata/web/v8/`。
-- 不要在 tests 裡呼叫 real DOMjudge URL。
-- 不要新增 testify / ginkgo。
-
-## 9. 後續維護
-
-- DOMjudge 8.3.x patch release 出現時，重跑 GET-only capture，比對 v8
-  fixture diff。
-- 如果 upstream 加了 users / teams DELETE 或 full problem-package ZIP API，
-  先寫新的 ADR，再決定是否縮小 `web/v8` scope。
-- DOMjudge 8.3.1 live write/readback verified that bulk `accounts.json`
-  mechanics differ from the v7 baseline because email is dropped; therefore
-  v8 `import-users-teams` relies on the scraper for create/update/email/
-  password/affiliation in P2-4.
+An upstream field, form, or API capability change needs a sanitized fixture
+diff and regression coverage before routing changes. A proposed replacement
+for scraper delete or full-package export also requires an explicit
+architectural decision. Retain the working v7 path and all
+[compatibility locks](../ROADMAP.md#compatibility-contracts); version
+selection alone is not a migration or rollback procedure for server data.

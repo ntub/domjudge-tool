@@ -1,4 +1,4 @@
-# 0013. Phase 3 Desktop Frontend Stack
+# 0013. Desktop Frontend: Wails, templ, and Datastar
 
 - **Status:** Accepted
 - **Date:** 2026-06-20
@@ -6,147 +6,107 @@
 
 ## Context
 
-Phase 3 ships a cross-platform desktop app (Wails v3) that wraps the
-existing Go CLI. The original Phase 3 sketch in `docs/ROADMAP.md` paired
-Wails with React 19 + TanStack (Query/Router/Table) + TS strict + Vite +
-shadcn/ui + Tailwind v4. On review that stack is over-scoped for what the
-app actually is: a single-user, local operator tool whose screens are
-forms, data tables, modals, and — notably — batch operations with live
-progress (the seven batch commands hardened in Phase 1.5:
-`import-users-teams`, `send-user-accounts`, `render-user-accounts`,
-`download-problems`, `download-submissions`, `download-scoreboard`).
+The native Desktop preview is a single-user operator tool built around
+forms, tables, file dialogs, and long-running batch operations. Its
+business logic already exists in Go packages shared with the CLI. A
+separate SPA state model and JavaScript business layer would duplicate
+those responsibilities.
 
-Forces in play:
-
-- **Operator workload, not a SPA.** Form/CRUD plus tables plus dialogs.
-  There is no multi-user, no offline sync, no rich client routing need.
-- **Single Go/DevOps developer.** A heavy JS toolchain (Node, Vite, a
-  TS build, a component framework) is cost without payoff here. Keeping
-  logic in Go and reusing `internal/` packages is the goal.
-- **Batch progress is a first-class screen.** Several commands stream
-  per-row progress; a server-push transport maps onto this directly.
-- **System webview, not a controlled browser.** Wails uses WebKit
-  (macOS), WebView2 (Windows), and WebKitGTK (Linux); the Linux engine
-  version tracks the distro and can lag.
-- **Go 1.23 module lock** and the no-casual-dependency rule from
-  `CLAUDE.md` still apply.
-
-Four server-driven (hypermedia) options were evaluated: htmx, Unpoly,
-Hotwire Turbo, and Datastar. The question is which frontend stack to
-build Phase 3 on.
+Server-rendered screens fit the workload, while SSE carries per-operation
+progress without polling. The frontend still runs in a platform webview:
+WebKit on macOS, WebView2 on Windows, and WebKitGTK on Linux. Rendering
+compatibility and native SDK requirements remain platform-specific.
 
 ## Decision
 
-We decided to build the Phase 3 frontend as a **server-driven Datastar
-stack**, replacing the original React/TanStack plan:
+Use a **server-driven frontend** with Wails v3, `net/http`, templ, and
+Datastar. This is the implemented Desktop architecture.
 
-- **Wails v3** as the native shell (window, menus, file dialogs).
-- **An in-process Go HTTP server** (`net/http` or `chi`) for page routes,
-  action endpoints, and the SSE stream.
-- **templ** for type-safe, server-rendered HTML.
-- **Datastar** plus the official **Datastar Go SDK**
-  (`github.com/starfederation/datastar/sdk/go/datastar`,
-  `datastar.NewSSE(w, r)`) for hypermedia, client reactivity (signals),
-  and SSE-driven DOM patching. This single library replaces the
-  htmx + Alpine pair.
-- **Tailwind v4 via the standalone CLI** (Node-free) plus **DaisyUI 5**
-  for pure-CSS components and theming. DaisyUI ships an `.mjs` bundle
-  loaded with `@plugin` so the standalone binary needs no npm.
-- **Theme** follows the OS appearance via `prefers-color-scheme`, with a
-  manual Light/Dark/System override persisted in the SQLite store from
-  ADR 0012. Datastar signals drive the toggle.
+### Current composition
 
-**Spike status (2026-06-20):** All six spikes passed. S-1–S-4, S-6: PASS.
-S-5 (Tailwind v4 + DaisyUI in browser): PASS — confirmed visually in
-Chrome/Blink with locally embedded assets (CDN approach was dropped; DaisyUI v5
-changed its file structure). Key finding: use `@tailwindcss/cli` to build CSS
-from templ templates and embed via `//go:embed`; do not rely on CDN links.
-See `docs/phase3/SPIKES.md` for full evidence and the CDN failure analysis.
+1. **One Go module.** `cmd/domjudge-tool` and `cmd/desktop` share
+   `github.com/ntub/domjudge-tool` and its `internal/` operation packages.
+   The Desktop calls those packages directly; it does not start the CLI
+   for normal screen operations or duplicate domain logic in TypeScript.
+   Keep the canonical module path stable.
+2. **Wails v3 native shell.** `cmd/desktop` owns the window and native
+   dialogs behind the `desktop` build tag. The selected Wails dependency
+   is a v3 beta, not a stable release; exact versions are in `go.mod`.
+3. **An in-process loopback HTTP server.** Production binds
+   `127.0.0.1:9900` before opening the webview. `net/http.ServeMux` owns page,
+   action, fragment, static-asset, and SSE routes. It does not depend on
+   Wails asset-server buffering for progress streams.
+4. **templ-rendered HTML.** Synchronous screens use ordinary forms and
+   Post/Redirect/Get where appropriate. Batch workflows create an operation
+   log, redirect to a run page, and stream progress/results through SSE.
+   Attachment responses remain downloads rather than navigating forms.
+5. **Datastar.** The browser asset and
+   `github.com/starfederation/datastar-go/datastar` provide hypermedia
+   interactions and Go-side SSE DOM patches. There is no separate React,
+   TanStack, htmx, or Alpine application layer.
+6. **Locally embedded styling and scripts.** Tailwind v4 compiles utility
+   CSS from templ sources using the npm-installed `@tailwindcss/cli`.
+   DaisyUI 5 CSS and the hand-written `desktop.css` provide components,
+   themes, and layout. CSS and Datastar JavaScript are embedded in the Go
+   binary; pages do not depend on CDN availability.
+7. **Persisted settings.** Dark is the initial theme. Settings offers Dark,
+   Light, and System choices; SQLite stores the selection, while
+   `localStorage` applies the current selection immediately and restores it
+   during page rendering. This is not a Datastar-signals-only state model.
+
+Node.js and npm are **asset-build dependencies only**, with the runtime
+policy in [ADR 0015](0015-security-runtime-and-dependency-upgrades.md).
+They are not required to run the packaged Desktop or CLI. The frontend has
+no React/TypeScript application build or JavaScript test-runner dependency.
+Generated templ Go files and embedded assets are committed together with
+their sources and rebuilt through the existing tasks.
 
 ### Alternatives considered
 
-- **React 19 + TanStack + shadcn/ui + TS strict (original plan).**
-  Rejected as over-engineered for a form-and-table operator tool. The
-  toolchain and client-state machinery solve problems this app does not
-  have, and they pull the project away from its Go center of gravity.
-- **htmx (+ Alpine.js).** Mature, largest community, lowest bus-factor,
-  and a proven templ + htmx path. Not chosen as primary only because
-  Datastar folds htmx and Alpine into one dependency and its SSE-first
-  model fits the batch-progress requirement more directly. Retained as
-  the conservative fallback if the Datastar spikes fail.
-- **Hotwire Turbo (+ Stimulus).** Backend-agnostic in principle, but its
-  idioms, docs, and Turbo Streams format are Rails-shaped; a Go backend
-  swims upstream, and Turbo Drive's page-replacement model is a poor fit
-  for a desktop app. Rejected.
-- **Unpoly.** Batteries-included overlays, forms, and navigation that a
-  dialog-heavy operator UI would use well; mature and server-agnostic.
-  Rejected as primary because it lacks Datastar's streaming model for
-  batch progress and still wants a client-reactivity sprinkle. Kept as a
-  secondary alternative if built-in overlays/forms later outweigh
-  streaming.
-- **Keep Alpine.js as a separate client-state layer.** Dropped:
-  Datastar's signals provide client reactivity, so a separate Alpine
-  dependency is redundant.
+- **React, TanStack, Vite, TypeScript, and a component framework.**
+  Rejected: their client routing, state, and application-build machinery
+  exceed this form-and-table tool's needs and create a second place for
+  operation logic.
+- **htmx plus Alpine.** A viable server-rendered design, but two separate
+  interaction/reactivity layers are unnecessary alongside Datastar's
+  streaming and patching model.
+- **Hotwire Turbo plus Stimulus.** Its page-replacement and Rails-shaped
+  conventions fit the Go batch-progress screens less directly.
+- **Unpoly.** Its navigation and overlay model does not provide the chosen
+  SSE-first progress model.
+- **CDN-hosted assets.** Rejected: a local operator tool must not need a
+  third-party asset request to render or operate.
 
 ## Consequences
 
-- Positive: one hypermedia + reactivity library (Datastar) instead of
-  htmx + Alpine, shrinking the JS surface and the build.
-- Positive: SSE-first patching maps onto the existing batch commands —
-  a handler streams `datastar.NewSSE` patches per completed row, which is
-  cleaner than htmx's SSE extension plus a separate reactivity layer.
-- Positive: a first-class Go SDK and templ integration keep logic in Go
-  and reuse `internal/`.
-- Positive: the Tailwind standalone CLI plus DaisyUI keeps the build
-  Node-free at runtime. Build-time: use `@tailwindcss/cli` (npm) to compile CSS
-  from templ source files; embed result in the binary via `//go:embed`. S-5
-  spike discovered DaisyUI v5 changed its CDN file layout — `dist/full.min.css`
-  no longer exists; the correct standalone file is `daisyui.css`. Do not use CDN
-  links in HTML: download and embed assets locally.
-- Positive: theming follows the OS with a persisted manual override.
-- Negative: Datastar is the youngest option (v1.0, small community,
-  fast-moving). For a long-lived project this is real bus-factor risk.
-- Negative: SSE transport through Wails is unverified. The Wails v3
-  `AssetsHandler` is an `http.Handler`, but flushing for `text/event-
-  stream` is not confirmed and embedded asset servers often buffer.
-  Mitigation: run an in-process localhost HTTP listener dedicated to SSE
-  and point the webview's `EventSource` at it, bypassing `AssetsHandler`.
-- Negative: Tailwind v4's modern-CSS baseline (Safari 16.4+, Chrome
-  111+, Firefox 128+) may exceed older Linux WebKitGTK builds; the
-  fallback is Tailwind v3.4.
-- Negative: Wails v3 is alpha; that risk is tracked separately at Phase 3
-  start.
-
-### Acceptance criteria (spikes before flipping to Accepted)
-
-1. SSE works end to end inside the Wails webview — preferably via the
-   localhost listener — demonstrated by an `import-users-teams`
-   live-progress screen.
-2. Tailwind v4 + DaisyUI render correctly on every target webview
-   (macOS WebKit, Windows WebView2, Linux WebKitGTK on Ubuntu 24.04+);
-   otherwise fall back to Tailwind v3.4.
-3. Datastar v1.x API stability is acceptable for the project's lifetime,
-   or the htmx (+ Alpine) fallback is confirmed viable.
-
-- Follow-up: if a spike fails, supersede this ADR with an htmx (+ Alpine)
-  or Unpoly decision rather than forcing Datastar.
-- Follow-up: verify Wails v3, Datastar, templ, Tailwind v4, and DaisyUI
-  against current docs with `ctx7` at implementation start, per
-  `CLAUDE.md`.
+- Shared Go operations remain the source of behavior for CLI and Desktop.
+  The independent bundled CLI described by
+  [ADR 0016](0016-desktop-bundled-cli.md) still runs without starting Wails.
+- The renderer is HTML/CSS with a small embedded interaction layer, rather
+  than a separately maintained SPA.
+- The same HTTP surface can serve an isolated preview for browser-driven
+  checks. Native dialogs, downloads, webview behavior, and packaging still
+  need platform-native acceptance; browser checks alone do not establish it.
+- SSE and operation logs are implemented contracts, not pending spikes.
+  Keep streaming on the loopback server rather than assuming an embedded
+  asset handler flushes events correctly.
+- Datastar and pre-release Wails introduce upstream compatibility risk.
+  Upgrades require their current API documentation, regenerated artifacts,
+  and the checks appropriate to each build path.
+- Modern CSS support depends on the target webview and Linux userspace.
+  This decision does not promise compatibility with every older distro or
+  replace native GUI acceptance with cross-compilation.
 
 ## References
 
-- [`docs/phase3/SPIKES.md`](../phase3/SPIKES.md) — full spike evidence log
-
-- [0012. Phase 3 Desktop Local Datastore](0012-phase3-local-datastore.md)
-- [0014. Go Toolchain Bump for Phase 3](0014-go-toolchain-bump-for-phase3.md)
-- [`docs/ROADMAP.md`](../ROADMAP.md) — Phase 3 scope and pre-research
-  checklist.
-- [`docs/phase3/SPEC.md`](../phase3/SPEC.md) — Phase 3 specification.
-- [Datastar (GitHub)](https://github.com/starfederation/datastar) and the
-  [Go SDK](https://pkg.go.dev/github.com/starfederation/datastar/sdk/go).
-- [Datastar backend requests and SSE events](https://data-star.dev/guide/backend_requests_sse_events).
-- [templ × Datastar](https://templ.guide/server-side-rendering/datastar/).
-- [daisyUI with the Tailwind standalone CLI](https://daisyui.com/docs/install/standalone/).
-- [Tailwind CSS compatibility (v4 browser baseline)](https://tailwindcss.com/docs/compatibility).
-- [Wails v3 dynamic assets / AssetsHandler](https://wails.io/docs/guides/dynamic-assets/).
+- [Current architecture and package boundaries](../ARCHITECTURE.md).
+- [Desktop workflows](../USER_GUIDE.md).
+- [Desktop local datastore](0012-phase3-local-datastore.md).
+- [Runtime and dependency upgrade contract](0015-security-runtime-and-dependency-upgrades.md).
+- [Production server and window composition](../../cmd/desktop/main.go#L51)
+  (`cmd/desktop/main.go:51`).
+- [Layout and local asset loading](../../internal/desktop/templates/layout.templ#L3).
+- [Datastar SSE usage](../../internal/desktop/handler/import_users.go#L155).
+- [Settings persistence and immediate theme selection](../../internal/desktop/templates/settings.templ#L47).
+- [Asset build task](../../mise.toml) and [frontend manifest](../../frontend/package.json).
+- [Current Go dependency manifest](../../go.mod).

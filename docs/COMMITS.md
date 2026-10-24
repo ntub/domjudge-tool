@@ -1,13 +1,13 @@
 # Commit messages
 
 This project uses **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)**.
-The `commit-msg` lefthook hook enforces the format locally; CI re-checks.
+The `commit-msg` Lefthook hook enforces the format locally.
 `git-cliff` reads commits to generate `CHANGELOG.md`, so getting this right
 matters.
 
 ## Format
 
-```
+```text
 <type>(<scope>)?: <subject>
 
 <body>            # optional, blank line above
@@ -27,7 +27,7 @@ matters.
 Mark them either with `!` after the type/scope, or a `BREAKING CHANGE:`
 footer. **Both is fine, but the `!` is what shows up in the changelog.**
 
-```
+```text
 feat(cli)!: rename --user to --username
 
 BREAKING CHANGE: --user is removed; use --username.
@@ -51,7 +51,7 @@ BREAKING CHANGE: --user is removed; use --username.
 
 ## Examples
 
-```
+```text
 feat(importer): support BOM-prefixed CSV input
 
 Strips a leading UTF-8 BOM (﻿) from the first column header so
@@ -60,7 +60,7 @@ spreadsheet exports from Excel can be imported directly.
 Closes #42
 ```
 
-```
+```text
 fix(web/v7): tighten path sanitization for problem export
 
 Replace single-character space substitution with a path-safe filter that
@@ -70,7 +70,7 @@ hole in --output.
 Closes #47
 ```
 
-```
+```text
 chore: bootstrap project (phase 0)
 ```
 

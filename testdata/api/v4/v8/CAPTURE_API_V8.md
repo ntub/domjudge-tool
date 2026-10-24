@@ -23,7 +23,7 @@ contract 與 drift 測試。所有 fixture 都是從 live 8.3.1 station
 
 ```bash
 python3 scripts/check_pii_api.py testdata/api/v4/v8 testdata/web/v8
-just privacy-check
+mise run privacy-check
 ```
 
 ## Expected Fixture Layout
@@ -73,4 +73,4 @@ raw capture 不在 tracked files，並把 fixture 清單同步更新。
 - Raw live captures 只存在 ignored local path 或 repo 外。
 - Sanitized fixtures committed under `testdata/api/v4/v8/`。
 - `python3 scripts/check_pii_api.py testdata/api/v4/v8 testdata/web/v8` passes。
-- `just privacy-check` passes。
+- `mise run privacy-check` passes。

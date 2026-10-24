@@ -9,8 +9,8 @@
 
 | 版本 | 傳輸方式 |
 | ---- | -------- |
-| 7.3.x | REST API v4（建立 / 設定密碼）+ HTML 爬蟲備援 |
-| 8.3.1 | HTML 爬蟲（寫入操作）+ REST API v4（讀取操作） |
+| 7.3.x | REST API v4 讀取、題目匯入與符合安全條件的獨立密碼重設；預設 CSV 匯入、更新及刪除使用 HTML 爬蟲 |
+| 8.3.1 | REST API v4 讀取與題目匯入；預設 CSV 匯入、使用者更新、密碼重設及刪除使用 HTML 爬蟲 |
 
 在 `domserver.json` 的 `version` 欄位（或 `gen-config` 的 `--version` 旗標）
 指定版本以選擇對應的 web gateway。

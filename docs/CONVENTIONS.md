@@ -6,7 +6,7 @@ This document records the project-specific rules that go beyond those.
 
 ## Formatting
 
-- Run `just fmt` before committing. The pre-commit hook does this for you.
+- Run `mise run fmt` before committing. The pre-commit hook does this for you.
 - Imports are grouped by `gci` in this order: standard library, third-party,
   `github.com/ntub/domjudge-tool/...` (see `.golangci.yml`).
 - Tabs for indentation in Go; 2 spaces elsewhere (`.editorconfig` is law).
@@ -78,10 +78,10 @@ we have a stable external API, keep everything under `internal/`.
 
 ## Comments
 
-- Every exported identifier in `internal/` that survives Phase 1 should have
-  a doc comment. Until then, focus on package-level docs in `doc.go`.
-- Don't write what the code does — write **why**, especially for non-obvious
-  behaviour preserved from the Python CLI (see ROADMAP Phase 1 quirks list).
+- Exported identifiers in `internal/` have doc comments describing their
+  contracts; package-level comments belong in `doc.go`.
+- Explain **why**, especially for non-obvious behavior preserved from the
+  Python CLI; see the [compatibility contracts](ROADMAP.md#compatibility-contracts).
 
 ## TSV / multipart conventions (Phase 1.5+)
 

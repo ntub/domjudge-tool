@@ -9,8 +9,8 @@ For Traditional Chinese, see [`CLI.zh-TW.md`](CLI.zh-TW.md).
 
 | Version | Transport |
 | ------- | --------- |
-| 7.3.x   | REST API v4 (create / set-password) + HTML scraper fallback |
-| 8.3.1   | HTML scraper (write operations) + REST API v4 (read operations) |
+| 7.3.x   | REST API v4 reads, problem imports, and safe standalone password resets; HTML scraper for default CSV import, updates, and deletion |
+| 8.3.1   | REST API v4 reads and problem imports; HTML scraper for default CSV import, user updates, password resets, and deletion |
 
 Set the `version` field in `domserver.json` (or `--version` in
 `gen-config`) to select the correct web gateway.
@@ -456,7 +456,7 @@ Alias: `contest-files`.
 
 ```bash
 domjudge-tool download-submissions 1
-domjudge-tool download-submissions 1 --mode 1 --path ./dl --no-extract
+domjudge-tool download-submissions 1 --mode 1 --path ./dl --extract=false
 ```
 
 | Flag | Default | Description |

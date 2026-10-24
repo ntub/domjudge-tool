@@ -34,8 +34,7 @@ contest problem unlink API.
 
 ## Decision
 
-We decided that problem package workflows stay API-scoped before using
-the scraper:
+Problem package workflows use API contest scoping before scraper export:
 
 1. `download-problems` reads `/api/v4/contests/{cid}/problems` when
    `domserver.json.contest_id` is set and the operator did not pass
@@ -69,8 +68,8 @@ the scraper:
 
 ## Consequences
 
-- Positive: `download-problems` with `contest_id` now exports the actual
-  contest problem set instead of the global jury catalog.
+- Positive: `download-problems` with `contest_id` exports the actual contest
+  problem set instead of relying on the global jury catalog.
 - Positive: `import-problems` works against both DOMjudge 7.3.x and 8.3.1
   without one version's multipart field requirement breaking the other.
 - Positive: duplicate external-id failures are easier to reason about: they
@@ -80,11 +79,10 @@ the scraper:
   imports, while the scraper still exports full package ZIPs.
 - Negative: recovery from an accidental v8 import may require two separate
   operations: unlink from the contest via API, then optionally delete
-  orphan global problems through the jury UI. The CLI should not silently
+  orphan global problems through the jury UI. The CLI does not silently
   perform the second operation.
-- Follow-up: if DOMjudge later adds a full problem-package export API or a
-  non-destructive global problem delete/link workflow that is stable across
-  versions, write a superseding ADR before changing these routes.
+- A future transport change needs a replacement decision and evidence that
+  it preserves full ZIP contents, contest scope, and global catalog safety.
 
 ## References
 
@@ -92,3 +90,6 @@ the scraper:
 - [0008. DOMjudge 8.3.1 support and version selection](0008-domjudge-8.3.1-support-and-version-selection.md)
 - [0009. API v4 cross-version response compatibility](0009-api-v4-cross-version-response-compatibility.md)
 - [`docs/CLI.md`](../CLI.md)
+- [Shared package import implementation](../../internal/problems/import.go#L89)
+  (`internal/problems/import.go:89`).
+- [Current v8 compatibility contract](../phase2/CONTRACT.md).

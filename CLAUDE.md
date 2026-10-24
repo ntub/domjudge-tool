@@ -6,11 +6,12 @@ Reply in zh-TW; the rest in en-US.
 
 ## Project
 
-- `domjudge-tool` is a Go CLI, and later a desktop app, for managing DOMjudge
-  contest servers.
-- Current shipped milestone: Phase 1.5 (`v1.1.0`), API-first for DOMjudge
-  7.3.x with scraper fallback. Phase 2 adds DOMjudge 8.3.1. Phase 3 adds the
-  desktop app.
+- `domjudge-tool` provides a Go CLI and native Desktop preview for managing
+  DOMjudge contest servers.
+- Current CLI milestone: Phase 2 (`v1.6.0`), supporting DOMjudge 7.3.x and
+  8.3.1. Desktop uses Wails v3, templ/Datastar, and GORM/SQLite; it includes
+  native bundling and current-user CLI integration. Unsigned Desktop
+  artifacts are separate from public releases.
 - Preserve Python CLI compatibility from Phase 1 unless the user explicitly
   asks to change behavior.
 
@@ -20,9 +21,9 @@ Reply in zh-TW; the rest in en-US.
 - Before style, test, commit, or docs changes, read the matching file under
   `docs/`: `CONVENTIONS.md`, `TESTING.md`, `COMMITS.md`, or
   `DOCUMENTATION.md`.
-- For Phase 1.5 routing/API behavior, read
-  `docs/adr/0006-api-first-with-scraper-fallback.md` and
-  `docs/phase1.5/SPEC.md`.
+- For transport routing and API behavior, read
+  `docs/adr/0006-api-first-with-scraper-fallback.md`,
+  `docs/phase1.5/CONTRACT.md`, and `docs/phase2/CONTRACT.md`.
 
 ## Workflow
 
@@ -52,14 +53,23 @@ Reply in zh-TW; the rest in en-US.
 
 ## Commands
 
-- `just` lists tasks.
-- `just setup` installs project dependencies and hooks.
-- `just build` builds `./bin/domjudge-tool`.
-- `just test` runs the test suite; use `just test-race` for concurrency work.
-- `just fmt` formats with gofumpt or `gofmt -s`.
-- `just vet` and `just lint` run static checks.
-- `just privacy-check` runs secret and PII gates.
-- `just check` runs the full local gate used by CI.
+- `mise.toml` pins every runtime and tool; `mise.lock` records checksums.
+  Never install tools another way. After changing a pin, run `mise lock`.
+- `mise install` installs the pinned toolchain; `mise tasks` lists tasks.
+- `mise run setup` installs project dependencies and hooks.
+- `mise run build` builds `./bin/domjudge-tool`.
+- `mise run build-desktop` builds the native Desktop preview.
+- `mise run package-desktop -smoke` packages Desktop with its independent CLI.
+- `mise run user-guide-check` checks paired manuals and their local references.
+- `mise run test` runs the test suite; use `mise run test-race` for
+  concurrency work.
+- `mise run fmt` formats with gofumpt.
+- `mise run vet`, `mise run lint`, and `mise run lint-actions` run static
+  checks.
+- `mise run privacy-check` runs secret and PII gates.
+- `mise run check` runs the full local gate; CI runs `mise run ci`.
+- Releases publish only from a pushed `vMAJOR.MINOR.PATCH` tag through
+  `.github/workflows/release.yml`; see ADR 0017.
 
 ## Architecture
 
@@ -72,6 +82,11 @@ Reply in zh-TW; the rest in en-US.
   lives under `internal/client/web`.
 - `internal/client/httpx` is the shared place for HTTP transport concerns.
 - `internal/model`, `internal/config`, and `internal/util` are leaf packages.
+- `cmd/desktop` composes the build-tagged Wails shell and Desktop HTTP
+  handlers; Desktop code reuses the same operation packages as the CLI.
+- `internal/desktop/cliinstall` owns current-user command integration.
+  `cmd/package-desktop` builds native bundles; `cmd/cli-launcher` provides
+  Windows console forwarding without starting the Desktop.
 - Library packages return data/errors or use structured `slog`; they do not
   print directly.
 
@@ -111,7 +126,7 @@ Reply in zh-TW; the rest in en-US.
   data in ignored locations such as `tmp/`, `tmp/raw_api_v4/`, or outside the
   repo.
 - Before committing docs, scripts, fixtures, live-validation notes, or
-  generated outputs, run `just privacy-check`.
+  generated outputs, run `mise run privacy-check`.
 
 ## Documentation And Commits
 
@@ -134,6 +149,9 @@ Reply in zh-TW; the rest in en-US.
 
 ```text
 cmd/domjudge-tool/   thin entry point
+cmd/desktop/        native Desktop composition (desktop build tag)
+cmd/package-desktop/ native Desktop + CLI bundle packager
+cmd/cli-launcher/   Windows console-only command forwarder
 internal/            business logic, clients, CLI wiring
 docs/                architecture, conventions, roadmap, ADRs
 testdata/            sanitized fixtures

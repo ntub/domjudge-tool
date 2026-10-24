@@ -6,56 +6,42 @@
 
 ## Context
 
-Phase 1.5 made `internal/client/api/v4` the primary transport for most CLI
-operations. Phase 2 keeps that package name because DOMjudge 8.3.1 still uses
-API v4, but the live 8.3.1 station confirmed that "same API version" does not
-mean "identical JSON response shapes."
+DOMjudge 7.3.x and 8.3.1 use API v4, but their JSON representations are not
+identical. Sharing a protocol version does not justify assuming identical
+field types.
 
-The confirmed hard breaks are:
+Two differences require explicit decoding:
 
-1. `problems[].time_limit` is a JSON number with a decimal on 8.3.1. The live
-   value observed was `5.0`, while `model.Problem.TimeLimit` and
-   `model.ProblemItem.TimeLimit` are Go `int` fields. This causes
-   `encoding/json` to fail before downstream commands can run.
-2. `/api/v4/version` returns `{"api_version":4}` on 8.3.1, while
-   `versionBody.APIVersion` is a Go `string`.
+1. A problem's `time_limit` can be an integer or an integral floating JSON
+   number such as `5.0`. The domain model deliberately keeps an `int`.
+2. `/api/v4/version` can return string or numeric `api_version`. The client
+   deliberately keeps its string return type.
 
-The investigation also found live-confirmed non-breaks:
-
-- `source-code` is still a JSON array compatible with
-  `[]model.SubmissionFile`.
-- Live problem responses still include `ordinal`, `test_data_count`, and
-  `externalid`, even though the v8 OpenAPI description under-describes those
-  fields.
-- Bulk `accounts.json` import on DOMjudge 8.3.1 drops email during
-  write/readback validation. Single-entity `POST /api/v4/users` does honor
-  email, `team_id`, password, and roles, but `PUT /api/v4/users/{id}` fails
-  with HTTP 400 "already exists" without updating fields.
-
-There are also silent drifts to verify during P2-0 fixture capture: contest
-and submission `externalid` may appear as `external_id`, organizations dropped
-`url` and `twitter_hashtag`, teams dropped `members`, and judgements dropped
-`judgehost`. These do not necessarily fail decoding because Go's JSON decoder
-ignores unknown fields by default, but downstream code can still lose values if
-it reads only the old field name.
+Other changes are additive or affect fields that current operations do not
+consume: contest/submission external-id spelling, missing organization
+URL/hashtag, missing team members, and missing judgement judgehost. The
+dual-version tests record the audited boundary without adding unused aliases
+or making every model field dynamically typed. Source-code responses remain
+arrays of `model.SubmissionFile`.
 
 ## Decision
 
-We will make `internal/client/api/v4` decoders tolerant across DOMjudge 7.3.x
-and 8.3.1 while keeping the package API stable for callers.
+Keep one typed `internal/client/api/v4` package for both server families,
+with narrow, field-specific compatibility decoders:
 
-- `time_limit` accepts both integer JSON numbers and integral floating JSON
-  numbers such as `5.0`.
-- `/api/v4/version` accepts both string and integer `api_version` values and
-  returns the existing Go string result.
-- The API client remains additive-safe by continuing to use the default
-  `encoding/json` behaviour that ignores unknown fields. We will not enable
-  `Decoder.DisallowUnknownFields`.
-- P2-0 captures sanitized v8 fixtures under `testdata/api/v4/v8/`. P2-1 adds
-  dual-version decoder tests so v7 fixture coverage remains in place while v8
-  support is added.
-- Compatibility logic is narrow and field-specific. We do not replace typed
-  models with `map[string]any` or a generic loose decoder.
+- `Problem.TimeLimit` and `ProblemItem.TimeLimit` accept integer JSON
+  numbers and integral floating numbers. Fractional and out-of-range
+  values are errors; they are not silently truncated or rounded.
+- Missing `time_limit` leaves the zero value; JSON `null` decodes to zero.
+- `General.Version` accepts string or integer `api_version` and returns a
+  string. JSON `null` produces an empty string; unrelated JSON types are
+  not broadly coerced.
+- Ordinary decoding continues to ignore unknown fields. Do not enable
+  `Decoder.DisallowUnknownFields` for upstream response objects.
+- Sanitized v7 and v8 fixtures and shared resource tests remain side by
+  side. Supporting v8 does not replace or weaken the v7 fixture contract.
+- Keep typed models rather than introducing `map[string]any` or a generic
+  loose decoder.
 
 ### Alternatives considered
 
@@ -74,36 +60,30 @@ and 8.3.1 while keeping the package API stable for callers.
   add fields that the CLI does not care about. Strict unknown-field rejection
   would turn harmless additive changes into command failures.
 
-- **Ignore `/api/v4/version` because no command currently calls it.**
-  Rejected. The endpoint is part of the public API client and is relevant to
-  future diagnostics. Its drift is easy to fix narrowly, and leaving it broken
-  would invite accidental use as a failing auto-detection path.
+- **Use protocol-version probing to select a scraper.** Rejected:
+  `api_version` identifies the API protocol, not the DOMjudge server
+  family. Config-driven scraper selection remains a separate contract
+  under [ADR 0008](0008-domjudge-8.3.1-support-and-version-selection.md).
 
 ## Consequences
 
-- Positive: Existing API-first commands can continue to share one
-  `internal/client/api/v4` package across DOMjudge 7.3.x and 8.3.1.
-- Positive: The fix is small and testable: field-specific decoders plus
-  dual-version fixtures.
-- Positive: Additive upstream fields do not break the CLI.
-- Negative: Some silent drifts still require explicit downstream audits. A
-  decoder can accept missing `members` or `judgehost`, but a use-case that
-  depends on those fields must still be tested against v8 fixtures.
-- Negative: Integral-float acceptance must define a policy for non-integral
-  values. Phase 2 should reject or explicitly round only with tests; it should
-  not silently truncate.
-- Follow-up: P2-0 captures the v8 fixtures and records the silent drift table.
-  P2-1 implements the decoder changes and dual-version tests. P2-4 keeps v8
-  import create/update/email/password/affiliation on the scraper because the
-  bulk REST import mechanics drop email; a future PR can consider
-  single-entity API user create only.
+- Both supported server families share resource clients and caller-facing
+  types; server representation differences stay at the decoding boundary.
+- Harmless additive upstream fields do not turn into command failures.
+- Fractional time limits fail explicitly instead of changing downstream
+  integer semantics.
+- Tolerating missing fields does not promise aliasing or value recovery for
+  every upstream rename. If an operation begins consuming an audited,
+  currently unused field, its semantics need explicit dual-version tests.
+- Decoder tolerance does not make broken write endpoints safe. The current
+  v8 create/update/email/password/affiliation workflow remains scraper-backed
+  under [ADR 0006](0006-api-first-with-scraper-fallback.md).
 
 ## References
 
-- `docs/phase2/SPEC.md`
-- `docs/phase2/CONTRACT.md`
-- ADR 0006 — API-first with scraper fallback.
-- `internal/client/api/v4/general.go`
-- `internal/client/api/v4/problems.go`
-- `internal/client/api/v4/client.go`
-- `internal/model/problem.go`
+- [Current v8 compatibility and fixture contract](../phase2/CONTRACT.md).
+- [API-first routing](0006-api-first-with-scraper-fallback.md).
+- [Version decoder](../../internal/client/api/v4/general.go#L30)
+  (`internal/client/api/v4/general.go:30`).
+- [Problem decoders and integer policy](../../internal/model/problem.go#L26).
+- [Dual-version resource tests and silent-drift audit](../../internal/client/api/v4/cross_version_test.go#L13).

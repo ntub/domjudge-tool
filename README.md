@@ -1,175 +1,161 @@
 # domjudge-tool
 
-> A Go-based CLI (and, eventually, desktop app) for managing
-> [DOMjudge](https://www.domjudge.org/) contest servers.
+Manage **DOMjudge 7.3.x and 8.3.1**: users, teams, problem packages,
+scoreboards, submission sources, and account emails.
 
-![status](https://img.shields.io/badge/status-phase%202%20complete%20%E2%80%94%20v1.6.0-green) <!-- TODO: replace with real CI badge once a public remote is wired up -->
+- **CLI:** released and suitable for scripting.
+- **Desktop:** native preview with server profiles, progress, and History.
+  Release bundles for macOS, Linux, and Windows include the CLI.
+- **New here?** Follow one quick start below. Contributors can jump to
+  [Work on this repository](#work-on-this-repository).
 
-## Roadmap
+## CLI: install and start
 
-| Phase | Scope | Status |
-| ----- | ----- | ------ |
-| **0** | Project bootstrap | Done |
-| **1** | Port Python CLI → Go CLI, **DOMjudge 7.3.2 only** | **Done** — `v1.0.0-rc1` |
-| **1.5** | API-first refactor with scraper fallback (DOMjudge 7.3.x) | **Done** — `v1.4.0` |
-| **2** | Add **DOMjudge 8.3.1** support to the CLI | **Done** — `v1.6.0` |
-| **3** | Cross-platform desktop app (PocketBase + Wails + React) | Planned |
-
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for details.
-
-The CLI supports DOMjudge 7.3.x and 8.3.1. Existing `domserver.json`
-files load unchanged; the `version` field selects the matching v7 or v8
-web gateway.
-
-## Install
-
-**Pre-built binaries** (linux/darwin × amd64/arm64) are available on the
-[Releases](https://github.com/ntub/domjudge-tool/releases) page. Download
-the archive for your platform, extract it, and place `domjudge-tool` on
-your `$PATH`.
-
-**Install from source** (requires Go ≥ 1.27.3):
+Download the CLI archive for your platform from
+[Releases](https://github.com/ntub/domjudge-tool/releases)
+(`domjudge-tool_<os>_<arch>.tar.gz`, or `.zip` on Windows), extract it, and
+put `domjudge-tool` on your `PATH`. [Verify the download](#verify-a-download)
+before running it. Alternatively, with Go **1.27.3+**:
 
 ```bash
 go install github.com/ntub/domjudge-tool/cmd/domjudge-tool@latest
-```
-
-## Quick start
-
-```bash
-# 1. Write a config file for your DOMjudge server.
-domjudge-tool gen-config --host https://judge.example.org \
-    --username admin --password secret
-
-# 2. Generate a CSV template for bulk user import.
-domjudge-tool import-users-teams-example
-
-# 3. Import users and teams from the filled-in CSV.
-domjudge-tool import-users-teams import-users-teams.csv
-
-# 4. Explore the full command tree.
 domjudge-tool --help
 ```
 
-`import-users-teams.csv` includes an optional `category_id` column.
-Leave it blank, or omit the column in older CSVs, to use the existing
-`--category-id` / `domserver.json` default.
-
-All commands support `--config` (`-c`) to point at a non-default
-`domserver.json`, `--verbose` (`-v`) for debug output, and
-`--no-progress` *(v1.3.0)* to suppress the per-row progress bar on
-batch commands. The bar is also auto-disabled when stderr is not a
-TTY, when `NO_COLOR` is set, or when `TERM=dumb` — so piped
-invocations like `domjudge-tool import-users-teams ... 2>/dev/null`
-stay byte-identical to pre-v1.3.0 output.
-
-## Commands
-
-Run `domjudge-tool --help` to list every command grouped by domain. The
-command tree mirrors the Python CLI's; commands added in v1.2.0 are
-flagged below. For the complete per-flag reference see
-[`docs/CLI.md`](docs/CLI.md) (English) and
-[`docs/CLI.zh-TW.md`](docs/CLI.zh-TW.md) (Traditional Chinese). Long-running batch commands (`import-users-teams`,
-`send-user-accounts`, `render-user-accounts`, `download-problems`,
-`import-problems`, `download-submissions`, `download-scoreboard`) print a per-row
-progress bar to stderr on a TTY since v1.3.0.
-
-`download-scoreboard` writes columns `Rank, TeamAffiliation, TeamName,
-SolvedCount, Score, Category, <problem labels…>`. Since v1.4.0 it spans
-every team category (one ranked section per sortorder, so `Rank` restarts
-at 1 per section) and records each row's category; pass `--exclude-hidden`
-to drop rows whose category group is hidden.
-
-### Email
-
-The email subtree handles credential delivery for newly imported users.
-Two of the four commands are offline (no network); `send-user-accounts`
-is the SMTP path.
-
-- `email-template-example [-o <dir>] [--force]` *(v1.2.0)* — scaffold a
-  template directory containing `subject.txt`, `body.txt`, and
-  `body.html` with the six supported placeholders (`$username`,
-  `$name`, `$email`, `$affiliation`, `$password`, `$server_host`).
-  Round-trips through `email-template-validate` with no edits.
-- `email-template-validate <dir>` *(v1.2.0)* — verify a template
-  directory loads and references only the fixed placeholder set.
-- `render-user-accounts <csv> <template-dir> [-d <output-dir>]
-  [--from-email <addr>] [--force]` *(v1.2.0)* — render per-recipient
-  RFC 5322 `.eml` files to disk, parallel to `send-user-accounts` but
-  never touches SMTP. Useful for review, batch, and mailmerge workflows.
-- `send-user-accounts <csv> <template-dir> [SMTP flags]` — mail the
-  rendered messages directly via SMTP. Reuses the same template loader
-  and message builder as `render-user-accounts`.
-
-For the full flag list of any command, run
-`domjudge-tool <command> --help`.
-
-## Hybrid transport architecture (since v1.1.0)
-
-`domjudge-tool` talks to DOMjudge through **two transports** and picks
-the right one per operation. The same CLI supports DOMjudge 7.3.x and
-8.3.1; `domserver.json` `version` selects the v7 or v8 web gateway via
-`internal/client/web/gatewayfactory`.
-
-- **DOMjudge REST API v4** (`internal/client/api/v4`) — used for every
-  read flow (`version`, `export-users`, `download-submissions`,
-  `download-scoreboard`) and, on v7, for the bulk-import write flows
-  (`import-users-teams` create-flow and `set-password` without
-  `--user-roles`) unless scraper fallback is requested.
-- **HTML scraper over the jury web UI** (`internal/client/web/v7` and
-  `internal/client/web/v8`) — used for operations the selected API path
-  cannot express. On v8, create, update, password, email, and affiliation
-  writes route through the scraper, and delete is scraper-only because
-  DOMjudge 8.3.1 has no REST API DELETE.
-
-The choice is made by `internal/importer.Router` and surfaced in
-structured `slog` lines (`router decision op=… path=… reason=…`) for
-incident triage. To force every hybrid command back onto the scraper —
-e.g. when an API path misbehaves in production — set
-`"prefer_scraper": true` in `domserver.json`. The default is `false`
-and existing config files load unchanged.
-
-See [`docs/adr/0006-api-first-with-scraper-fallback.md`](docs/adr/0006-api-first-with-scraper-fallback.md)
-for the rationale and the full operation-to-transport table.
-
-## Development setup
+Create a local configuration. Replace the example host, password, version,
+and contest ID with your server's values:
 
 ```bash
-# Prereqs: go ≥ 1.27.3, just, git, optionally lefthook + gofumpt + golangci-lint + trufflehog.
-just setup
-just build
-./bin/domjudge-tool
+domjudge-tool gen-config \
+  --host https://test-station.example.org \
+  --username admin --password 'REPLACE_LOCALLY' \
+  --version 8.3.1 --contest-id 1
+
+# First live operation: read users without modifying the server.
+domjudge-tool export-users -o users.csv
 ```
 
-`just setup` runs `go mod download` and installs the lefthook git hooks.
-It also prints install hints for any missing optional tools (`lefthook`,
-`gofumpt`, `golangci-lint`, `trufflehog`). See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
-the full workflow.
+`gen-config` writes `domserver.json` without contacting DOMjudge. For a
+7.3.x server, set its actual version, for example `--version 7.3.2`.
+Use `--config /path/to/domserver.json` to select another configuration.
 
-Run `just` (no args) to list every available task.
+To import users, generate the CSV, edit its rows, and then import it:
 
-## Documentation
+```bash
+domjudge-tool import-users-teams-example
+# Edit import-users-teams.csv before running the next command.
+domjudge-tool import-users-teams import-users-teams.csv
+```
 
-- [`CLAUDE.md`](CLAUDE.md) — shared instructions for Claude Code and Codex.
-  `AGENTS.md` is a symlink for Codex compatibility.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — branch / commit / PR workflow.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layered design and
-  package responsibilities.
-- [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) — Go style and project
-  additions.
-- [`docs/TESTING.md`](docs/TESTING.md) — test framework, fixtures,
-  naming.
-- [`docs/COMMITS.md`](docs/COMMITS.md) — Conventional Commits cheat
-  sheet.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phase plan and forward-looking
-  notes.
-- [`docs/CLI.md`](docs/CLI.md) — complete per-flag CLI reference
-  (English).
-- [`docs/CLI.zh-TW.md`](docs/CLI.zh-TW.md) — Traditional Chinese CLI
-  reference.
-- [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) — meta-rules for
-  writing docs in this repo.
-- [`docs/adr/`](docs/adr/) — Architecture Decision Records.
+Importing **changes the server** and writes `import-users-teams-out.csv`.
+Keep configuration, credential CSVs, exports, and rendered emails private;
+never commit them. Inspect `domjudge-tool <command> --help` before running
+writes or deletion commands.
+
+## Desktop: download or build
+
+Each release attaches `domjudge-tool-desktop_<version>_<os>_<arch>` bundles
+for macOS, Linux, and Windows on amd64 and arm64 (`.tar.gz` on Linux, `.zip`
+elsewhere). Extract the bundle to a permanent, user-writable location and
+keep its directory together; on macOS, move the `.app` out of Downloads
+before opening it. The bundles are **unsigned and not notarized**, so the
+operating system may warn on first launch. Linux needs GTK4 and
+WebKitGTK 6.0 (baseline: Ubuntu 24.04); Windows needs WebView2.
+
+To build from a checkout instead, install [mise](https://mise.jdx.dev/) and a
+native CGO toolchain; mise installs the pinned Go, Node.js, and other tools:
+
+```bash
+mise install
+mise run setup
+mise run build-desktop
+./bin/domjudge-tool-app
+```
+
+`mise run package-desktop` bundles the native Desktop and CLI together, as a
+release does. macOS produces `bin/domjudge-tool.app`; Linux and Windows
+produce a portable directory under `bin/desktop/domjudge-tool`. Archives and
+checksums are under `dist/desktop`.
+
+In the packaged app, open **Settings → Command Line Tool** to install the
+current-user command. Follow the displayed PATH instructions; the app never
+edits shell configuration or Windows registry PATH. CLI commands work while
+Desktop is closed. Moving the app requires **Relink**; deleting it makes its
+CLI target unavailable. See the [installation guide](docs/USER_GUIDE.md#23-install-the-bundled-cli-command)
+for conflicts, removal and platform prerequisites. A raw development build
+without a bundle does not provide installation.
+
+1. In **Servers**, select **+ Add Server** and enter the host, credentials,
+   DOMjudge version, and contest ID. Desktop profiles are separate from
+   the CLI's `domserver.json`.
+2. Open an operation in the sidebar, choose the profile, and supply its
+   CSV, problem package, contest, or output directory.
+3. Review progress and **History**. File downloads may open a native Save
+   dialog; cancelling leaves the form available for another attempt.
+
+**Remove Users** defaults to dry-run. Review the planned removals before
+turning dry-run off; permanent removal requires confirmation. The minimum
+native window size is **800 × 560**.
+
+## Verify a download
+
+Every release publishes `checksums.txt` for the CLI archives, a `.sha256`
+file next to each Desktop bundle, and a signed build-provenance attestation
+for every archive. Check both before running a download:
+
+```bash
+sha256sum --ignore-missing -c checksums.txt     # CLI archives
+sha256sum -c domjudge-tool-desktop_*.sha256     # Desktop bundles
+gh attestation verify <archive> --repo ntub/domjudge-tool
+```
+
+On macOS, use `shasum -a 256` in place of `sha256sum`. A passing attestation
+proves the archive was built by this repository's release workflow from the
+tagged commit; it does not mean the bundle is code-signed.
+
+## Choose the next task
+
+| Task | Start here |
+| --- | --- |
+| Illustrated desktop + CLI guide | [English](docs/USER_GUIDE.md) · [繁體中文](docs/USER_GUIDE.zh-TW.md) |
+| Users and teams | `import-users-teams`, `export-users`, `set-password` |
+| Problem packages | `download-problems`, `import-problems --help` |
+| Contest data | `download-scoreboard --help`, `download-submissions --help` |
+| Account emails | Render with `render-user-accounts` before sending with `send-user-accounts` |
+| Complete CLI reference | [English](docs/CLI.md) · [繁體中文](docs/CLI.zh-TW.md) |
+| Copy-and-edit examples | [English](docs/SNIPPETS.md) · [繁體中文](docs/SNIPPETS.zh-TW.md) |
+
+## Work on this repository
+
+Install [mise](https://mise.jdx.dev/getting-started.html). It pins every
+runtime and tool (Go, Node.js, Python, linters, scanners, release tools) in
+`mise.toml`, with checksums in `mise.lock`; CI uses the same pins.
+
+```bash
+mise trust
+mise install
+mise run setup
+mise run build
+./bin/domjudge-tool --help
+mise run check
+```
+
+`mise tasks` lists all tasks. Tests use sanitized fixtures and local test
+servers; **never point tests at a real DOMjudge or SMTP server**. Run
+`mise run privacy-check` before contributing documentation or screenshots.
+Do not change CLI names, config keys, CSV column order, or locked scraper
+behavior without an explicit compatibility decision.
+
+Releases are published only by GitHub Actions, when a maintainer pushes an
+annotated `vMAJOR.MINOR.PATCH` tag on `main`; the release notes are that
+version's `CHANGELOG.md` section. On the 1st of each month a workflow opens
+one issue summarizing open Dependabot alerts; it never opens pull requests or
+changes dependencies.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, hooks, commits, and
+releases, and [AGENTS.md](AGENTS.md) for the compatibility and privacy rules.
+Design references: [architecture](docs/ARCHITECTURE.md) and
+[decision records](docs/adr/README.md).
 
 ## License
 
