@@ -37,11 +37,7 @@ func stubFn(captured *capturedDownload) cliscb.DownloadFn {
 }
 
 func TestDownloadScoreboard_ExcludeHiddenFlag(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	captured := &capturedDownload{}
 	if err := runWithStub(t, captured, "--cid", "1", "--exclude-hidden"); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -73,12 +69,8 @@ func runWithStub(t *testing.T, captured *capturedDownload, args ...string) error
 }
 
 func TestDownloadScoreboard_DefaultFilename(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
 	tmp := t.TempDir()
-	if err := os.Chdir(tmp); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(tmp)
 	captured := &capturedDownload{}
 	if err := runWithStub(t, captured, "--cid", "1"); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -102,12 +94,8 @@ func TestDownloadScoreboard_PathFlag(t *testing.T) {
 }
 
 func TestDownloadScoreboard_FilenameFlag(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
 	tmp := t.TempDir()
-	if err := os.Chdir(tmp); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(tmp)
 	captured := &capturedDownload{}
 	if err := runWithStub(t, captured, "--cid", "3", "--filename", "round1"); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -118,11 +106,7 @@ func TestDownloadScoreboard_FilenameFlag(t *testing.T) {
 }
 
 func TestDownloadScoreboard_UrlOverride(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	captured := &capturedDownload{}
 	if err := runWithStub(t, captured, "--cid", "5", "--url", "https://other/public"); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -133,11 +117,7 @@ func TestDownloadScoreboard_UrlOverride(t *testing.T) {
 }
 
 func TestDownloadScoreboard_UrlDefaultIsCfgHost(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	captured := &capturedDownload{}
 	if err := runWithStub(t, captured, "--cid", "1"); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -148,11 +128,7 @@ func TestDownloadScoreboard_UrlDefaultIsCfgHost(t *testing.T) {
 }
 
 func TestDownloadScoreboard_AliasScoreboardExport(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	captured := &capturedDownload{}
 	deps := cliscb.Deps{
 		Download: stubFn(captured),
@@ -177,11 +153,7 @@ func TestDownloadScoreboard_AliasScoreboardExport(t *testing.T) {
 }
 
 func TestDownloadScoreboard_RequiresCid(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	captured := &capturedDownload{}
 	err := runWithStub(t, captured) // no --cid
 	if err == nil {
@@ -195,12 +167,8 @@ func TestDownloadScoreboard_RequiresCid(t *testing.T) {
 // context.Canceled-wrapped error and the resulting CSV must not
 // contain any data rows (header-only, empty, or absent are all OK).
 func TestDownloadScoreboard_CtxCancelled_AbortsBeforeNextRow(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
 	tmp := t.TempDir()
-	if err := os.Chdir(tmp); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(tmp)
 
 	deps := cliscb.Deps{
 		Download: func(_ context.Context, _ *apiv4.Client, _ string, _ bool) ([]string, [][]string, error) {
@@ -256,11 +224,7 @@ func TestDownloadScoreboard_CtxCancelled_AbortsBeforeNextRow(t *testing.T) {
 }
 
 func TestDownloadScoreboard_DownloadError(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 	deps := cliscb.Deps{
 		Download: func(_ context.Context, _ *apiv4.Client, _ string, _ bool) ([]string, [][]string, error) {
 			return nil, nil, errors.New("upstream 500")

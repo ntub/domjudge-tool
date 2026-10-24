@@ -53,11 +53,7 @@ func runWithStubGatewayConfig(
 
 func TestDownloadProblems_HappyPath_DefaultFolder(t *testing.T) {
 	dir := t.TempDir()
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(dir)
 
 	exportA := "/jury/problems/A/export"
 	exportB := "/jury/problems/B/export"
@@ -107,11 +103,7 @@ func TestDownloadProblems_FolderFlag(t *testing.T) {
 }
 
 func TestDownloadProblems_ExcludeOnlyForwarded(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 
 	m := &mockGateway{
 		getProblemsRes: []model.ProblemItem{},
@@ -165,11 +157,7 @@ func TestDownloadProblems_ContestIDScopesScraperListFromAPI(t *testing.T) {
 
 func TestDownloadProblems_SkipsEmptyExportPath(t *testing.T) {
 	dir := t.TempDir()
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(dir)
 
 	export := "/x"
 	empty := ""
@@ -199,11 +187,7 @@ func TestDownloadProblems_SkipsEmptyExportPath(t *testing.T) {
 
 func TestDownloadProblems_FilenameSpacesToDash(t *testing.T) {
 	dir := t.TempDir()
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(dir)
 
 	export := "/x"
 	m := &mockGateway{
@@ -221,11 +205,7 @@ func TestDownloadProblems_FilenameSpacesToDash(t *testing.T) {
 
 func TestDownloadProblems_SanitizesFilename(t *testing.T) {
 	dir := t.TempDir()
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(dir)
 
 	export := "/x"
 	m := &mockGateway{
@@ -245,11 +225,7 @@ func TestDownloadProblems_SanitizesFilename(t *testing.T) {
 }
 
 func TestDownloadProblems_CtxCancelled(t *testing.T) {
-	pwd, _ := os.Getwd()
-	t.Cleanup(func() { _ = os.Chdir(pwd) })
-	if err := os.Chdir(t.TempDir()); err != nil {
-		t.Fatalf("chdir: %v", err)
-	}
+	t.Chdir(t.TempDir())
 
 	export := "/x"
 	m := &mockGateway{

@@ -99,6 +99,11 @@ func TestWindowsConsoleCancellation_Integration(t *testing.T) {
 			if err := errors.Join(writeErr, file.Close()); err != nil {
 				t.Fatal(err)
 			}
+			// CI runners can start the test process with Ctrl+C ignored, and a
+			// new console inherits that attribute. Restore normal processing so
+			// the test measures the launcher, not the runner's console setup.
+			// Failure is harmless: the assertions below report any real gap.
+			_, _, _ = windows.NewLazySystemDLL("kernel32.dll").NewProc("SetConsoleCtrlHandler").Call(0, 0)
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, launcher, "-test.run=^TestWindowsConsoleHelper$")

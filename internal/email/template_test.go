@@ -3,6 +3,7 @@ package email_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -138,6 +139,9 @@ func TestRender_MissingVar_ExpandsToEmpty(t *testing.T) {
 }
 
 func TestLoadTemplate_HTMLUnreadable_NoFallback(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes cannot make a file unreadable on Windows")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("running as root — chmod-based permission test is meaningless")
 	}
