@@ -1,0 +1,365 @@
+# mise.toml — single source of truth for domjudge-tool development:
+# language runtimes, CLI tools, and tasks. See CONTRIBUTING.md.
+#
+#   mise install         # install the pinned tools recorded in mise.lock
+#   mise run setup       # download modules/packages and install Git hooks
+#   mise tasks           # list tasks
+#
+# Versions are pinned exactly. mise.lock records checksums and provenance for
+# every platform the project builds on; CI installs with `--locked`.
+# After changing a version here, run `mise lock` and commit both files.
+
+min_version = "2026.10.14"
+
+[settings]
+lockfile = true
+lockfile_platforms = [
+  "linux-x64",
+  "linux-arm64",
+  "macos-x64",
+  "macos-arm64",
+  "windows-x64",
+  "windows-arm64",
+]
+# Re-verify cosign/SLSA/GitHub attestations recorded in mise.lock on install.
+locked_verify_provenance = true
+
+[tools]
+# Language runtimes. Keep `go` equal to the go.mod `go` directive.
+go = "1.27.3"
+node = "24.22.1"
+python = "3.14.9"
+# Go development tools. Keep templ equal to github.com/a-h/templ in go.mod.
+gofumpt = "0.12.0"
+golangci-lint = "2.15.0"
+"aqua:a-h/templ" = "0.3.1070"
+# Repository, security, and release tools.
+lefthook = "2.2.2"
+trufflehog = "3.99.4"
+actionlint = "1.7.12"
+zizmor = "1.31.1"
+git-cliff = "2.14.2"
+goreleaser = "2.19.0"
+gh = "2.103.0"
+
+[env]
+# Builds and tests must use the pinned Go, never an automatic toolchain download.
+GOTOOLCHAIN = "local"
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
+[tasks.setup]
+description = "Download Go modules and frontend packages, then install Git hooks (idempotent)"
+run = [
+  "go mod download",
+  { task = "frontend-install" },
+  "lefthook install",
+]
+
+[tasks.frontend-install]
+description = "Install the locked frontend packages used to build Desktop CSS"
+dir = "{{config_root}}/frontend"
+sources = ["package.json", "package-lock.json"]
+outputs = ["node_modules/.package-lock.json"]
+run = "npm ci --ignore-scripts --no-audit --no-fund"
+
+[tasks.tidy]
+description = "Tidy go.mod and go.sum"
+run = "go mod tidy"
+
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+
+[tasks.build]
+description = "Build the CLI binary into ./bin"
+run = "go build -o ./bin/domjudge-tool ./cmd/domjudge-tool"
+
+[tasks.build-desktop]
+description = "Build the native Desktop preview into ./bin (needs a native CGO toolchain)"
+env = { CGO_ENABLED = "1" }
+run = "go build -tags desktop -o ./bin/domjudge-tool-app ./cmd/desktop"
+
+[tasks.package-desktop]
+description = "Build a native Desktop+CLI bundle and archive; append flags, e.g. `mise run package-desktop -smoke`"
+run = "go run ./cmd/package-desktop"
+
+[tasks.generate-desktop-icons]
+description = "Regenerate the macOS icon from the committed PNG master (macOS only)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    printf 'Icon generation requires macOS sips and iconutil.\n' >&2
+    exit 1
+fi
+work_dir="$(mktemp -d)"
+trap 'rm -rf -- "$work_dir"' EXIT
+mkdir "$work_dir/app.iconset"
+for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" internal/desktop/assets/appicon.png \
+        --out "$work_dir/app.iconset/icon_${size}x${size}.png" >/dev/null
+    retina=$((size * 2))
+    sips -z "$retina" "$retina" internal/desktop/assets/appicon.png \
+        --out "$work_dir/app.iconset/icon_${size}x${size}@2x.png" >/dev/null
+done
+mkdir -p build/darwin
+iconutil -c icns "$work_dir/app.iconset" -o build/darwin/icons.icns
+'''
+
+[tasks.build-desktop-css]
+description = "Rebuild internal/desktop/assets/tailwind.css from templ templates (commit the result)"
+depends = ["frontend-install"]
+run = "./frontend/node_modules/.bin/tailwindcss -i ./frontend/input.css -o ./internal/desktop/assets/tailwind.css"
+
+[tasks.generate-templates]
+description = "Regenerate templ Go files from *.templ sources"
+run = "templ generate ./internal/desktop/templates/"
+
+[tasks.run]
+description = "Run the CLI from source; append CLI arguments, e.g. `mise run run -- --help`"
+run = "go run ./cmd/domjudge-tool"
+
+[tasks.clean]
+description = "Remove build and coverage artifacts"
+run = "rm -rf bin coverage.out coverage.html dist/"
+
+# ---------------------------------------------------------------------------
+# Quality gates
+# ---------------------------------------------------------------------------
+
+[tasks.test]
+description = "Run all tests"
+run = "go test ./..."
+
+[tasks.test-race]
+description = "Run all tests with the race detector"
+run = "go test -race ./..."
+
+[tasks.test-desktop]
+description = "Run the native Desktop adapter tests (needs a native CGO toolchain on macOS/Linux)"
+run = "go test -tags desktop ./cmd/desktop"
+
+[tasks.cover]
+description = "Generate an HTML coverage report at coverage.html"
+run = [
+  "go test -coverprofile=coverage.out ./...",
+  "go tool cover -html=coverage.out -o coverage.html",
+]
+
+[tasks.fmt]
+description = "Format Go sources with gofumpt"
+run = "gofumpt -w ."
+
+[tasks.fmt-check]
+description = "Fail when any Go source is not gofumpt-formatted"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+out="$(gofumpt -l .)"
+if [[ -n "$out" ]]; then
+    printf 'Unformatted Go files (run `mise run fmt`):\n%s\n' "$out" >&2
+    exit 1
+fi
+'''
+
+[tasks.vet]
+description = "Run go vet on all packages"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.lint-actions]
+description = "Lint GitHub Actions workflows for correctness (actionlint) and security (zizmor)"
+run = [
+  "actionlint",
+  "zizmor --offline --min-severity low .github/workflows",
+]
+
+[tasks.secret-scan]
+description = "Scan source, docs, fixtures, and Git history for committed secrets"
+run = "scripts/check_secrets.sh"
+
+[tasks.api-fixture-check]
+description = "Run fixture/release tooling tests and the project PII gates"
+run = [
+  "python3 -m unittest discover -s scripts -p '*_test.py'",
+  "python3 scripts/check_pii_api.py testdata/api/v4 testdata/web",
+]
+
+[tasks.privacy-check]
+description = "Run all repository privacy gates: generic secrets and project-specific PII"
+run = [{ task = "secret-scan" }, { task = "api-fixture-check" }]
+
+[tasks.check]
+description = "Local gate: fmt, vet, lint, workflow lint, privacy gates, and tests"
+run = [
+  { task = "fmt" },
+  { task = "vet" },
+  { task = "lint" },
+  { task = "lint-actions" },
+  { task = "privacy-check" },
+  { task = "test" },
+]
+
+[tasks.ci]
+description = "CI gate: like `check`, but verifies formatting instead of rewriting and runs tests with -race"
+run = [
+  { task = "fmt-check" },
+  { task = "vet" },
+  { task = "lint" },
+  { task = "lint-actions" },
+  { task = "privacy-check" },
+  { task = "test-race" },
+]
+
+# ---------------------------------------------------------------------------
+# Fixtures and manuals
+# ---------------------------------------------------------------------------
+
+[tasks.api-fixture-capture]
+description = "Capture raw DOMjudge API v4 fixtures into tmp/raw_api_v4"
+run = "scripts/capture_api_fixtures.sh"
+
+[tasks.user-guide-capture]
+description = "Capture sanitized Desktop HTML previews with installed Chrome/Chromium"
+run = "python3 scripts/update_user_guide.py capture"
+
+[tasks.user-guide-check]
+description = "Validate paired manuals, code examples, local links, and screenshot files"
+run = "python3 scripts/update_user_guide.py check"
+
+[tasks.user-guide-update]
+description = "Review current tracked source with read-only Claude Code; never stages changes"
+run = "python3 scripts/update_user_guide.py update"
+
+# ---------------------------------------------------------------------------
+# Dependency security report (.github/workflows/dependabot-report.yml)
+# ---------------------------------------------------------------------------
+
+[tasks.dependabot-report]
+description = "Open this month's single issue summarizing open Dependabot alerts (needs GH_REPO and gh auth)"
+usage = 'flag "--dry-run" help="Print the issue body instead of opening the issue"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+repo="${GH_REPO:?set GH_REPO=owner/repo}"
+month="$(date -u +%Y-%m)"
+title="Dependabot report ${month}"
+if [[ "${usage_dry_run:-false}" != "true" ]]; then
+    existing="$(gh issue list --state all --limit 100 --search "\"${title}\" in:title" \
+        --json title --jq "map(select(.title == \"${title}\")) | length")"
+    if [[ "$existing" != "0" ]]; then
+        printf '%s already exists; nothing to do.\n' "$title"
+        exit 0
+    fi
+fi
+rows="$(gh api --paginate "repos/${repo}/dependabot/alerts?state=open&per_page=100" --jq '.[] |
+    "| \(.security_advisory.severity) | `\(.dependency.package.name)` | \(.dependency.package.ecosystem) | `\(.dependency.manifest_path)` | \(.security_vulnerability.first_patched_version.identifier // "none") | [\(.security_advisory.ghsa_id)](\(.html_url)) |"')"
+count=0
+if [[ -n "$rows" ]]; then
+    count="$(printf '%s\n' "$rows" | wc -l | tr -d ' ')"
+fi
+body="$(mktemp)"
+trap 'rm -f -- "$body"' EXIT
+{
+    printf 'Monthly summary of open Dependabot alerts, generated %s UTC.\n\n' "$(date -u '+%Y-%m-%d %H:%M')"
+    printf 'Open alerts: **%s**\n\n' "$count"
+    if [[ "$count" == "0" ]]; then
+        printf 'No open Dependabot alerts.\n'
+    else
+        printf '| Severity | Package | Ecosystem | Manifest | Fixed in | Advisory |\n'
+        printf '| --- | --- | --- | --- | --- | --- |\n'
+        printf '%s\n' "$rows"
+    fi
+    printf '\nAll alerts: https://github.com/%s/security/dependabot\n' "$repo"
+} >"$body"
+if [[ "${usage_dry_run:-false}" == "true" ]]; then
+    printf '# %s\n\n' "$title"
+    cat -- "$body"
+    exit 0
+fi
+gh issue create --title "$title" --body-file "$body"
+'''
+
+# ---------------------------------------------------------------------------
+# Changelog and release (publishing happens only in .github/workflows/release.yml)
+# ---------------------------------------------------------------------------
+
+[tasks.changelog]
+description = "Regenerate the full CHANGELOG.md from Git history"
+run = "git-cliff -o CHANGELOG.md"
+
+[tasks.changelog-unreleased]
+description = "Preview unreleased changelog entries (does not write)"
+run = "git-cliff --unreleased"
+
+[tasks.release-notes]
+description = "Print the CHANGELOG.md section that a release tag publishes, e.g. `mise run release-notes v1.7.0`"
+run = "python3 scripts/release_notes.py"
+
+[tasks.release-tag]
+description = "Create the annotated release tag for a pushed main commit, e.g. `mise run release-tag v1.7.0`"
+usage = 'arg "<tag>" help="Release tag, vMAJOR.MINOR.PATCH"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+tag="${usage_tag:?}"
+python3 scripts/release_notes.py "$tag" >/dev/null
+if [[ -n "$(git status --porcelain)" ]]; then
+    printf 'Working tree is not clean; commit or stash first.\n' >&2
+    exit 1
+fi
+git fetch --quiet origin main
+if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then
+    printf 'HEAD must equal origin/main; push main and check CI first.\n' >&2
+    exit 1
+fi
+git tag -a "$tag" -m "Release $tag"
+printf 'Created %s. Publish it with:\n  git push origin %s\n' "$tag" "$tag"
+'''
+
+[tasks.release-verify]
+description = "CI: verify the pushed tag and write its release notes to dist/release-notes.md"
+usage = 'arg "<tag>" help="Release tag, vMAJOR.MINOR.PATCH"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+tag="${usage_tag:?}"
+# Validates the strict vMAJOR.MINOR.PATCH form and the CHANGELOG.md section.
+python3 scripts/release_notes.py "$tag" >/dev/null
+# Re-fetch the tag itself: a checkout may hold a lightweight ref for it.
+git fetch --quiet --force --no-tags origin "+refs/tags/$tag:refs/tags/$tag"
+if [[ "$(git cat-file -t "refs/tags/$tag")" != "tag" ]]; then
+    printf '%s must be an annotated tag.\n' "$tag" >&2
+    exit 1
+fi
+commit="$(git rev-parse "$tag^{commit}")"
+if [[ "$commit" != "$(git rev-parse HEAD)" ]]; then
+    printf '%s does not point at the checked-out commit.\n' "$tag" >&2
+    exit 1
+fi
+git fetch --quiet --no-tags origin +refs/heads/main:refs/remotes/origin/main
+if ! git merge-base --is-ancestor "$commit" origin/main; then
+    printf '%s is not on main; release tags must point at reviewed main commits.\n' "$tag" >&2
+    exit 1
+fi
+mkdir -p dist
+python3 scripts/release_notes.py "$tag" -o dist/release-notes.md
+'''
+
+[tasks.release-cli]
+description = "CI: build the tagged CLI archives and checksums into dist/cli without publishing"
+run = "goreleaser release --clean"
+
+[tasks.goreleaser-check]
+description = "Validate .goreleaser.yaml"
+run = "goreleaser check --config .goreleaser.yaml"
+
+[tasks.snapshot]
+description = "Build a local CLI release snapshot (no tag required, never publishes)"
+run = "goreleaser release --snapshot --clean"

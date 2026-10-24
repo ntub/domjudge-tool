@@ -1,29 +1,25 @@
 # lefthook.yml — git hooks for domjudge-tool.
-# Install with `just setup` (runs `lefthook install`).
+# Install with `mise run setup` (runs `lefthook install`). Commands run
+# through mise so hooks use the pinned tools even without shell activation.
 # Hooks are advisory; CI is the real gate.
 
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     fmt:
+      priority: 1
       glob: "*.go"
-      run: |
-        if command -v gofumpt >/dev/null 2>&1; then
-          gofumpt -w {staged_files}
-        else
-          gofmt -s -w {staged_files}
-        fi
-        git add {staged_files}
+      run: mise exec -- gofumpt -w {staged_files}
       stage_fixed: true
 
     lint:
+      priority: 2
       glob: "*.go"
-      run: |
-        if command -v golangci-lint >/dev/null 2>&1; then
-          golangci-lint run ./...
-        else
-          echo "⚠ golangci-lint not installed; skipping (CI will catch it)"
-        fi
+      run: mise run lint
+
+    user-guide:
+      priority: 3
+      run: mise exec -- python3 scripts/update_user_guide.py hook --timeout 600
 
 commit-msg:
   commands:
@@ -47,4 +43,4 @@ commit-msg:
 pre-push:
   commands:
     test:
-      run: just test
+      run: mise run test

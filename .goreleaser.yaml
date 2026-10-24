@@ -1,5 +1,10 @@
+# GoReleaser builds the standalone CLI archives and checksums only.
+# Publishing happens in .github/workflows/release.yml, which also attaches the
+# Desktop bundles, provenance attestations, and CHANGELOG.md release notes.
 version: 2
 project_name: domjudge-tool
+# Keep --clean away from dist/desktop, where package-desktop writes bundles.
+dist: dist/cli
 
 builds:
   - id: domjudge-tool
@@ -7,9 +12,13 @@ builds:
     binary: domjudge-tool
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    mod_timestamp: "{{ .CommitTimestamp }}"
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
@@ -20,6 +29,10 @@ builds:
 archives:
   - formats:
       - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
@@ -29,5 +42,8 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+changelog:
+  disable: true
+
 release:
-  draft: true
+  disable: true

@@ -16,38 +16,29 @@ FILESYSTEM_PATHS=(
     CHANGELOG.md
     CLAUDE.md
     CONTRIBUTING.md
-    Justfile
     LICENSE
     README.md
     cliff.toml
     go.mod
     go.sum
     lefthook.yml
+    mise.lock
+    mise.toml
 )
 
-if command -v trufflehog >/dev/null 2>&1; then
-    TRUFFLEHOG=(trufflehog --no-update)
-    if [[ -n "$GIT_COMMON_DIR" ]]; then
-        GIT_TARGET="file://$(dirname "$GIT_COMMON_DIR")"
-    else
-        GIT_TARGET="file://."
-    fi
-elif command -v docker >/dev/null 2>&1; then
-    TRUFFLEHOG=(
-        docker run --rm
-        -v "$ROOT:/repo:ro"
-        -w /repo
-        trufflesecurity/trufflehog:latest
-    )
-    GIT_TARGET="file:///repo"
-else
+if ! command -v trufflehog >/dev/null 2>&1; then
     cat >&2 <<'EOF'
 check_secrets.sh: trufflehog is required.
 
-Install TruffleHog or run Docker so the official image can be used:
-  curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+Install the pinned version with `mise install`, then run `mise run secret-scan`.
 EOF
     exit 2
+fi
+TRUFFLEHOG=(trufflehog --no-update)
+if [[ -n "$GIT_COMMON_DIR" ]]; then
+    GIT_TARGET="file://$(dirname "$GIT_COMMON_DIR")"
+else
+    GIT_TARGET="file://."
 fi
 
 cd "$ROOT"

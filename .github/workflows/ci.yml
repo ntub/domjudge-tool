@@ -4,13 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' }}
 
 jobs:
   check:
@@ -18,79 +18,52 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-15]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Full history: the secret scan covers every reachable commit.
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Install pinned tools from mise.lock
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          go-version-file: go.mod
-          cache: true
-          cache-dependency-path: go.sum
-      - name: Install gofumpt
-        run: go install mvdan.cc/gofumpt@latest
+          version: 2026.10.14
+          cache: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
 
-      - name: gofumpt -l (no diffs)
-        shell: bash
-        run: |
-          set -euo pipefail
-          out=$(gofumpt -l .)
-          if [ -n "$out" ]; then
-            echo "::error::unformatted Go files (run 'just fmt'):"
-            echo "$out"
-            exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.15.0
-
-      - name: Install TruffleHog
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh |
-            sh -s -- -b /usr/local/bin
-
-      - name: Secret and PII gates
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/check_secrets.sh
-          python3 -m unittest discover -s scripts -p '*_test.py'
-          python3 scripts/check_pii_api.py testdata/api/v4
-
-      - name: go test (race)
-        run: go test -race ./...
+      - name: Quality, workflow, privacy, and race-test gates
+        run: mise run ci
 
   goreleaser-snapshot:
     name: goreleaser snapshot
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Install pinned tools from mise.lock
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          go-version-file: go.mod
-          cache: true
-          cache-dependency-path: go.sum
+          version: 2026.10.14
+          install_args: go goreleaser
 
-      - name: goreleaser snapshot
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          args: release --snapshot --clean
+      - name: Validate config and build an unpublished snapshot
+        run: |
+          mise run goreleaser-check
+          mise run snapshot
+        env:
+          MISE_AUTO_INSTALL: 'false'

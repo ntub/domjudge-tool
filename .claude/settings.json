@@ -8,8 +8,10 @@
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(mkdir *)",
-      "Bash(just)",
-      "Bash(just *)",
+      "Bash(mise tasks)",
+      "Bash(mise tasks *)",
+      "Bash(mise install)",
+      "Bash(mise run *)",
       "Bash(go test:*)",
       "Bash(go build:*)",
       "Bash(go vet:*)",
@@ -33,6 +35,8 @@
       "Bash(~/go/bin/wails3 *)"
     ],
     "ask": [
+      "Bash(mise run release-tag*)",
+      "Bash(mise run dependabot-report*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",

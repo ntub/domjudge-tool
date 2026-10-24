@@ -30,7 +30,9 @@ if [ -z "$paths" ]; then
     exit 0
 fi
 
-if command -v gofumpt >/dev/null 2>&1; then
+if command -v mise >/dev/null 2>&1 && mise exec -- gofumpt --version >/dev/null 2>&1; then
+    formatter=(mise exec -- gofumpt -w)
+elif command -v gofumpt >/dev/null 2>&1; then
     formatter=(gofumpt -w)
 else
     formatter=(gofmt -s -w)

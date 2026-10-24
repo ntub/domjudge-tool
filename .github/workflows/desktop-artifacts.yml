@@ -1,0 +1,124 @@
+name: Desktop artifacts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Release tags call this workflow from release.yml; it never publishes.
+  workflow_call:
+    inputs:
+      version:
+        description: Verified release tag stamped into the bundles
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+concurrency:
+  group: desktop-artifacts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' }}
+
+jobs:
+  package:
+    name: Desktop ${{ matrix.goos }}/${{ matrix.goarch }} (native)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            goos: darwin
+            goarch: amd64
+            cgo: '1'
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+            cgo: '1'
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+            cgo: '1'
+          - runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+            cgo: '1'
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+            cgo: '0'
+          - runner: windows-11-arm
+            goos: windows
+            goarch: arm64
+            cgo: '0'
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    env:
+      CGO_ENABLED: ${{ matrix.cgo }}
+      # Packaging needs Go only; never auto-install the rest of the toolset
+      # through `mise run` or `mise exec`.
+      MISE_AUTO_INSTALL: 'false'
+      # Empty outside release.yml, where package-desktop uses git describe.
+      RELEASE_VERSION: ${{ inputs.version }}
+      TARGET_GOOS: ${{ matrix.goos }}
+      TARGET_GOARCH: ${{ matrix.goarch }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pinned Go from mise.lock
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.14
+          install_args: go
+          cache: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Require the native OS and architecture
+        run: |
+          set -euo pipefail
+          test "$(mise exec -- go env GOOS)" = "$TARGET_GOOS"
+          test "$(mise exec -- go env GOARCH)" = "$TARGET_GOARCH"
+
+      - name: Install Linux GTK4, WebKitGTK 6.0, and X11 build dependencies
+        if: matrix.goos == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev
+
+      - name: Run native tests, including installer and console launcher behavior
+        run: mise run test
+
+      - name: Run native Desktop adapter tests
+        run: mise run test-desktop
+
+      - name: Build the bundle and smoke the unpacked native CLI
+        run: |
+          set -euo pipefail
+          args=(-goos "$TARGET_GOOS" -goarch "$TARGET_GOARCH" -smoke)
+          if [ -n "$RELEASE_VERSION" ]; then
+            args+=(-version "$RELEASE_VERSION")
+          fi
+          mise run package-desktop "${args[@]}"
+
+      # Upload the archives rather than loose files: executable modes and the
+      # stable bundle root are retained by our ZIP/tar implementation.
+      - name: Upload unsigned artifacts and SHA-256 checksums
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/desktop/*.zip
+            dist/desktop/*.tar.gz
+            dist/desktop/*.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

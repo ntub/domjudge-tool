@@ -1,0 +1,7 @@
+# actionlint 1.7.12 predates the GITHUB_TOKEN `vulnerability-alerts`
+# permission (GitHub Actions, September 2026). Remove this once the pinned
+# actionlint in mise.toml knows the scope.
+paths:
+  .github/workflows/dependabot-report.yml:
+    ignore:
+      - 'unknown permission scope "vulnerability-alerts"'

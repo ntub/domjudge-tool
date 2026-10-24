@@ -7,8 +7,10 @@
       "command(ls *)",
       "command(find *)",
       "command(mkdir *)",
-      "command(just)",
-      "command(just *)",
+      "command(mise tasks)",
+      "command(mise tasks *)",
+      "command(mise install)",
+      "command(mise run *)",
       "command(go test:*)",
       "command(go build:*)",
       "command(go vet:*)",
@@ -32,6 +34,8 @@
       "command(~/go/bin/wails3 *)"
     ],
     "ask": [
+      "command(mise run release-tag*)",
+      "command(mise run dependabot-report*)",
       "command(git add:*)",
       "command(git commit:*)",
       "command(git checkout:*)",
