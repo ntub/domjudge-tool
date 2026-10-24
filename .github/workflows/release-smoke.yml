@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y xvfb libgtk-4-1 libwebkitgtk-6.0-4
+          sudo apt-get install --no-install-recommends -y xvfb x11-utils imagemagick libgtk-4-1 libwebkitgtk-6.0-4
 
       - name: Download the release and verify checksums and provenance
         run: |
@@ -119,17 +119,19 @@ jobs:
           [[ "$bundled" == *"$TAG"* ]]
           echo "APP=$PWD/$app" >> "$GITHUB_ENV"
 
-      - name: Launch the Desktop app and probe its local interface
+      - name: Launch the Desktop app, probe it, and require a native window with a loaded WebView
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/smoke"
-          mkdir -p home
+          mkdir -p home evidence
           export HOME="$PWD/home"
           if [ "$GOOS_NAME" = linux ]; then
-            xvfb-run -a "$APP" > app.log 2>&1 &
-          else
-            "$APP" > app.log 2>&1 &
+            Xvfb :99 -screen 0 1280x800x24 > xvfb.log 2>&1 &
+            export DISPLAY=:99
+            sleep 2
           fi
+          "$APP" > app.log 2>&1 &
+          app_pid=$!
           code=000
           for _ in $(seq 1 60); do
             code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9900/profiles || true)"
@@ -147,7 +149,85 @@ jobs:
             [ "$status" = 200 ]
           done
           curl -s http://127.0.0.1:9900/settings | grep -q 'Command-Line Tool'
-          echo "Desktop ${TAG} ran on ${GOOS_NAME}/${GOARCH_NAME}"
+          # The HTTP server starts before the window exists, so HTTP 200 alone
+          # proves nothing about the GUI. Require OS-level window and WebView
+          # evidence, and keep a screenshot for review.
+          fail() { echo "::error::$1"; cat app.log; exit 1; }
+          case "$GOOS_NAME" in
+            linux)
+              found=""
+              for _ in $(seq 1 60); do
+                if xwininfo -root -tree | grep -F '"domjudge-tool"' >/dev/null; then found=1; break; fi
+                sleep 1
+              done
+              [ -n "$found" ] || fail "no native X11 window titled domjudge-tool"
+              xwininfo -root -tree | grep -F '"domjudge-tool"'
+              pgrep -f WebKitWebProcess >/dev/null || fail "no WebKitWebProcess: WebView did not start"
+              sleep 5
+              import -window root evidence/screenshot.png
+              colors="$(identify -format '%k' evidence/screenshot.png)"
+              echo "screenshot distinct colors: $colors"
+              [ "$colors" -gt 50 ] || fail "screen is blank: WebView did not paint"
+              ;;
+            darwin)
+              cat > window.swift <<'SWIFT'
+          import CoreGraphics
+          import Foundation
+          let pid = Int(CommandLine.arguments[1])!
+          let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+          for w in list where (w[kCGWindowOwnerPID as String] as? Int) == pid {
+            let b = w[kCGWindowBounds as String] as? [String: Any] ?? [:]
+            let width = (b["Width"] as? Double) ?? 0, height = (b["Height"] as? Double) ?? 0
+            if (w[kCGWindowLayer as String] as? Int) == 0 && width >= 800 && height >= 560 {
+              print("window \(Int(width))x\(Int(height))")
+              exit(0)
+            }
+          }
+          exit(1)
+          SWIFT
+              found=""
+              for _ in $(seq 1 60); do
+                if swift window.swift "$app_pid"; then found=1; break; fi
+                sleep 1
+              done
+              [ -n "$found" ] || fail "no on-screen native window of at least 800x560"
+              pgrep -f com.apple.WebKit.WebContent >/dev/null || fail "no WebKit WebContent process: WebView did not start"
+              sleep 3
+              screencapture -x evidence/screenshot.png || true
+              ;;
+            windows)
+              powershell -NoProfile -Command '
+                $deadline = (Get-Date).AddSeconds(60)
+                do {
+                  $p = Get-Process domjudge-tool-app -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
+                  if ($p) { break }
+                  Start-Sleep 1
+                } while ((Get-Date) -lt $deadline)
+                if (-not $p) { Write-Error "no native window"; exit 1 }
+                "window title: $($p.MainWindowTitle)"
+                if ($p.MainWindowTitle -ne "domjudge-tool") { Write-Error "unexpected window title"; exit 1 }
+                $wv = @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue).Count
+                "WebView2 processes: $wv"
+                if ($wv -lt 1) { Write-Error "no WebView2 process: WebView did not start"; exit 1 }
+                Start-Sleep 3
+                Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+                $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+                [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+                $bmp.Save("evidence\screenshot.png")
+              ' || fail "no native Windows window or WebView2 process"
+              ;;
+          esac
+          echo "Desktop ${TAG} ran with a native window on ${GOOS_NAME}/${GOARCH_NAME}"
+
+      - name: Keep the window screenshot for review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ${{ runner.temp }}/smoke/evidence/*.png
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Stop the Desktop app
         if: always()
