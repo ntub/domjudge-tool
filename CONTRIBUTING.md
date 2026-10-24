@@ -218,6 +218,11 @@ hand. The flow:
      archives with read-only tokens;
    - in the `release` environment, verifies every SHA-256 checksum, records
      build-provenance attestations, and publishes the GitHub release.
+5. Run [`release-smoke.yml`](.github/workflows/release-smoke.yml) (Actions,
+   **Run workflow**, tag `vX.Y.Z`). On all six native platforms it downloads
+   the published assets, verifies checksums and attestations, runs the CLI
+   and the bundled CLI, and launches the Desktop app to probe its local
+   interface.
 
 Tags with other shapes (`v1.7`, `v1.7.0-rc.1`) never start the workflow.
 A failed run publishes nothing; fix the cause, delete the tag locally and

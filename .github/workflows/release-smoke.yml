@@ -1,0 +1,159 @@
+name: Release smoke
+
+# Downloads a published release on each native platform and runs what a user
+# would: checksum and provenance checks, the CLI, the bundled CLI, and the
+# Desktop app's local interface. Read-only; run it after release.yml finishes.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag, vMAJOR.MINOR.PATCH
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-smoke-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} download and run
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: macos-15-intel, goos: darwin, goarch: amd64, cli_ext: tar.gz, desktop_ext: zip}
+          - {runner: macos-15, goos: darwin, goarch: arm64, cli_ext: tar.gz, desktop_ext: zip}
+          - {runner: ubuntu-24.04, goos: linux, goarch: amd64, cli_ext: tar.gz, desktop_ext: tar.gz}
+          - {runner: ubuntu-24.04-arm, goos: linux, goarch: arm64, cli_ext: tar.gz, desktop_ext: tar.gz}
+          - {runner: windows-2025, goos: windows, goarch: amd64, cli_ext: zip, desktop_ext: zip}
+          - {runner: windows-11-arm, goos: windows, goarch: arm64, cli_ext: zip, desktop_ext: zip}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read # download release assets
+      attestations: read # verify provenance
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+      GOOS_NAME: ${{ matrix.goos }}
+      GOARCH_NAME: ${{ matrix.goarch }}
+      CLI_EXT: ${{ matrix.cli_ext }}
+      DESKTOP_EXT: ${{ matrix.desktop_ext }}
+    steps:
+      - name: Install the Linux GUI runtime and a virtual display
+        if: matrix.goos == 'linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y xvfb libgtk-4-1 libwebkitgtk-6.0-4
+
+      - name: Download the release and verify checksums and provenance
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "::error::$TAG is not vMAJOR.MINOR.PATCH"
+            exit 1
+          }
+          work="$RUNNER_TEMP/smoke"
+          rm -rf "$work"
+          mkdir -p "$work"
+          cd "$work"
+          cli="domjudge-tool_${GOOS_NAME}_${GOARCH_NAME}.${CLI_EXT}"
+          desktop="domjudge-tool-desktop_${TAG}_${GOOS_NAME}_${GOARCH_NAME}.${DESKTOP_EXT}"
+          gh release download "$TAG" --pattern checksums.txt --pattern "$cli" \
+            --pattern "$desktop" --pattern "$desktop.sha256"
+          sum() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+          grep -F "  $cli" checksums.txt | sum -c -
+          sum -c "$desktop.sha256"
+          for archive in "$cli" "$desktop"; do
+            gh attestation verify "$archive" --repo "$GH_REPO" \
+              --signer-workflow "$GH_REPO/.github/workflows/release.yml" \
+              --source-ref "refs/tags/$TAG"
+          done
+
+      - name: Extract and run the downloaded CLI
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/smoke"
+          extract() {
+            case "$1" in
+              *.tar.gz) tar -xzf "$1" -C "$2" ;;
+              *.zip)
+                if [ "$GOOS_NAME" = windows ]; then
+                  powershell -NoProfile -Command "Expand-Archive -LiteralPath '$(cygpath -w "$PWD/$1")' -DestinationPath '$(cygpath -w "$PWD/$2")'"
+                else
+                  unzip -q "$1" -d "$2"
+                fi ;;
+            esac
+          }
+          exe=""
+          [ "$GOOS_NAME" = windows ] && exe=".exe"
+          mkdir cli
+          extract "domjudge-tool_${GOOS_NAME}_${GOARCH_NAME}.${CLI_EXT}" cli
+          version="$(./cli/domjudge-tool$exe version)"
+          echo "$version"
+          [[ "$version" == *"${TAG#v}"* ]]
+          ./cli/domjudge-tool$exe --help >/dev/null
+          ./cli/domjudge-tool$exe gen-config --host https://test-station.example.org \
+            --username admin --password REPLACE_LOCALLY --version 8.3.1 \
+            --contest-id 1 -o smoke-config.json
+          grep -q '"version": "8.3.1"' smoke-config.json
+          mkdir desktop
+          extract "domjudge-tool-desktop_${TAG}_${GOOS_NAME}_${GOARCH_NAME}.${DESKTOP_EXT}" desktop
+          case "$GOOS_NAME" in
+            darwin) root="desktop/domjudge-tool.app/Contents"; bundle="$root/Resources"; app="$root/MacOS/domjudge-tool-app" ;;
+            *) bundle="desktop/domjudge-tool"; app="$bundle/domjudge-tool-app$exe" ;;
+          esac
+          grep -q "\"version\": \"$TAG\"" "$bundle/bundle.json"
+          grep -q "\"goos\": \"$GOOS_NAME\"" "$bundle/bundle.json"
+          grep -q "\"goarch\": \"$GOARCH_NAME\"" "$bundle/bundle.json"
+          bundled="$("$bundle/cli/domjudge-tool$exe" version)"
+          echo "bundled: $bundled"
+          [[ "$bundled" == *"$TAG"* ]]
+          echo "APP=$PWD/$app" >> "$GITHUB_ENV"
+
+      - name: Launch the Desktop app and probe its local interface
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/smoke"
+          mkdir -p home
+          export HOME="$PWD/home"
+          if [ "$GOOS_NAME" = linux ]; then
+            xvfb-run -a "$APP" > app.log 2>&1 &
+          else
+            "$APP" > app.log 2>&1 &
+          fi
+          code=000
+          for _ in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9900/profiles || true)"
+            [ "$code" = 200 ] && break
+            sleep 1
+          done
+          if [ "$code" != 200 ]; then
+            echo "::error::Desktop did not serve /profiles (last status $code)"
+            cat app.log
+            exit 1
+          fi
+          for page in settings history import-users-teams export-users set-password; do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:9900/$page")"
+            echo "$page: $status"
+            [ "$status" = 200 ]
+          done
+          curl -s http://127.0.0.1:9900/settings | grep -q 'Command-Line Tool'
+          echo "Desktop ${TAG} ran on ${GOOS_NAME}/${GOARCH_NAME}"
+
+      - name: Stop the Desktop app
+        if: always()
+        run: |
+          if [ "$GOOS_NAME" = windows ]; then
+            taskkill //F //IM domjudge-tool-app.exe || true
+          else
+            pkill -f domjudge-tool-app || true
+          fi
