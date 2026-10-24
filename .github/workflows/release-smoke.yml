@@ -206,26 +206,54 @@ jobs:
               screencapture -x evidence/screenshot.png || true
               ;;
             windows)
-              powershell -NoProfile -Command '
-                $deadline = (Get-Date).AddSeconds(60)
-                do {
-                  $p = Get-Process domjudge-tool-app -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
-                  if ($p) { break }
-                  Start-Sleep 1
-                } while ((Get-Date) -lt $deadline)
-                if (-not $p) { Write-Error "no native window"; exit 1 }
-                "window title: $($p.MainWindowTitle)"
-                if ($p.MainWindowTitle -ne "domjudge-tool") { Write-Error "unexpected window title"; exit 1 }
-                $wv = @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue).Count
-                "WebView2 processes: $wv"
-                if ($wv -lt 1) { Write-Error "no WebView2 process: WebView did not start"; exit 1 }
-                Start-Sleep 3
-                Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-                $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-                $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-                [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-                $bmp.Save("evidence\screenshot.png")
-              ' || fail "no native Windows window or WebView2 process"
+              cat > evidence.ps1 <<'PS1'
+          $deadline = (Get-Date).AddSeconds(60)
+          do {
+            $p = Get-Process domjudge-tool-app -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
+            if ($p) { break }
+            Start-Sleep 1
+          } while ((Get-Date) -lt $deadline)
+          if (-not $p) { Write-Error "no native window"; exit 1 }
+          "window title: $($p.MainWindowTitle)"
+          if ($p.MainWindowTitle -ne "domjudge-tool") { Write-Error "unexpected window title"; exit 1 }
+          # Count only WebView2 renderers that descend from this app, so other
+          # WebView2 users on the runner cannot satisfy the check.
+          $all = Get-CimInstance Win32_Process
+          $ids = @($p.Id)
+          do {
+            $before = $ids.Count
+            $ids = @($ids + ($all | Where-Object { $ids -contains $_.ParentProcessId } | ForEach-Object { $_.ProcessId })) | Sort-Object -Unique
+          } while ($ids.Count -gt $before)
+          $renderers = @($all | Where-Object { $ids -contains $_.ProcessId -and $_.Name -eq "msedgewebview2.exe" -and $_.CommandLine -match "--type=renderer" })
+          "app WebView2 renderer processes: $($renderers.Count)"
+          if ($renderers.Count -lt 1) { Write-Error "no WebView2 renderer under the app: page did not load"; exit 1 }
+          Start-Sleep 3
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type @"
+          using System;
+          using System.Runtime.InteropServices;
+          public class Win32Window {
+            [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+            [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+          }
+          "@
+          $rect = New-Object Win32Window+RECT
+          [Win32Window]::GetWindowRect($p.MainWindowHandle, [ref]$rect) | Out-Null
+          $w = $rect.Right - $rect.Left; $h = $rect.Bottom - $rect.Top
+          "window size: ${w}x${h}"
+          $wbmp = New-Object System.Drawing.Bitmap $w, $h
+          $g = [System.Drawing.Graphics]::FromImage($wbmp)
+          $hdc = $g.GetHdc()
+          [Win32Window]::PrintWindow($p.MainWindowHandle, $hdc, 2) | Out-Null
+          $g.ReleaseHdc($hdc)
+          $wbmp.Save("evidence\window.png")
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("evidence\screenshot.png")
+          PS1
+              powershell -NoProfile -ExecutionPolicy Bypass -File evidence.ps1 || fail "no native Windows window or app WebView2 renderer"
               ;;
           esac
           echo "Desktop ${TAG} ran with a native window on ${GOOS_NAME}/${GOARCH_NAME}"
