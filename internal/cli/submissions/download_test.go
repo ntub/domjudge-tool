@@ -1,9 +1,16 @@
 package submissions_test
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ntub/domjudge-tool/internal/cli"
@@ -157,4 +164,167 @@ func TestDownloadSubmissions_CtxCancelled(t *testing.T) {
 		t.Errorf("errors.Is(err, context.Canceled) = false; err = %v", err)
 	}
 	_ = c
+}
+
+func TestDownloadSubmissions_HTTPToFiles_Integration(t *testing.T) {
+	const source = "print(\"hello\")\n"
+	var archive bytes.Buffer
+	zw := zip.NewWriter(&archive)
+	entry, err := zw.Create("main.py")
+	if err != nil {
+		t.Fatalf("create archive entry: %v", err)
+	}
+	if _, err := io.WriteString(entry, source); err != nil {
+		t.Fatalf("write archive entry: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close archive: %v", err)
+	}
+
+	timeout := 2.0
+	tests := []struct {
+		name       string
+		timeout    *float64
+		args       []string
+		wantStrict string
+		wantFile   string
+		wantBody   []byte
+	}{
+		{
+			name:     "preserve archive",
+			args:     []string{"--extract=false"},
+			wantFile: "accepted_S1.zip",
+			wantBody: archive.Bytes(),
+		},
+		{
+			name:       "extract source with explicit non-strict query",
+			timeout:    &timeout,
+			args:       []string{"--strict=false"},
+			wantStrict: "false",
+			wantFile:   "accepted_S1.py",
+			wantBody:   []byte(source),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				username, password, ok := r.BasicAuth()
+				if !ok || username != "jury" || password != "secret" {
+					t.Errorf("BasicAuth = (%q, %q, %v), want configured credentials", username, password, ok)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				if r.Method != http.MethodGet {
+					t.Errorf("method = %s, want GET", r.Method)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/api/v4/contests/contest-1/teams":
+					_, _ = io.WriteString(w, `[{"id":"1","name":"alpha"}]`)
+				case "/api/v4/contests/contest-1/problems":
+					_, _ = io.WriteString(w, `[{"id":"P","short_name":"easy"}]`)
+				case "/api/v4/contests/contest-1/judgement-types":
+					_, _ = io.WriteString(w, `[{"id":"AC","name":"Accepted"}]`)
+				case "/api/v4/contests/contest-1/judgements":
+					_, _ = io.WriteString(w, `[{"id":"J1","submission_id":"S1","judgement_type_id":"AC"}]`)
+				case "/api/v4/contests/contest-1/submissions":
+					if got := r.URL.Query().Get("strict"); got != tc.wantStrict {
+						t.Errorf("strict query = %q, want %q", got, tc.wantStrict)
+					}
+					_, _ = io.WriteString(w, `[{"id":"S1","team_id":"1","problem_id":"P"}]`)
+				case "/api/v4/contests/contest-1/submissions/S1/files":
+					w.Header().Set("Content-Type", "application/zip")
+					w.Header().Set("Content-Disposition", `attachment; filename="server-name.zip"`)
+					_, _ = w.Write(archive.Bytes())
+				default:
+					t.Errorf("unexpected endpoint: %s", r.URL.Path)
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			dir := t.TempDir()
+			root := cli.NewRootCmd(cli.Deps{})
+			root.AddCommand(clisubs.NewDownloadSubmissionsCmd(clisubs.DefaultDeps()))
+			args := []string{"download-submissions", "contest-1", "--path", dir}
+			root.SetArgs(append(args, tc.args...))
+			root.SetOut(&bytes.Buffer{})
+			root.SetErr(&bytes.Buffer{})
+			cfg := &config.DomServerClient{Host: srv.URL, Username: "jury", Password: "secret", Timeout: tc.timeout}
+			if err := root.ExecuteContext(cli.WithConfig(context.Background(), cfg)); err != nil {
+				t.Fatalf("execute: %v", err)
+			}
+
+			folder := filepath.Join(dir, "problem_easy", "team_alpha")
+			body, err := os.ReadFile(filepath.Join(folder, tc.wantFile))
+			if err != nil {
+				t.Fatalf("read downloaded file: %v", err)
+			}
+			if !bytes.Equal(body, tc.wantBody) {
+				t.Errorf("downloaded contents = %q, want %q", body, tc.wantBody)
+			}
+			files, err := os.ReadDir(folder)
+			if err != nil {
+				t.Fatalf("read output directory: %v", err)
+			}
+			if len(files) != 1 || files[0].Name() != tc.wantFile {
+				t.Errorf("output directory = %v, want only %s", files, tc.wantFile)
+			}
+		})
+	}
+}
+
+func TestDownloadSubmissions_HTTPFailureDoesNotReportSuccess_Integration(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		want   error
+	}{
+		{"authentication rejected", http.StatusUnauthorized, "credentials rejected", apiv4.ErrUnauthorized},
+		{"server failure", http.StatusServiceUnavailable, "temporarily unavailable", apiv4.ErrServerError},
+		{"invalid response", http.StatusOK, `[{"id":`, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = io.WriteString(w, tc.body)
+			}))
+			t.Cleanup(srv.Close)
+			dir := t.TempDir()
+			var stdout bytes.Buffer
+			root := cli.NewRootCmd(cli.Deps{})
+			root.AddCommand(clisubs.NewDownloadSubmissionsCmd(clisubs.DefaultDeps()))
+			root.SetArgs([]string{"download-submissions", "contest-1", "--path", dir})
+			root.SetOut(&stdout)
+			root.SetErr(&bytes.Buffer{})
+			cfg := &config.DomServerClient{Host: srv.URL}
+			err := root.ExecuteContext(cli.WithConfig(context.Background(), cfg))
+			if tc.want != nil {
+				if !errors.Is(err, tc.want) {
+					t.Fatalf("execute error = %v, want %v", err, tc.want)
+				}
+				var httpErr *apiv4.HTTPError
+				if !errors.As(err, &httpErr) || httpErr.StatusCode != tc.status || string(httpErr.Body) != tc.body {
+					t.Fatalf("execute error = %v, want original HTTP status and body", err)
+				}
+			} else {
+				var decodeErr *json.SyntaxError
+				if !errors.As(err, &decodeErr) && !errors.Is(err, io.ErrUnexpectedEOF) {
+					t.Fatalf("execute error = %v, want JSON decoding failure", err)
+				}
+			}
+			files, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatalf("read output directory: %v", err)
+			}
+			if len(files) != 0 {
+				t.Errorf("output after failed download = %v, want no files", files)
+			}
+			if stdout.Len() != 0 {
+				t.Errorf("stdout after failed download = %q, want no success report", stdout.String())
+			}
+		})
+	}
 }

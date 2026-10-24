@@ -1,8 +1,9 @@
-# `testdata/api/v4/` API Fixture Capture Log
+# API v4 Fixture Capture Protocol
 
-These fixtures lock the DOMjudge API v4 response shapes used by Phase 1.5
-contract tests. Raw responses must stay local under `tmp/raw_api_v4/`; only
-sanitized derivatives belong in git.
+These fixtures lock the API v4 response shapes consumed by current tests.
+Raw responses stay local under `tmp/raw_api_v4/`; only sanitized derivatives
+belong in Git. Current transport rules are maintained in
+[the compatibility contract](../../../docs/phase1.5/CONTRACT.md).
 
 ## Source
 
@@ -16,9 +17,8 @@ sanitized derivatives belong in git.
 | Sanitizer | `scripts/sanitize_api.py` |
 | PII gate | `scripts/check_pii_api.py` |
 
-Do not capture from a production contest server. If production data is the
-only available source, hold the raw files outside git, sanitize immediately,
-and run the PII gate before review.
+Capture only from an isolated throwaway server. Do not capture production
+contest data. If a safe source is unavailable, do not run the capture.
 
 ## Procedure
 
@@ -46,31 +46,13 @@ Optional capture knobs:
 | `DJ_FREEZE_CONTEST_ID` | Optional contest id for `scoreboard_with_freeze.json`. |
 | `DJ_EMPTY_SUBMISSIONS_CONTEST_ID` | Optional contest id for `submissions_empty.json`. |
 
-## Expected Fixture Layout
+## Fixture layout
 
-```text
-testdata/api/v4/
-  CAPTURE_API.md
-  judgement.json
-  judgement_type.json
-  judgement_types_list.json
-  judgements_list.json
-  problem.json
-  problems_list.json
-  source_code.json
-  submission.json
-  submission_files.zip
-  submissions_list.json
-  team.json
-  teams_list.json
-  user.json
-  users_list.json
-  version.json
-```
-
-This is the committed Phase 1.5 fixture layout used by current tests. New
-captures may start as a nested raw tree under `tmp/raw_api_v4/`, but sanitized
-fixtures must be reviewed against the committed layout before replacing files.
+Preserve the filenames read by current tests under `testdata/api/v4/`.
+The capture script creates a nested raw tree under `tmp/raw_api_v4/`;
+sanitizing that tree does not automatically make it a drop-in replacement
+for the committed fixtures. Review response shape, nullable fields, and
+test consumers before replacing files.
 
 ## Sanitization Rules
 
@@ -98,57 +80,28 @@ binary fixtures unchanged:
 `scripts/check_pii_api.py` must return zero findings for sanitized fixtures:
 
 1. Raw hostname, maintainer, or school-domain tokens.
-2. 8-digit student ids.
+2. Student-id patterns containing eight or more digits.
 3. CJK text.
-4. Private IPv4 addresses.
+4. Non-reserved IPv4 addresses.
 5. Emails outside `example.org`.
 6. Bearer tokens.
 7. Password-like values except `REDACTED` or `TEST_*`.
 8. CSRF token values except `TEST_CSRF_TOKEN`.
+9. Basic Authorization credentials.
 
-## Findings - POST Idempotency
+## Routing and capture evidence
 
-This section must be completed after running the probes against a throwaway
-DOMjudge 7.3.x demo instance. Do not run these against production data.
+Response fixtures do not establish whether repeating a live write is safe.
+The default importer creates and updates users through the versioned scraper.
+Standalone v7 password resets can use accounts TSV only when the router's
+roles and scraper-preference rules permit it; v8 resets use the scraper.
+`accountsTSVUpsertSafe(cfg)` is version-aware, not a probe-pending constant.
+See [ADR 0006](../../../docs/adr/0006-api-first-with-scraper-fallback.md).
 
-> **Optimistic default in code**: `internal/importer/router.go` currently
-> hardcodes `accountsTSVUpsertSafeOnPR0 = true`. This is the **expected**
-> answer per DOMjudge 7's documented bulk-import contract (`misc-tools/
-> import-contest.sh`'s upsert assumption). If the live probes below
-> falsify this, flip the constant to `false`; the router then routes
-> set-password / import-users-teams update flow back to the scraper. As
-> an additional ops escape hatch, `domserver.json.prefer_scraper: true`
-> forces the same fallback without code change.
-
-### Test 1: `POST /api/v4/users/accounts`
-
-Re-upload `accounts.tsv` with the same username and a changed password.
-
-| Field | Result |
-|-------|--------|
-| Result | Pending demo capture |
-| Evidence | `imports/accounts_post_first.json`, `imports/accounts_first_verify.json`, `imports/accounts_post_second.json`, `imports/accounts_second_verify.json` |
-| Verdict for PR-3 / PR-4 | Pending demo capture |
-
-### Test 2: `POST /api/v4/users/teams`
-
-Re-upload a team payload with the same id and changed display name.
-
-| Field | Result |
-|-------|--------|
-| Result | Pending demo capture |
-| Evidence | `imports/teams_post_first.json`, `imports/teams_post_second.json` |
-| Verdict for PR-3 / PR-4 | Pending demo capture |
-
-### Test 3: `POST /api/v4/users/organizations`
-
-Re-upload an organization payload with the same shortname.
-
-| Field | Result |
-|-------|--------|
-| Result | Pending demo capture |
-| Evidence | `imports/organizations_post_first.json`, `imports/organizations_post_second.json` |
-| Verdict for PR-3 / PR-4 | Pending demo capture |
+Do not infer completed live probes from fixture availability, and do not
+change routing based on an old pending-capture checklist. Any additional
+live validation requires an explicitly authorized isolated server; keep its
+credentials and execution records outside tracked documentation.
 
 ## Review Checklist
 
@@ -156,5 +109,4 @@ Re-upload an organization payload with the same shortname.
 - Sanitized fixtures are committed under `testdata/api/v4/`.
 - `python3 -m unittest discover -s scripts -p '*_test.py'` passes.
 - `python3 scripts/check_pii_api.py testdata/api/v4` passes.
-- POST idempotency findings above contain concrete results from the demo
-  instance before downstream PRs depend on them.
+- Fixture replacements preserve the current decoder and routing contracts.

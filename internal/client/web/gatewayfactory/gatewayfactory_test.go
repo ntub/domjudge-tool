@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ntub/domjudge-tool/internal/client/httpx"
 	"github.com/ntub/domjudge-tool/internal/config"
@@ -92,5 +96,68 @@ func cfgWithVersion(version string) *config.DomServerClient {
 		Password:  "secret",
 		Version:   version,
 		ContestID: &contestID,
+	}
+}
+
+func TestNew_NilConfig(t *testing.T) {
+	_, err := New(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil config, got nil")
+	}
+}
+
+func TestNew_InvalidHost(t *testing.T) {
+	cfg := cfgWithVersion("8.3.1")
+	cfg.Host = "://invalid-url"
+	_, err := New(context.Background(), cfg)
+	if err == nil {
+		t.Fatal("expected error for invalid host, got nil")
+	}
+}
+
+func TestNew_ConfiguredTimeoutAbortsRequests_Integration(t *testing.T) {
+	for _, version := range []string{"7.3.2", "8.3.1"} {
+		t.Run(version, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/slow" {
+					t.Errorf("path = %q, want /slow", r.URL.Path)
+				}
+				<-r.Context().Done()
+			}))
+			t.Cleanup(srv.Close)
+
+			timeout := 0.05
+			cfg := &config.DomServerClient{
+				Host:     srv.URL,
+				Username: "jury",
+				Password: "secret",
+				Version:  version,
+				Timeout:  &timeout,
+			}
+			gw, err := New(context.Background(), cfg)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			sessioned, ok := gw.(interface {
+				Session() *httpx.SessionClient
+			})
+			if !ok {
+				t.Fatalf("gateway %T does not expose Session", gw)
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			t.Cleanup(cancel)
+			resp, err := sessioned.Session().GET(ctx, "/slow")
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+			var timeoutErr net.Error
+			if !errors.As(err, &timeoutErr) || !timeoutErr.Timeout() {
+				t.Fatalf("request error = %v, want HTTP client timeout", err)
+			}
+			if ctx.Err() != nil {
+				t.Fatalf("request lasted until the fallback context deadline; configured timeout was not applied: %v", err)
+			}
+		})
 	}
 }

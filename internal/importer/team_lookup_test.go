@@ -17,10 +17,8 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-// teamRecoveryConfig drives teamRecoveryServer: it parameterises the
-// list snapshot, the singular /users/{id} response, and the team list
-// for a contest, so each PR-8 test case can wire just the surface it
-// cares about.
+// teamRecoveryConfig supplies independent list, single-user, and contest-team
+// responses so recovery tests can isolate each lookup boundary.
 type teamRecoveryConfig struct {
 	// listSnapshot is the array returned by GET /api/v4/users.
 	listSnapshot []model.User
@@ -44,10 +42,6 @@ type teamRecoveryConfig struct {
 // httptest.Server. The returned client is wired against that server;
 // its Users / Teams sub-resources are the ones the importer plumbs
 // through resolveTeamID.
-//
-// Kept separate from the existing usersAPIServer helper in
-// importer_test.go so PR-8 doesn't perturb the other importer
-// regression tests (per CLAUDE.md "Compatibility Locks" / TDD spec).
 func teamRecoveryServer(t *testing.T, cfg teamRecoveryConfig) (*apiv4.Client, *httptest.Server) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -167,11 +161,8 @@ func TestResolveTeamID_FallsBackToTeamListByName(t *testing.T) {
 	}
 }
 
-// TestResolveTeamID_FallsBackMatchesDisplayName covers the v7 server
-// configuration where team.Name carries an internal slug and
-// team.DisplayName carries the human-readable label that the user
-// snapshot's team field copies. Matching both fields is the cheap
-// defensive shape called out in the PR-8 spec.
+// TestResolveTeamID_FallsBackMatchesDisplayName covers servers whose user
+// snapshot copies the team's display name rather than its internal slug.
 func TestResolveTeamID_FallsBackMatchesDisplayName(t *testing.T) {
 	listUser := model.User{
 		ID:       "8",

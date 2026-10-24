@@ -1,9 +1,8 @@
 // Package submissions implements the "Submission Commands:" subtree
 // of the domjudge-tool CLI: download-submissions (alias contest-files).
 //
-// PR-7 ports Python's `contest_files` semantics under a single leaf
-// command. The single-id `submission_file` and listing `submission_list`
-// commands are out of scope (see docs/phase1/PR-7-cli-rest.md).
+// It preserves Python's contest_files semantics under one leaf command.
+// Single-submission and submission-list commands are not exposed by this CLI.
 package submissions
 
 import (

@@ -190,11 +190,8 @@ func TestGenConfig_OptionalFlagsPropagate(t *testing.T) {
 	}
 }
 
-// TestGenConfig_ContestIDFlagPropagates locks the v1.1.1 hotfix
-// (#2 in docs/phase1.5/ISSUES-2026-05-05.md): without a --contest-id
-// flag, users on a multi-contest server had to hand-edit
-// domserver.json. The new flag stores the value through to
-// cfg.ContestID so import-users-teams can resolve it directly.
+// TestGenConfig_ContestIDFlagPropagates verifies that --contest-id is stored
+// in cfg.ContestID for multi-contest import resolution.
 func TestGenConfig_ContestIDFlagPropagates(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()

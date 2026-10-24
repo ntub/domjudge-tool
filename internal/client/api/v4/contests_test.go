@@ -104,3 +104,23 @@ func TestContestsResource_Resolve_Errors(t *testing.T) {
 		t.Fatalf("missing hint err = %v, want ErrNotFound", err)
 	}
 }
+
+func TestContestsResource_ListProblems(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v4/contests/1/problems" {
+			t.Errorf("path = %q, want /api/v4/contests/1/problems", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"id":"prob1","shortname":"A","name":"Problem A"}]`))
+	}))
+	defer srv.Close()
+
+	c := New(Options{BaseURL: srv.URL})
+	probs, err := c.Contests.ListProblems(context.Background(), "1")
+	if err != nil {
+		t.Fatalf("ListProblems: %v", err)
+	}
+	if len(probs) != 1 || probs[0].ID != "prob1" {
+		t.Fatalf("unexpected problems: %+v", probs)
+	}
+}

@@ -13,15 +13,12 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-// defaultImportedGroupName is the placeholder name written into the
-// optional group upsert when the operator passes --category-id but no
-// matching group exists yet. The tradeoff is documented in PR-3 spec
-// §4.3: the API needs a group row to attach teams to, and re-uploading
-// is upsert-by-id so the placeholder is harmless on subsequent runs.
+// defaultImportedGroupName names the placeholder group used by API-selected
+// creation when a requested category has no matching group row.
 const defaultImportedGroupName = "p1.5-imported"
 
 // resolveContestID converts a domserver.json contest_id hint into a
-// concrete API contest id. Behaviour matches PR-3 SPEC §"邊界":
+// concrete API contest id:
 //
 //   - non-empty hint: pass through Contests.Resolve (numeric hints
 //     short-circuit; shortname hints hit /contests once).
@@ -31,10 +28,7 @@ const defaultImportedGroupName = "p1.5-imported"
 //   - empty hint, zero or multiple active contests: explicit error
 //     telling the operator to set contest_id in domserver.json.
 //
-// "Active" means the contest is started and not yet ended (state.started
-// is set, state.ended is not). The behaviour change vs Phase 1 — which
-// silently picked the server-default — is locked into the PR-5
-// CHANGELOG "Behaviour changes (visible)" section.
+// "Active" means state.started is set and state.ended is not.
 func resolveContestID(ctx context.Context, api *apiv4.Client, hint string) (string, error) {
 	if hint != "" {
 		id, err := api.Contests.Resolve(ctx, hint)
@@ -120,25 +114,10 @@ func parseRFC3339(s *string) (time.Time, bool) {
 	return t, true
 }
 
-// apiCreateFlow drives the create-only path through DOMjudge's bulk
-// import endpoints. It implements the algorithm in PR-3 §"API create
-// flow 演算法":
-//
-//  1. resolve cid via resolveContestID.
-//  2. if opts.CategoryID != nil, POST groups.tsv to ensure the team
-//     category exists (idempotent upsert by id).
-//  3. dedupe affiliations across rows; List existing organizations and
-//     POST a JSON payload for the missing names.
-//  4. POST teams2.tsv for every row.
-//  5. POST accounts.tsv with every row's resolved password.
-//  6. for every row with a non-empty CSV email, snapshot the user list
-//     to look up the new user_id then call gw.UpdateUserEmail — the
-//     CCS accounts.tsv format has no email column.
-//
-// Returns the input rows annotated with a derived password (from the
-// CSV column or password.Generate when missing/forced) and IsExist=&false
-// so the CLI's exporter.CreateUsers writes the same out.csv shape the
-// scraper path produces.
+// apiCreateFlow sends an API-selected create cohort through bulk import,
+// then backfills non-empty email through the gateway. The production default
+// router does not select this path because account/team linkage is unsafe.
+// Returned users include derived passwords and IsExist=false for CSV export.
 func apiCreateFlow(
 	ctx context.Context,
 	api *apiv4.Client,
@@ -320,28 +299,10 @@ func categoriesToUpsert(rows []importRow, fallback *int) []int {
 	return out
 }
 
-// dedupeMissingAffiliations returns each unique CSV affiliation that is
-// not already in orgsByName, in first-seen order so re-runs against the
-// same input produce a stable POST payload.
-//
-// CSV parsers occasionally leave trailing whitespace (\r on the last
-// column, NBSP, ordinary spaces) which makes a byte-exact lookup miss
-// an existing org of the same logical name. v1.1.0 observed exactly
-// this on a live v7 station — duplicate organization rows landed even
-// though the dedup table looked correct. We strings.TrimSpace both the
-// CSV column and the org name before comparing; the original
-// (pre-trim) name is still what gets POSTed if it really is missing,
-// to preserve operator intent. Debug-level logging dumps both sides
-// when a row enters dedup so the next live run captures the data.
-//
-// TODO(phase-2): the trim is asymmetric — only the dedup comparison
-// normalizes. formatTeamsTSV(tsv.go:54) still looks up orgs[raw],
-// so a whitespace-bearing CSV row will dedup against existing orgs
-// (good) but emit blank instName/instShortName/country in the team
-// TSV (bad). Phase 2 reactivation should trim once at apiCreateFlow
-// entry and propagate the trimmed value through every downstream
-// lookup. v1.1.1 leaves it asymmetric because the path is dead code
-// (router routes OpCreateTeamAndUser to scraper).
+// dedupeMissingAffiliations returns missing names in first-seen order.
+// Comparison trims surrounding whitespace, but POST payloads preserve the
+// original names. The TSV organization lookup still uses raw names, so callers
+// must not enable production API creation without reconciling normalization.
 func dedupeMissingAffiliations(rows []model.CreateUser, orgsByName map[string]model.Organization) []string {
 	trimmedKnown := make(map[string]struct{}, len(orgsByName))
 	for name := range orgsByName {

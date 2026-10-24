@@ -90,16 +90,24 @@ func TestReporter_TickIncrements_FinishWritesNewline(t *testing.T) {
 	var buf bytes.Buffer
 	r := newRealBarForTesting(&buf)
 
+	r.Tick()
+	r.Finish()
+	if got := buf.String(); got != "" {
+		t.Fatalf("before Start, output = %q, want no output", got)
+	}
+
 	r.Start(3, "import-loop")
-	r.Tick()
-	r.Tick()
-	r.Tick()
+	for i, count := range []string{"1/3", "2/3"} {
+		buf.Reset()
+		r.Tick()
+		if out := buf.String(); !strings.Contains(out, count) {
+			t.Fatalf("after Tick %d, output = %q, want count %q", i+1, out, count)
+		}
+	}
+	buf.Reset()
 	r.Finish()
 
 	out := buf.String()
-	if out == "" {
-		t.Fatalf("expected schollz to write progress bytes; got empty buffer")
-	}
 	if !strings.Contains(out, "import-loop") {
 		t.Fatalf("expected description %q in output, got %q",
 			"import-loop", out)
@@ -107,7 +115,7 @@ func TestReporter_TickIncrements_FinishWritesNewline(t *testing.T) {
 	// schollz emits a "3/3" count when OptionShowCount is set; check
 	// the loosest form so we don't snapshot byte-identical schollz output.
 	if !strings.Contains(out, "3/3") {
-		t.Fatalf("expected count %q after three Ticks + Finish, got %q",
+		t.Fatalf("expected count %q after two Ticks + Finish, got %q",
 			"3/3", out)
 	}
 	// Finish appends a newline (via OptionOnCompletion) so the next
@@ -116,21 +124,6 @@ func TestReporter_TickIncrements_FinishWritesNewline(t *testing.T) {
 		t.Fatalf("expected output to end with newline after Finish, got %q",
 			out)
 	}
-}
-
-func TestReporter_NopFromTopFunc_IsSafeToCall(t *testing.T) {
-	// Public API: Nop() must be safe to call in any order without
-	// panicking. Library code that takes Reporter via context will
-	// fall through to Nop when no CLI was wired in.
-	r := Nop()
-	r.Tick()   // before Start
-	r.Finish() // before Start
-	r.Start(0, "")
-	r.Start(5, "label")
-	r.Tick()
-	r.Tick()
-	r.Finish()
-	r.Finish() // double Finish must also be safe
 }
 
 // TestShouldEnable_Matrix exercises the gate predicate exhaustively
@@ -188,5 +181,33 @@ func TestShouldEnable_Matrix(t *testing.T) {
 				t.Fatalf("shouldEnable=%v, want %v", got, c.want)
 			}
 		})
+	}
+}
+
+func TestRealReporter_Lifecycle(t *testing.T) {
+	var buf bytes.Buffer
+	r := &realReporter{w: &buf}
+	r.Tick()
+	r.Finish()
+	if got := buf.String(); got != "" {
+		t.Fatalf("before Start, output = %q, want no output", got)
+	}
+
+	r.Start(3, "importing")
+	for i := int64(1); i <= 2; i++ {
+		r.Tick()
+		if got := r.bar.State().CurrentNum; got != i {
+			t.Fatalf("after Tick %d, current count = %d, want %d", i, got, i)
+		}
+	}
+	if out := buf.String(); !strings.Contains(out, "importing") || !strings.Contains(out, "1/3") {
+		t.Errorf("progress output = %q, want label and first increment", out)
+	}
+	r.Finish()
+	if got := r.bar.State().CurrentNum; got != 3 {
+		t.Errorf("after Finish, current count = %d, want 3", got)
+	}
+	if out := buf.String(); !strings.HasSuffix(out, "\n") {
+		t.Errorf("completed output = %q, want trailing newline", out)
 	}
 }

@@ -3,6 +3,7 @@ package v4
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -40,5 +41,20 @@ func TestHTTPError_WrappedIsWorks(t *testing.T) {
 
 	if !errors.Is(wrapped, ErrUnauthorized) {
 		t.Errorf("errors.Is(wrapped, ErrUnauthorized) = false, want true; err = %v", wrapped)
+	}
+}
+
+func TestImportRejectedError_Error(t *testing.T) {
+	e := &ImportRejectedError{
+		StatusCode: 400,
+		URL:        "http://example.org/api/v4/users/accounts",
+		Details:    []string{"user already exists"},
+	}
+	if !errors.Is(e, ErrImportRejected) {
+		t.Error("expected errors.Is(e, ErrImportRejected)")
+	}
+	msg := e.Error()
+	if !strings.Contains(msg, "400") || !strings.Contains(msg, "http://example.org/api/v4/users/accounts") {
+		t.Errorf("unexpected Error() string: %q", msg)
 	}
 }

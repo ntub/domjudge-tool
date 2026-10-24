@@ -164,15 +164,16 @@ func importRejectionDetails(body []byte) ([]string, bool) {
 		return nil, false
 	}
 
-	var messages []string
-	if err := json.Unmarshal(body, &messages); err == nil {
-		return messages, true
+	var rawStrings []string
+	if err := json.Unmarshal(body, &rawStrings); err == nil {
+		return rawStrings, true
 	}
 
 	var objects []map[string]interface{}
 	if err := json.Unmarshal(body, &objects); err != nil {
 		return nil, false
 	}
+	var messages []string
 	for _, obj := range objects {
 		found := false
 		for _, key := range []string{"message", "error", "detail"} {

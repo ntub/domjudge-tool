@@ -128,12 +128,8 @@ func TestExportUsers_FilterByIDs(t *testing.T) {
 	}
 }
 
-// TestExportUsers_FilterByTeamID_ServerDoesNotFilter locks the v1.1.1
-// hotfix (#7 in docs/phase1.5/ISSUES-2026-05-05.md): DOMjudge 7.3.x
-// ignores ?team_id= on /api/v4/users and returns the entire list
-// (observed live: 659 users instead of the 1 with team_id=5). The CLI
-// must therefore re-filter in memory so the operator's --team-id flag
-// works regardless of server compliance.
+// TestExportUsers_FilterByTeamID_ServerDoesNotFilter verifies local filtering
+// when a server ignores the /api/v4/users team_id query parameter.
 func TestExportUsers_FilterByTeamID_ServerDoesNotFilter(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(userListHandler(t, []model.User{

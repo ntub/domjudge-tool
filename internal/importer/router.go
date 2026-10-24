@@ -115,7 +115,7 @@ func decide(cfg *config.DomServerClient, op Op, in Context) Decision {
 		// via a username regex + Team::find primary-key lookup, with no
 		// team-id column in the spec. The bulk import path silently
 		// connects new users to small-id existing teams (admin/Example).
-		// Phase 2 may reactivate this once the linkage quirk is fixed.
+		// Keep creation on the scraper until account/team linkage is safe.
 		return Decision{Path: PathScraper, Reason: reasonAccountsTSVLinkageBroken}
 	case OpDeleteUsers, OpDeleteTeams:
 		return Decision{Path: PathScraper, Reason: reasonAPILacksDelete}

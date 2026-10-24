@@ -46,10 +46,9 @@ type DomServerClient struct {
 	Version                 string   `json:"version"`
 	APIVersion              string   `json:"api_version"`
 	PreferScraper           *bool    `json:"prefer_scraper,omitempty"`
-	// ContestID pins the DOMjudge contest used by api-first commands
-	// (Phase 1.5). Empty falls back to single-active-contest detection;
-	// see PR-3 SPEC §"邊界". Marked omitempty so existing v1.0
-	// domserver.json files load unchanged.
+	// ContestID supplies a contest hint to contest-scoped workflows.
+	// Empty uses the workflow's active-contest resolution. Omitting the
+	// field preserves compatibility with legacy configuration files.
 	ContestID *string `json:"contest_id,omitempty"`
 }
 

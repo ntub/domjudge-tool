@@ -12,12 +12,9 @@ import (
 	"github.com/ntub/domjudge-tool/internal/config"
 )
 
-// TestDomServerClient_RoundTrip_Golden is the named TDD anchor for
-// backward compatibility with the Python serializer's canonical output.
-// See docs/PHASE1.md for the reinterpretation note: the golden is the
-// canonical 4-space-indent shape, not the user's hand-edited
-// production file (which contains real credentials and predates the
-// `affiliation_country` field).
+// TestDomServerClient_RoundTrip_Golden preserves the Python serializer's
+// canonical output: four-space indentation and the affiliation_country field.
+// The sanitized golden is independent of operator configuration files.
 func TestDomServerClient_RoundTrip_Golden(t *testing.T) {
 	path := filepath.Join("..", "..", "testdata", "config", "domserver_canonical.json")
 	want, err := os.ReadFile(path)

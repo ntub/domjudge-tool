@@ -16,11 +16,9 @@ import (
 
 // ImportOptions configures a single ImportUsersTeams call.
 //
-// Phase 1.5 added the API / Router / ContestHint fields so the
-// importer can dispatch each row through the API path or the v7
-// scraper path. CLI callers still talk to the same ImportUsersTeams
-// entry point; the new fields are optional and default to a
-// scraper-only flow when nil so existing tests keep working.
+// API creation requires both an API client and a router selecting that path.
+// Missing dependencies and the production default router keep creation on the
+// versioned scraper; existing-user updates always use the scraper.
 type ImportOptions struct {
 	CategoryID         *int
 	AffiliationID      *int
@@ -33,23 +31,15 @@ type ImportOptions struct {
 	PasswordLength     int
 	PasswordCharset    string
 
-	// Router selects API vs scraper transport for each per-row op.
-	// nil keeps the Phase 1 scraper-only behaviour.
+	// Router selects transport for the create cohort; nil uses the scraper.
 	Router Router
-	// API is the Phase 1.5 client used when Router elects PathAPI.
-	// nil disables the API path even if Router asks for it.
+	// API is used only when Router selects PathAPI; nil disables that path.
 	API *apiv4.Client
-	// ContestHint is the cfg.contest_id value carried into the API
-	// flow's resolveContestID. Empty triggers single-active-contest
-	// auto-detection (PR-3 §"邊界").
+	// ContestHint supplies cfg.contest_id to API contest resolution.
+	// Empty triggers single-active-contest detection.
 	ContestHint string
 
-	// Reporter is the optional progress sink. Library code never
-	// constructs a Reporter; the CLI root PreRunE is the only
-	// production construct site, and it passes the Reporter through
-	// context so the call chain reaches this struct via the CLI
-	// command. Nil is treated as [progress.Nop] so existing callers
-	// (and Phase 1 tests that pre-date PR-9) need no change.
+	// Reporter is supplied by the caller; nil is treated as [progress.Nop].
 	Reporter progress.Reporter
 }
 
@@ -190,12 +180,9 @@ func ImportUsersTeamsWithReport(
 		createRows = append(createRows, row)
 	}
 
-	// Step 6 — route the create cohort. Phase 1.5 only migrates the
-	// create-new path to the API; updates stay on the v7 scraper because
-	// the live-station idempotency test for accounts/teams TSV upsert
-	// hasn't shipped (PR-0 §"Findings"). When the router elects PathAPI
-	// and an api client is wired, dispatch the whole cohort through one
-	// apiCreateFlow call so the bulk endpoints see one TSV per kind.
+	// Route the create cohort. API-selected creation batches its payloads;
+	// the default router selects the versioned scraper. Updates below always
+	// use the scraper independently of the create decision.
 	out := make([]model.CreateUser, 0, len(rows))
 	created, err := processCreateCohort(ctx, gw, createRows, categoryID, fallbackAffID, opts, affiliations)
 	result.Summary.CreatedUsers += len(created)
@@ -207,11 +194,8 @@ func ImportUsersTeamsWithReport(
 	out = append(out, created...)
 
 	for i := range updateRows {
-		// Phase 1.5 follow-up (PR-8): if the API list snapshot left
-		// team_id == nil for an existing user, recover it via a two-
-		// step lookup before handing the row to gw.UpdateTeam, which
-		// rejects rows with no TeamID. Lazy: only fires on the rows
-		// that actually need recovery.
+		// Recover a missing team ID before UpdateTeam, which rejects rows
+		// without one. The extra lookup runs only for affected rows.
 		if updateRows[i].existing.TeamID == nil || *updateRows[i].existing.TeamID == "" {
 			var teamsRes *apiv4.TeamsResource
 			if opts.API != nil {
@@ -241,11 +225,9 @@ func ImportUsersTeamsWithReport(
 	return result, nil
 }
 
-// processCreateCohort drives every row that needs a fresh team + user
-// account. When the router elects PathAPI and opts.API is wired, the
-// whole cohort goes through a single apiCreateFlow call (one TSV per
-// import endpoint). Otherwise each row is processed individually
-// against the v7 scraper, preserving Phase 1 semantics.
+// processCreateCohort creates fresh team/user accounts. API-selected cohorts
+// use one bulk import per endpoint; otherwise each row uses the versioned
+// scraper. The production default router selects the scraper.
 func processCreateCohort(
 	ctx context.Context,
 	gw web.Gateway,
@@ -266,11 +248,8 @@ func processCreateCohort(
 		if err != nil {
 			return created, err
 		}
-		// API bulk path has no per-row loop — the bulk endpoints handle
-		// the cohort in one shot. To keep the bar honest the cohort is
-		// ticked en bloc; the bar jumps to its final count when the
-		// bulk call returns, which the spec acknowledges as an accepted
-		// trade-off (PR-9 §"7 條 batch 指令 wire-in" footnote).
+		// Bulk endpoints complete the cohort in one call, so progress advances
+		// only after the successful response rather than claiming per-row I/O.
 		for range created {
 			opts.Reporter.Tick()
 		}
@@ -289,10 +268,8 @@ func processCreateCohort(
 	return out, nil
 }
 
-// useAPICreateFlow asks the router whether the create cohort should
-// take the API path. Returns false when no router or api client is
-// wired (Phase 1 callers without the new fields), so existing tests
-// that pre-date PR-3 see no behaviour change.
+// useAPICreateFlow requires an API client and a router explicitly selecting
+// API creation. Missing dependencies disable the API path.
 func useAPICreateFlow(ctx context.Context, opts ImportOptions) bool {
 	if opts.Router == nil || opts.API == nil {
 		return false
@@ -301,13 +278,9 @@ func useAPICreateFlow(ctx context.Context, opts ImportOptions) bool {
 	return d.Path == PathAPI
 }
 
-// processRowScraper runs the full per-row pipeline against the v7 web
-// scraper: resolve affiliation, derive the password, dispatch update or
-// create against the gateway, push the password through SetUserPassword,
-// and finally sync the user email back into the DOMjudge user record
-// when present. PR-3 added the API counterpart (apiCreateFlow) for the
-// create cohort; this routine remains the scraper fallback and is
-// always used for the update cohort.
+// processRowScraper resolves affiliations, derives passwords, creates or
+// updates teams, writes passwords, and backfills non-empty email through the
+// versioned gateway. It handles default creates and all existing-user updates.
 func processRowScraper(
 	ctx context.Context,
 	gw web.Gateway,

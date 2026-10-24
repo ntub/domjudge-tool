@@ -17,9 +17,7 @@ import (
 	"github.com/ntub/domjudge-tool/internal/model"
 )
 
-// importCSVHeader is the header line all importer_test inputs share.
-// Centralising it here keeps the column-order assertion close to the
-// PHASE1.md anchor.
+// importCSVHeader preserves the legacy five-column input order.
 const importCSVHeader = "username,name,email,affiliation,password"
 
 const importCSVHeaderWithCategory = importCSVHeader + ",category_id"
@@ -39,12 +37,8 @@ func usersAPIServer(t *testing.T, snapshot []model.User) *apiv4.UsersResource {
 	return c.Users
 }
 
-// TestCSVImport_HeadersByteIdentical is the PHASE1.md TDD anchor: the
-// canonical CSV header row used by ImportUsersTeams must be
-// "username,name,email,affiliation,password" in that exact order.
-// Drift in the header surfaces as csvio.ErrHeaderMismatch from
-// ImportUsersTeams; the test simply runs the import end-to-end and
-// fails on any non-nil error tied to header parsing.
+// TestCSVImport_HeadersByteIdentical verifies that the legacy five-column
+// header remains accepted. The optional category_id column is tested separately.
 func TestCSVImport_HeadersByteIdentical(t *testing.T) {
 	users := usersAPIServer(t, []model.User{})
 	gw := &mockGateway{}
@@ -777,14 +771,9 @@ func TestImportUsersTeams_DuplicateUsername_NoMutations(t *testing.T) {
 	}
 }
 
-// TestImportUsersTeams_DefaultRouter_CreateGoesScraper locks the
-// v1.1.1 hotfix decision (#3 in docs/phase1.5/ISSUES-2026-05-05.md):
-// even with both opts.Router = NewDefaultRouter and opts.API wired, the
-// create cohort must still flow through gw.CreateTeamAndUser. The
-// CCS accounts.tsv has no team-id column so the API path silently
-// links new users to whatever team auto-increment/regex resolution
-// the v7 server picks — observed live as users landing on the admin
-// team. Default-routing it to scraper is the v1.1.1 revert.
+// TestImportUsersTeams_DefaultRouter_CreateGoesScraper keeps default creation
+// on the scraper even when an API client is available. CCS accounts.tsv lacks
+// an explicit team link, so bulk creation can attach users to unrelated teams.
 func TestImportUsersTeams_DefaultRouter_CreateGoesScraper(t *testing.T) {
 	users := usersAPIServer(t, []model.User{})
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

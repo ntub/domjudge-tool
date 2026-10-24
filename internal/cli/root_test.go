@@ -235,12 +235,8 @@ func TestRoot_VerboseSetsSlogLevel(t *testing.T) {
 	}
 }
 
-// TestRoot_VerboseRebindsSlogDefault locks the v1.1.1 hotfix
-// (#5 in docs/phase1.5/ISSUES-2026-05-05.md): the verbose flag must
-// also rebind slog.Default() so subsystems that don't take ctx
-// (router decision logging, dedup debug lines) see the configured
-// level. Before this fix, -vv on the CLI had no effect on those
-// subsystems because they called slog.Default() directly.
+// TestRoot_VerboseRebindsSlogDefault verifies that verbose configuration also
+// reaches subsystems using slog.Default(), including router and dedup logging.
 func TestRoot_VerboseRebindsSlogDefault(t *testing.T) {
 	root := cli.NewRootCmd(stubDeps())
 	var buf bytes.Buffer
