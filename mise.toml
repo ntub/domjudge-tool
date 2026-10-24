@@ -62,7 +62,7 @@ run = [
 ]
 
 [tasks.frontend-install]
-description = "Install the locked frontend packages used to build Desktop CSS"
+description = "Install the locked frontend packages used to build web UI CSS"
 dir = "{{config_root}}/frontend"
 sources = ["package.json", "package-lock.json"]
 outputs = ["node_modules/.package-lock.json"]
@@ -80,46 +80,14 @@ run = "go mod tidy"
 description = "Build the CLI binary into ./bin"
 run = "go build -o ./bin/domjudge-tool ./cmd/domjudge-tool"
 
-[tasks.build-desktop]
-description = "Build the native Desktop preview into ./bin (needs a native CGO toolchain)"
-env = { CGO_ENABLED = "1" }
-run = "go build -tags desktop -o ./bin/domjudge-tool-app ./cmd/desktop"
-
-[tasks.package-desktop]
-description = "Build a native Desktop+CLI bundle and archive; append flags, e.g. `mise run package-desktop -smoke`"
-run = "go run ./cmd/package-desktop"
-
-[tasks.generate-desktop-icons]
-description = "Regenerate the macOS icon from the committed PNG master (macOS only)"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "$(uname -s)" != "Darwin" ]]; then
-    printf 'Icon generation requires macOS sips and iconutil.\n' >&2
-    exit 1
-fi
-work_dir="$(mktemp -d)"
-trap 'rm -rf -- "$work_dir"' EXIT
-mkdir "$work_dir/app.iconset"
-for size in 16 32 128 256 512; do
-    sips -z "$size" "$size" internal/desktop/assets/appicon.png \
-        --out "$work_dir/app.iconset/icon_${size}x${size}.png" >/dev/null
-    retina=$((size * 2))
-    sips -z "$retina" "$retina" internal/desktop/assets/appicon.png \
-        --out "$work_dir/app.iconset/icon_${size}x${size}@2x.png" >/dev/null
-done
-mkdir -p build/darwin
-iconutil -c icns "$work_dir/app.iconset" -o build/darwin/icons.icns
-'''
-
-[tasks.build-desktop-css]
-description = "Rebuild internal/desktop/assets/tailwind.css from templ templates (commit the result)"
+[tasks.build-css]
+description = "Rebuild internal/webui/assets/tailwind.css from templ templates (commit the result)"
 depends = ["frontend-install"]
-run = "./frontend/node_modules/.bin/tailwindcss -i ./frontend/input.css -o ./internal/desktop/assets/tailwind.css"
+run = "./frontend/node_modules/.bin/tailwindcss -i ./frontend/input.css -o ./internal/webui/assets/tailwind.css"
 
 [tasks.generate-templates]
 description = "Regenerate templ Go files from *.templ sources"
-run = "templ generate ./internal/desktop/templates/"
+run = "templ generate ./internal/webui/templates/"
 
 [tasks.run]
 description = "Run the CLI from source; append CLI arguments, e.g. `mise run run -- --help`"
@@ -140,10 +108,6 @@ run = "go test ./..."
 [tasks.test-race]
 description = "Run all tests with the race detector"
 run = "go test -race ./..."
-
-[tasks.test-desktop]
-description = "Run the native Desktop adapter tests (needs a native CGO toolchain on macOS/Linux)"
-run = "go test -tags desktop ./cmd/desktop"
 
 [tasks.cover]
 description = "Generate an HTML coverage report at coverage.html"
@@ -183,6 +147,10 @@ run = [
   "zizmor --offline --min-severity low .github/workflows",
 ]
 
+[tasks.lint-scripts]
+description = "Lint shell scripts with shellcheck"
+run = "shellcheck -s sh scripts/install.sh"
+
 [tasks.secret-scan]
 description = "Scan source, docs, fixtures, and Git history for committed secrets"
 run = "scripts/check_secrets.sh"
@@ -199,12 +167,13 @@ description = "Run all repository privacy gates: generic secrets and project-spe
 run = [{ task = "secret-scan" }, { task = "api-fixture-check" }]
 
 [tasks.check]
-description = "Local gate: fmt, vet, lint, workflow lint, privacy gates, and tests"
+description = "Local gate: fmt, vet, lint, workflow lint, script lint, privacy gates, and tests"
 run = [
   { task = "fmt" },
   { task = "vet" },
   { task = "lint" },
   { task = "lint-actions" },
+  { task = "lint-scripts" },
   { task = "privacy-check" },
   { task = "test" },
 ]
@@ -216,6 +185,7 @@ run = [
   { task = "vet" },
   { task = "lint" },
   { task = "lint-actions" },
+  { task = "lint-scripts" },
   { task = "privacy-check" },
   { task = "test-race" },
 ]
@@ -229,7 +199,7 @@ description = "Capture raw DOMjudge API v4 fixtures into tmp/raw_api_v4"
 run = "scripts/capture_api_fixtures.sh"
 
 [tasks.user-guide-capture]
-description = "Capture sanitized Desktop HTML previews with installed Chrome/Chromium"
+description = "Capture sanitized web UI HTML previews with installed Chrome/Chromium"
 run = "python3 scripts/update_user_guide.py capture"
 
 [tasks.user-guide-check]

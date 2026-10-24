@@ -67,13 +67,11 @@ and Windows; no insecure compatibility overrides are introduced.
   Go or Node.js installed.
 - Frontend contributors use Node.js 24.22.1 or a later patched 24.x release
   and install from the committed npm lockfile.
-- Upgrade acceptance requires unchanged compatibility fixtures and tests,
-  including the Desktop build tag. Generated assets and their generators
-  must agree; presence of an upgrade in the working tree is not evidence
-  that a particular check passed.
-- Vulnerability checks must cover the default build, desktop-tagged code,
-  and npm development dependencies. Each native Desktop target still
-  requires its own platform SDKs and native acceptance.
+- Upgrade acceptance requires unchanged compatibility fixtures and tests.
+  Generated assets and their generators must agree; presence of an upgrade in
+  the working tree is not evidence that a particular check passed.
+- Vulnerability checks must cover the CLI and web UI builds, and npm
+  development dependencies.
 - HTML parser upgrades preserve behavior against the existing sanitized
   scraper fixtures. Any necessary recapture follows the fixture privacy
   protocol and secret/PII gates before commit; raw production captures are
@@ -94,5 +92,5 @@ and Windows; no insecure compatibility overrides are introduced.
   [dependency policy](../../frontend/package.json), and
   [lockfile](../../frontend/package-lock.json).
 - [CI toolchain configuration](../../.github/workflows/ci.yml).
-- [Desktop architecture](0013-phase3-frontend-stack.md).
+- [Web UI architecture](0013-phase3-frontend-stack.md).
 - [Fixture maintenance and privacy gates](../TESTING.md).

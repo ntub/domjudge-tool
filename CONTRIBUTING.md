@@ -9,10 +9,8 @@ workflow: setup, branching, commits, tests, PRs, and releases.
 | -------------------- | ------------------ | -------------------------------- |
 | [mise](https://mise.jdx.dev/getting-started.html) | ≥ 2026.10.14 | Yes (tools and tasks) |
 | git                  | ≥ 2.30             | Yes                              |
-| Native C toolchain   | platform default   | Desktop builds only (CGO)        |
 | Claude Code          | latest, authenticated | Required for feature commits with hooks |
 | Chrome / Chromium    | installed          | Only for screenshot capture      |
-
 `mise.toml` pins everything else: Go, Node.js, Python, gofumpt,
 golangci-lint, templ, Lefthook, TruffleHog, actionlint, zizmor, git-cliff,
 GoReleaser, and the GitHub CLI. `mise.lock` records their checksums and
@@ -31,7 +29,7 @@ mise run setup        # go mod download + npm ci + lefthook install
 
 `mise run setup` is idempotent — re-run it whenever dependencies change.
 `mise tasks` lists every task. Append arguments after the task name, for
-example `mise run run -- --help` or `mise run package-desktop -smoke`.
+example `mise run run -- --help` or `mise run build-css`.
 Activating mise in your shell (`mise activate`) is optional; Git hooks call
 the pinned tools through `mise exec` and `mise run`.
 
@@ -127,7 +125,7 @@ the server process and disposable browser profile it creates. It captures
 only the 13 fixed loopback routes at 1280×1000 with a 3-second virtual-time
 budget, then cleans up on completion, failure, or interruption. It never
 uses a live VM, the native application's profile database, or a signed-in
-browser profile. Screenshots show the desktop **HTML preview with seeded
+browser profile. Screenshots show the web UI **HTML preview with seeded
 example data and simulated operations**; they do not prove native-dialog
 behavior or successful remote operations. Rendering can vary with the
 installed browser version, operating system, and fonts.
@@ -214,19 +212,18 @@ hand. The flow:
 4. `git push origin vX.Y.Z`. The workflow then:
    - rejects the tag unless it is annotated, points at a commit on `main`,
      and has a non-empty `CHANGELOG.md` section;
-   - reruns the CI gates and builds six native Desktop bundles and six CLI
-     archives with read-only tokens;
+   - reruns the CI gates and builds six CLI archives with read-only tokens,
+     packaging the one-line installer scripts;
    - in the `release` environment, verifies every SHA-256 checksum, records
      build-provenance attestations, and publishes the GitHub release.
 5. Run [`release-smoke.yml`](.github/workflows/release-smoke.yml) (Actions,
    **Run workflow**, tag `vX.Y.Z`). On all six native platforms it downloads
-   the published assets, verifies checksums and attestations, runs the CLI
-   and the bundled CLI, and launches the Desktop app to probe its local
-   interface.
-
+   the published assets, verifies checksums and attestations, tests the
+   one-line installer scripts (`install.sh` / `install.ps1`) with PATH
+   verification, and verifies `domjudge-tool web` startup.
 Tags with other shapes (`v1.7`, `v1.7.0-rc.1`) never start the workflow.
 A failed run publishes nothing; fix the cause, delete the tag locally and
-remotely, and tag again. Desktop bundles are unsigned and un-notarized.
+remotely, and tag again. CLI archives are verified with published checksums and Sigstore attestations.
 
 ## Dependency security reports
 

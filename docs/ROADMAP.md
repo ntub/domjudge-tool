@@ -10,9 +10,9 @@ usage is in [CLI](CLI.md), implementation boundaries are in
 
 - **CLI:** one executable manages DOMjudge 7.3.x and 8.3.1, API-first with
   scraper fallback, including contest-scoped `import-problems --upsert`.
-- **Desktop:** a native Wails v3 preview with server profiles, settings, and
-  operation history. Bundles for macOS, Linux, and Windows (amd64 and arm64)
-  contain the independent CLI; they are unsigned and not notarized.
+- **Web UI:** local browser interface served by `domjudge-tool web`, with
+  server profiles, settings, and operation history (templ, Datastar, and pure-Go
+  SQLite/GORM).
 - **Releases:** published by GitHub Actions from annotated
   `vMAJOR.MINOR.PATCH` tags on `main`; see
   [CONTRIBUTING](../CONTRIBUTING.md#releases).
@@ -33,8 +33,7 @@ replacement, or new feature milestones are committed by this roadmap.
   `affiliation_country="TWN"`. Existing files without `prefer_scraper`
   or `contest_id` remain valid.
 - **CLI interface:** preserve current command names, aliases, flags,
-  defaults, and output file names. Desktop packaging must not route
-  terminal commands through the GUI. The complete surface is in
+  defaults, and output file names. The complete surface is in
   [CLI](CLI.md).
 - **CSV:** keep the leading template columns
   `username,name,email,affiliation,password` in that order. The current

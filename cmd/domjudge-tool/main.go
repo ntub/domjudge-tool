@@ -24,6 +24,7 @@ import (
 	_ "github.com/ntub/domjudge-tool/internal/cli/scoreboard"
 	_ "github.com/ntub/domjudge-tool/internal/cli/submissions"
 	_ "github.com/ntub/domjudge-tool/internal/cli/users"
+	_ "github.com/ntub/domjudge-tool/internal/cli/web"
 )
 
 func main() {

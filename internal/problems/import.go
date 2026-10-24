@@ -292,7 +292,7 @@ func importProblemLabel(input ImportInput) string {
 }
 
 // IsDOMjudge7 reports whether version is a 7.x DOMjudge server.
-// Exported so callers (CLI, desktop) can branch on API shape without
+// Exported so callers (CLI, web UI) can branch on API shape without
 // re-implementing the check.
 func IsDOMjudge7(version string) bool {
 	return isDOMjudge7(version)

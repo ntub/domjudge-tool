@@ -1,4 +1,4 @@
-# 0012. Desktop Local Datastore: GORM and SQLite
+# 0012. Web UI Local Datastore: GORM and SQLite
 
 - **Status:** Accepted
 - **Date:** 2026-06-20
@@ -6,11 +6,11 @@
 
 ## Context
 
-The native Desktop preview persists server profiles, operation history, and
-application settings on the operator's machine. History is queryable by
-operation type and profile, so the implemented state is more than a handful
-of unstructured config values.
-
+The local web UI (served by `domjudge-tool web`; see
+[ADR 0018](0018-local-web-ui-command.md)) persists server profiles, operation
+history, and application settings on the operator's machine. History is
+queryable by operation type and profile, so the implemented state is more than
+a handful of unstructured config values.
 The storage boundary has these constraints:
 
 - One local operator and low write concurrency; no hosted multi-tenant
@@ -19,7 +19,7 @@ The storage boundary has these constraints:
   key/value indexes.
 - Direct reuse of Go operation packages from the same module.
 - No added C database driver requirement alongside the native shell.
-- Preserve CLI `domserver.json`; Desktop state must not redefine the CLI
+- Preserve CLI `domserver.json`; web UI state must not redefine the CLI
   configuration format.
 
 ## Decision
@@ -32,11 +32,12 @@ live in `go.mod` and `go.sum`, under the upgrade policy in
 
 ### Current storage boundary
 
-- `internal/desktop/db.Open` opens the database, limits the SQL pool to one
+- `internal/webui/db.Open` opens the database, limits the SQL pool to one
   open connection, enables foreign keys, and enables WAL for file-backed
   databases. `:memory:` supports isolated tests without WAL.
-- Production composition resolves
-  `os.UserConfigDir()/domjudge-tool/domjudge-tool.db`.
+- Production composition resolves the SQLite path from the `--db` flag,
+  which defaults to `os.UserConfigDir()/domjudge-tool/domjudge-tool.db` (the
+  former Desktop path, so existing local data carries over).
 - `profile.Store` owns server-profile CRUD and default selection.
 - `oplog.Store` owns operation status, parameters, summaries, counts, and
   timestamps, with newest-first history filtered by type or profile.
@@ -48,10 +49,8 @@ live in `go.mod` and `go.sum`, under the upgrade policy in
 
 These stores contain current local state, not a second DOMjudge server.
 PocketBase, a network database, account management, and synchronization are
-not part of this design. CLI configuration remains independent of the
-Desktop database. CLI-install receipts and target records are separate
-filesystem state under [ADR 0016](0016-desktop-bundled-cli.md).
-
+not part of this design. CLI configuration (`domserver.json`) remains
+independent of the web UI database.
 ### Alternatives considered
 
 - **Plain JSON/TOML files.** Appropriate for the CLI config, but filtered
@@ -62,7 +61,7 @@ filesystem state under [ADR 0016](0016-desktop-bundled-cli.md).
   requirement that the pure-Go GORM driver avoids.
 - **PocketBase.** Its authentication, realtime, admin UI, and collection
   server exceed the local tool's needs and overlap with the in-process HTTP
-  server already owned by Desktop.
+  server already owned by the web UI.
 - **Direct `database/sql` access as a parallel persistence convention.**
   The implemented stores use GORM models and migrations; introducing another
   access style would split schema ownership without a current requirement.
@@ -74,8 +73,8 @@ filesystem state under [ADR 0016](0016-desktop-bundled-cli.md).
 - GORM models and store constructors own the current schema; schema changes
   must preserve existing local data. `AutoMigrate` is the present mechanism,
   not evidence that arbitrary destructive migrations are safe.
-- The database layer adds no cgo requirement. Native Wails builds still
-  require their platform SDKs and, where applicable, cgo.
+- The database layer adds no cgo requirement. CLI and web UI builds remain
+  pure Go without native GUI dependencies.
 - The database is inspectable with ordinary SQLite tooling, but contains
   sensitive data: profile and SMTP passwords are stored as strings by the
   current models. This decision provides no database encryption or OS
@@ -88,10 +87,10 @@ filesystem state under [ADR 0016](0016-desktop-bundled-cli.md).
 
 - [Current architecture](../ARCHITECTURE.md).
 - [CLI config contract](../CLI.md#configuration-domserverjson).
-- [Database initialization](../../internal/desktop/db/db.go#L14)
-  (`internal/desktop/db/db.go:14`).
-- [Profile model and migration](../../internal/desktop/profile/store.go#L16).
-- [Operation history model and filtering](../../internal/desktop/oplog/store.go#L26).
-- [Settings model and defaults](../../internal/desktop/settings/store.go#L12).
-- [Production database path](../../cmd/desktop/main.go#L112).
+- [ADR 0018](0018-local-web-ui-command.md) for the `web` command contract.
+- [Database initialization](../../internal/webui/db/db.go#L14)
+  (`internal/webui/db/db.go:14`).
+- [Profile model and migration](../../internal/webui/profile/store.go#L16).
+- [Operation history model and filtering](../../internal/webui/oplog/store.go#L26).
+- [Settings model and defaults](../../internal/webui/settings/store.go#L12).
 - [Current dependency manifest](../../go.mod).

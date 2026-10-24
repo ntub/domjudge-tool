@@ -1,2 +1,2 @@
 @import "tailwindcss";
-@source "../internal/desktop/templates/**/*.templ";
+@source "../internal/webui/templates/**/*.templ";

@@ -1,8 +1,8 @@
 name: Release smoke
 
 # Downloads a published release on each native platform and runs what a user
-# would: checksum and provenance checks, the CLI, the bundled CLI, and the
-# Desktop app's local interface. Read-only; run it after release.yml finishes.
+# would: checksum and provenance checks, the installer scripts, and the
+# local web UI command. Read-only; run it after release.yml finishes.
 on:
   workflow_dispatch:
     inputs:
@@ -24,15 +24,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {runner: macos-15-intel, goos: darwin, goarch: amd64, cli_ext: tar.gz, desktop_ext: zip}
-          - {runner: macos-15, goos: darwin, goarch: arm64, cli_ext: tar.gz, desktop_ext: zip}
-          - {runner: ubuntu-24.04, goos: linux, goarch: amd64, cli_ext: tar.gz, desktop_ext: tar.gz}
-          - {runner: ubuntu-24.04-arm, goos: linux, goarch: arm64, cli_ext: tar.gz, desktop_ext: tar.gz}
-          - {runner: windows-2025, goos: windows, goarch: amd64, cli_ext: zip, desktop_ext: zip}
-          - {runner: windows-11-arm, goos: windows, goarch: arm64, cli_ext: zip, desktop_ext: zip}
+          - {runner: macos-15-intel, goos: darwin, goarch: amd64, ext: tar.gz}
+          - {runner: macos-15, goos: darwin, goarch: arm64, ext: tar.gz}
+          - {runner: ubuntu-24.04, goos: linux, goarch: amd64, ext: tar.gz}
+          - {runner: ubuntu-24.04-arm, goos: linux, goarch: arm64, ext: tar.gz}
+          - {runner: windows-2025, goos: windows, goarch: amd64, ext: zip}
+          - {runner: windows-11-arm, goos: windows, goarch: arm64, ext: zip}
     runs-on: ${{ matrix.runner }}
     permissions:
-      contents: read # download release assets
+      contents: read # download release assets and checkout scripts
       attestations: read # verify provenance
     timeout-minutes: 20
     defaults:
@@ -44,234 +44,183 @@ jobs:
       TAG: ${{ inputs.tag }}
       GOOS_NAME: ${{ matrix.goos }}
       GOARCH_NAME: ${{ matrix.goarch }}
-      CLI_EXT: ${{ matrix.cli_ext }}
-      DESKTOP_EXT: ${{ matrix.desktop_ext }}
+      ARCHIVE_EXT: ${{ matrix.ext }}
     steps:
-      - name: Install the Linux GUI runtime and a virtual display
-        if: matrix.goos == 'linux'
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y xvfb x11-utils imagemagick libgtk-4-1 libwebkitgtk-6.0-4
-          # Hosted Ubuntu 24.04 runners forbid unprivileged user namespaces, which
-          # makes WebKit's bubblewrap sandbox abort the app. Allow them so the
-          # smoke exercises the real, sandboxed WebView rather than disabling it.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Download the release and verify checksums and provenance
+      - name: Download CLI archive and verify checksum and attestation
         run: |
           set -euo pipefail
           [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
             echo "::error::$TAG is not vMAJOR.MINOR.PATCH"
             exit 1
           }
-          work="$RUNNER_TEMP/smoke"
+          work="$RUNNER_TEMP/smoke-download"
           rm -rf "$work"
           mkdir -p "$work"
           cd "$work"
-          cli="domjudge-tool_${GOOS_NAME}_${GOARCH_NAME}.${CLI_EXT}"
-          desktop="domjudge-tool-desktop_${TAG}_${GOOS_NAME}_${GOARCH_NAME}.${DESKTOP_EXT}"
-          gh release download "$TAG" --pattern checksums.txt --pattern "$cli" \
-            --pattern "$desktop" --pattern "$desktop.sha256"
+          cli="domjudge-tool_${GOOS_NAME}_${GOARCH_NAME}.${ARCHIVE_EXT}"
+          gh release download "$TAG" --repo "$GH_REPO" --pattern checksums.txt --pattern "$cli"
           sum() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
           grep -F "  $cli" checksums.txt | sum -c -
-          sum -c "$desktop.sha256"
-          for archive in "$cli" "$desktop"; do
-            gh attestation verify "$archive" --repo "$GH_REPO" \
-              --signer-workflow "$GH_REPO/.github/workflows/release.yml" \
-              --source-ref "refs/tags/$TAG"
-          done
+          gh attestation verify "$cli" --repo "$GH_REPO" \
+            --signer-workflow "$GH_REPO/.github/workflows/release.yml" \
+            --source-ref "refs/tags/$TAG"
 
-      - name: Extract and run the downloaded CLI
+      - name: Test installer script (Unix)
+        if: matrix.goos != 'windows'
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP/smoke"
-          extract() {
-            case "$1" in
-              *.tar.gz) tar -xzf "$1" -C "$2" ;;
-              *.zip)
-                if [ "$GOOS_NAME" = windows ]; then
-                  powershell -NoProfile -Command "Expand-Archive -LiteralPath '$(cygpath -w "$PWD/$1")' -DestinationPath '$(cygpath -w "$PWD/$2")'"
-                else
-                  unzip -q "$1" -d "$2"
-                fi ;;
-            esac
-          }
-          exe=""
-          [ "$GOOS_NAME" = windows ] && exe=".exe"
-          mkdir cli
-          extract "domjudge-tool_${GOOS_NAME}_${GOARCH_NAME}.${CLI_EXT}" cli
-          version="$(./cli/domjudge-tool$exe version)"
+          test_dir="$RUNNER_TEMP/unix-install/bin"
+          rm -rf "$RUNNER_TEMP/unix-install"
+          DOMJUDGE_TOOL_VERSION="$TAG" DOMJUDGE_TOOL_INSTALL_DIR="$test_dir" sh scripts/install.sh
+
+          # Source rc file where PATH was configured, then verify command resolves from PATH
+          if [ -f "$HOME/.bash_profile" ]; then
+            . "$HOME/.bash_profile"
+          elif [ -f "$HOME/.bashrc" ]; then
+            . "$HOME/.bashrc"
+          elif [ -f "$HOME/.profile" ]; then
+            . "$HOME/.profile"
+          fi
+
+          resolved="$(command -v domjudge-tool)"
+          echo "Resolved from PATH: $resolved"
+          test -n "$resolved"
+          version="$(domjudge-tool version)"
           echo "$version"
           [[ "$version" == *"${TAG#v}"* ]]
-          ./cli/domjudge-tool$exe --help >/dev/null
-          ./cli/domjudge-tool$exe gen-config --host https://test-station.example.org \
-            --username admin --password REPLACE_LOCALLY --version 8.3.1 \
-            --contest-id 1 -o smoke-config.json
-          grep -q '"version": "8.3.1"' smoke-config.json
-          mkdir desktop
-          extract "domjudge-tool-desktop_${TAG}_${GOOS_NAME}_${GOARCH_NAME}.${DESKTOP_EXT}" desktop
-          case "$GOOS_NAME" in
-            darwin) root="desktop/domjudge-tool.app/Contents"; bundle="$root/Resources"; app="$root/MacOS/domjudge-tool-app" ;;
-            *) bundle="desktop/domjudge-tool"; app="$bundle/domjudge-tool-app$exe" ;;
-          esac
-          grep -q "\"version\": \"$TAG\"" "$bundle/bundle.json"
-          grep -q "\"goos\": \"$GOOS_NAME\"" "$bundle/bundle.json"
-          grep -q "\"goarch\": \"$GOARCH_NAME\"" "$bundle/bundle.json"
-          bundled="$("$bundle/cli/domjudge-tool$exe" version)"
-          echo "bundled: $bundled"
-          [[ "$bundled" == *"$TAG"* ]]
-          echo "APP=$PWD/$app" >> "$GITHUB_ENV"
 
-      - name: Launch the Desktop app, probe it, and require a native window with a loaded WebView
+      - name: Test installer script (Windows)
+        if: matrix.goos == 'windows'
+        shell: pwsh
         run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP/smoke"
-          mkdir -p home evidence
-          export HOME="$PWD/home"
-          if [ "$GOOS_NAME" = linux ]; then
-            Xvfb :99 -screen 0 1280x800x24 > xvfb.log 2>&1 &
-            export DISPLAY=:99
-            sleep 2
-          fi
-          "$APP" > app.log 2>&1 &
-          app_pid=$!
-          code=000
-          for _ in $(seq 1 60); do
-            code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9900/profiles || true)"
-            [ "$code" = 200 ] && break
-            sleep 1
-          done
-          if [ "$code" != 200 ]; then
-            echo "::error::Desktop did not serve /profiles (last status $code)"
-            cat app.log
-            exit 1
-          fi
-          for page in settings history import-users-teams export-users set-password; do
-            status="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:9900/$page")"
-            echo "$page: $status"
-            [ "$status" = 200 ]
-          done
-          curl -s http://127.0.0.1:9900/settings | grep -q 'Command-Line Tool'
-          # The HTTP server starts before the window exists, so HTTP 200 alone
-          # proves nothing about the GUI. Require OS-level window and WebView
-          # evidence, and keep a screenshot for review.
-          fail() { echo "::error::$1"; cat app.log; exit 1; }
-          case "$GOOS_NAME" in
-            linux)
-              found=""
-              for _ in $(seq 1 60); do
-                if xwininfo -root -tree | grep -F '"domjudge-tool"' >/dev/null; then found=1; break; fi
-                sleep 1
-              done
-              [ -n "$found" ] || fail "no native X11 window titled domjudge-tool"
-              xwininfo -root -tree | grep -F '"domjudge-tool"'
-              web=""
-              for _ in $(seq 1 60); do
-                if pgrep -f 'WebKitWebProcess|WebKitGPUProcess' >/dev/null; then web=1; break; fi
-                sleep 1
-              done
-              pgrep -aif webkit || true
-              [ -n "$web" ] || fail "no WebKit web process: WebView did not start"
-              sleep 5
-              import -window root evidence/screenshot.png
-              colors="$(identify -format '%k' evidence/screenshot.png)"
-              echo "screenshot distinct colors: $colors"
-              [ "$colors" -gt 50 ] || fail "screen is blank: WebView did not paint"
-              ;;
-            darwin)
-              cat > window.swift <<'SWIFT'
-          import CoreGraphics
-          import Foundation
-          let pid = Int(CommandLine.arguments[1])!
-          let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
-          for w in list where (w[kCGWindowOwnerPID as String] as? Int) == pid {
-            let b = w[kCGWindowBounds as String] as? [String: Any] ?? [:]
-            let width = (b["Width"] as? Double) ?? 0, height = (b["Height"] as? Double) ?? 0
-            if (w[kCGWindowLayer as String] as? Int) == 0 && width >= 800 && height >= 560 {
-              print("window \(Int(width))x\(Int(height))")
-              exit(0)
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:TAG
+
+          if (Get-Command pwsh -ErrorAction SilentlyContinue) {
+            Write-Host "Testing install.ps1 with pwsh..."
+            $dirPwsh = Join-Path $env:RUNNER_TEMP "ps-install-pwsh\bin"
+            if (Test-Path $dirPwsh) { Remove-Item -Recurse -Force $dirPwsh }
+            $env:DOMJUDGE_TOOL_VERSION = $tag
+            $env:DOMJUDGE_TOOL_INSTALL_DIR = $dirPwsh
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1
+
+            $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+            if ($userPath -notlike "*$dirPwsh*") {
+              Write-Error "dirPwsh was not added to User PATH"
+            }
+            $env:Path = "$dirPwsh;$env:Path"
+            $cmd = Get-Command domjudge-tool.exe -ErrorAction Stop
+            Write-Host "Resolved: $($cmd.Source)"
+            $ver = & domjudge-tool version
+            Write-Host "Version output: $ver"
+            if ($ver -notlike "*$($tag.TrimStart('v'))*") {
+              Write-Error "Version mismatch: expected $tag in $ver"
             }
           }
-          exit(1)
-          SWIFT
-              found=""
-              for _ in $(seq 1 60); do
-                if swift window.swift "$app_pid"; then found=1; break; fi
-                sleep 1
-              done
-              [ -n "$found" ] || fail "no on-screen native window of at least 800x560"
-              pgrep -f com.apple.WebKit.WebContent >/dev/null || fail "no WebKit WebContent process: WebView did not start"
-              sleep 3
-              screencapture -x evidence/screenshot.png || true
-              ;;
-            windows)
-              cat > evidence.ps1 <<'PS1'
-          $deadline = (Get-Date).AddSeconds(60)
-          do {
-            $p = Get-Process domjudge-tool-app -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }
-            if ($p) { break }
-            Start-Sleep 1
-          } while ((Get-Date) -lt $deadline)
-          if (-not $p) { Write-Error "no native window"; exit 1 }
-          "window title: $($p.MainWindowTitle)"
-          if ($p.MainWindowTitle -ne "domjudge-tool") { Write-Error "unexpected window title"; exit 1 }
-          # Count only WebView2 renderers that descend from this app, so other
-          # WebView2 users on the runner cannot satisfy the check.
-          $all = Get-CimInstance Win32_Process
-          $ids = @($p.Id)
-          do {
-            $before = $ids.Count
-            $ids = @($ids + ($all | Where-Object { $ids -contains $_.ParentProcessId } | ForEach-Object { $_.ProcessId })) | Sort-Object -Unique
-          } while ($ids.Count -gt $before)
-          $renderers = @($all | Where-Object { $ids -contains $_.ProcessId -and $_.Name -eq "msedgewebview2.exe" -and $_.CommandLine -match "--type=renderer" })
-          "app WebView2 renderer processes: $($renderers.Count)"
-          if ($renderers.Count -lt 1) { Write-Error "no WebView2 renderer under the app: page did not load"; exit 1 }
-          Start-Sleep 3
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          Add-Type @"
-          using System;
-          using System.Runtime.InteropServices;
-          public class Win32Window {
-            [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
-            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
-            [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+
+          if (Get-Command powershell -ErrorAction SilentlyContinue) {
+            Write-Host "Testing install.ps1 with Windows PowerShell..."
+            $dirWinPs = Join-Path $env:RUNNER_TEMP "ps-install-winps\bin"
+            if (Test-Path $dirWinPs) { Remove-Item -Recurse -Force $dirWinPs }
+            $env:DOMJUDGE_TOOL_VERSION = $tag
+            $env:DOMJUDGE_TOOL_INSTALL_DIR = $dirWinPs
+            & powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1
+
+            $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+            if ($userPath -notlike "*$dirWinPs*") {
+              Write-Error "dirWinPs was not added to User PATH"
+            }
+            $env:Path = "$dirWinPs;$env:Path"
+            $cmd = Get-Command domjudge-tool.exe -ErrorAction Stop
+            Write-Host "Resolved: $($cmd.Source)"
+            $ver = & domjudge-tool version
+            Write-Host "Version output: $ver"
+            if ($ver -notlike "*$($tag.TrimStart('v'))*") {
+              Write-Error "Version mismatch: expected $tag in $ver"
+            }
           }
-          "@
-          $rect = New-Object Win32Window+RECT
-          [Win32Window]::GetWindowRect($p.MainWindowHandle, [ref]$rect) | Out-Null
-          $w = $rect.Right - $rect.Left; $h = $rect.Bottom - $rect.Top
-          "window size: ${w}x${h}"
-          $wbmp = New-Object System.Drawing.Bitmap $w, $h
-          $g = [System.Drawing.Graphics]::FromImage($wbmp)
-          $hdc = $g.GetHdc()
-          [Win32Window]::PrintWindow($p.MainWindowHandle, $hdc, 2) | Out-Null
-          $g.ReleaseHdc($hdc)
-          $wbmp.Save("evidence\window.png")
-          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-          $bmp.Save("evidence\screenshot.png")
-          PS1
-              powershell -NoProfile -ExecutionPolicy Bypass -File evidence.ps1 || fail "no native Windows window or app WebView2 renderer"
-              ;;
-          esac
-          echo "Desktop ${TAG} ran with a native window on ${GOOS_NAME}/${GOARCH_NAME}"
 
-      - name: Keep the window screenshot for review
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: smoke-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ${{ runner.temp }}/smoke/evidence/*.png
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Stop the Desktop app
-        if: always()
+      - name: Verify local web UI command
         run: |
-          if [ "$GOOS_NAME" = windows ]; then
-            taskkill //F //IM domjudge-tool-app.exe || true
-          else
-            pkill -f domjudge-tool-app || true
+          set -euo pipefail
+          exe=""
+          [ "$GOOS_NAME" = "windows" ] && exe=".exe"
+          bin_path="$RUNNER_TEMP/unix-install/bin/domjudge-tool$exe"
+          if [ "$GOOS_NAME" = "windows" ]; then
+            if [ -f "$RUNNER_TEMP/ps-install-pwsh/bin/domjudge-tool$exe" ]; then
+              bin_path="$RUNNER_TEMP/ps-install-pwsh/bin/domjudge-tool$exe"
+            else
+              bin_path="$RUNNER_TEMP/ps-install-winps/bin/domjudge-tool$exe"
+            fi
           fi
+
+          if ! "$bin_path" help web >/dev/null 2>&1; then
+            echo "::notice::Release $TAG predates domjudge-tool web; skipping web UI smoke."
+            exit 0
+          fi
+
+          web_dir="$RUNNER_TEMP/web-smoke"
+          rm -rf "$web_dir"
+          mkdir -p "$web_dir"
+          web_log="$web_dir/web.log"
+          cookies="$web_dir/cookies.txt"
+          body="$web_dir/page.html"
+          db_path="$web_dir/web.db"
+
+          "$bin_path" web --no-browser --port 0 --db "$db_path" > "$web_log" 2>&1 &
+          web_pid=$!
+
+          cleanup() {
+            if [ "$GOOS_NAME" = "windows" ]; then
+              taskkill //F //IM domjudge-tool.exe 2>/dev/null || true
+            else
+              kill "$web_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          token_url=""
+          for _ in $(seq 1 30); do
+            if [ -f "$web_log" ]; then
+              token_url="$(grep -m1 '^Open in your browser: ' "$web_log" | sed 's/^Open in your browser: //' | tr -d '\r' || true)"
+              [ -n "$token_url" ] && break
+            fi
+            sleep 1
+          done
+
+          if [ -z "$token_url" ]; then
+            echo "::error::domjudge-tool web did not output 'Open in your browser: ' within 30s"
+            cat "$web_log"
+            exit 1
+          fi
+
+          echo "Detected token URL: $token_url"
+          base_url="${token_url%%\?*}"
+          base_url="${base_url%/}/"
+
+          # 1. Request URL with cookie jar; expect 200 containing 'Server Profiles'
+          status="$(curl -s -L -c "$cookies" -b "$cookies" -o "$body" -w '%{http_code}' "$token_url")"
+          if [ "$status" != "200" ]; then
+            echo "::error::Expected HTTP 200 from token URL, got $status"
+            cat "$web_log"
+            exit 1
+          fi
+          if ! grep -q 'Server Profiles' "$body"; then
+            echo "::error::Response did not contain 'Server Profiles'"
+            cat "$body"
+            exit 1
+          fi
+          echo "Verified web UI served HTTP 200 with Server Profiles."
+
+          # 2. Request base URL without token / cookies; expect 401
+          status_unauth="$(curl -s -o /dev/null -w '%{http_code}' "$base_url")"
+          if [ "$status_unauth" != "401" ]; then
+            echo "::error::Expected HTTP 401 for unauthenticated request to $base_url, got $status_unauth"
+            exit 1
+          fi
+          echo "Verified unauthenticated request returned HTTP 401."

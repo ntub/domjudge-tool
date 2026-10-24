@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Produce sanitized desktop screenshots and review the paired user documentation.
+"""Produce sanitized web UI screenshots and review the paired user documentation.
 
 Python standard library only. The AI subprocess reads a disposable snapshot and
 returns proposals; only this process can apply the five allowed Markdown files.
@@ -97,7 +97,7 @@ Do not run Git, shell commands, scripts, network requests, builds, tests, or sub
 Do not edit any file. Do not access paths outside the current snapshot directory.
 Read REVIEW_CHANGES.json first, then affected source and the five permitted documents.
 The snapshot is a selected view, not a full checkout. Excluded local data is unavailable.
-For a current-tracked-files review, inspect CLI wiring and desktop handlers/templates
+For a current-tracked-files review, inspect CLI wiring and web UI handlers/templates
 even when no changed paths are listed; this is an intentional full documentation review.
 
 Return the required JSON object with a short summary and an updates array. Use an empty
@@ -112,7 +112,7 @@ command/code blocks, and image path/order. CLI reference pairs have matching com
 order and code blocks; translate prose, never flags or commands. ATX headings only,
 one H1 per file, and every fenced code block has a language tag.
 
-The 13 screenshots are desktop HTML previews from the seeded local e2e-server with
+The 13 screenshots are web UI HTML previews from the seeded local e2e-server with
 simulated operations. They are not proof of native dialogs or real remote success.
 Do not invent screenshots or image paths; capture is a separate human-invoked command.
 Do not add dependencies, change application source, weaken privacy checks, or remove
@@ -751,7 +751,7 @@ def build_preview(root: Path, run_directory: Path) -> Path:
     environment.update({"GOWORK": "off", "GOFLAGS": ""})
     run_command(
         [find_executable("go"), "build", "-mod=readonly", "-o", str(executable), "./cmd/e2e-server"],
-        cwd=root, env=environment, label="Isolated desktop preview build", timeout=180,
+        cwd=root, env=environment, label="Isolated web UI preview build", timeout=180,
     )
     return executable
 
@@ -882,7 +882,7 @@ def capture(root: Path, *, browser: str | None = None) -> None:
                     atomic_write(destination, source.read_bytes())
             finally:
                 stop_process(process)
-    print(f"Captured {len(SCREENS)} desktop HTML previews at 1280x1000 in {IMAGE_DIRECTORY}/.")
+    print(f"Captured {len(SCREENS)} web UI HTML previews at 1280x1000 in {IMAGE_DIRECTORY}/.")
     print("Seeded example data and simulated operations only; no native dialog or remote-success evidence.")
 
 

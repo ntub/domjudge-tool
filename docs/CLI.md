@@ -123,6 +123,38 @@ domjudge-tool version
 
 No command-specific flags.
 
+#### `web`
+
+Start the local web UI and open the default browser. Serves the web interface until interrupted (Ctrl+C or SIGTERM), then shuts down gracefully.
+
+```bash
+domjudge-tool web
+domjudge-tool web --no-browser --port 0
+```
+
+| Flag | Default | Description |
+| ---- | ------- | ----------- |
+| `--host` | `127.0.0.1` | Listen address (IP or hostname) |
+| `--port` | `9900` | Listen port; `0` picks a free port |
+| `--auth` | `token` | Authentication mode: `token`, `basic`, or `none` |
+| `--token` | — | Fixed access token for `--auth token` (env `DOMJUDGE_TOOL_WEB_TOKEN`, min 16 chars) |
+| `--username` | `admin` | Username for `--auth basic` |
+| `--password` | — | Password for `--auth basic` (env `DOMJUDGE_TOOL_WEB_PASSWORD`) |
+| `--tls-cert` | — | PEM certificate file for HTTPS (must accompany `--tls-key`) |
+| `--tls-key` | — | PEM private key file for HTTPS (must accompany `--tls-cert`) |
+| `--no-browser` | `false` | Do not open the browser |
+| `--db` | `<config-dir>/domjudge-tool/domjudge-tool.db` | Path to SQLite database |
+
+Stdout prints, in order:
+
+```text
+domjudge-tool web is serving at http://127.0.0.1:9900/
+Open in your browser: http://127.0.0.1:9900/?token=<token>
+Press Ctrl+C to stop.
+```
+
+The `Open in your browser:` line is the stable, scriptable contract; for `basic` and `none` authentication it carries no token query parameter. A wildcard host (`0.0.0.0`, `::`) is printed using loopback for local browser opening. When `--host` is non-loopback and TLS is not configured, a warning is printed to stderr. Binding non-loopback with `--auth none` is rejected with an error. Flags take precedence over environment variables.
+
 ---
 
 ### User & Team

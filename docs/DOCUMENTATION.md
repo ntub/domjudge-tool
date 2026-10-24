@@ -21,7 +21,7 @@ Meta-rules for the `docs/` tree. Read this before adding a new doc.
 | `docs/CLI.zh-TW.md`    | Traditional Chinese translation of `docs/CLI.md`.           |
 | `docs/SNIPPETS.md`     | Copy-paste command examples (English).                      |
 | `docs/SNIPPETS.zh-TW.md`| Traditional Chinese translation of `docs/SNIPPETS.md`.     |
-| `docs/USER_GUIDE.md`    | Illustrated desktop and CLI workflows (English).            |
+| `docs/USER_GUIDE.md`    | Illustrated Web UI and CLI workflows (English).             |
 | `docs/USER_GUIDE.zh-TW.md` | Traditional Chinese translation of the user guide.       |
 | `docs/DOCUMENTATION.md`| This file.                                                  |
 | `docs/adr/`            | Architecture Decision Records, one per file.                |
@@ -99,10 +99,10 @@ See `adr/README.md` for the lifecycle. The short version:
 ## Illustrated user guides and automated review
 
 - `docs/USER_GUIDE.md` and `docs/USER_GUIDE.zh-TW.md` are the paired
-  illustrated desktop/CLI manuals. Keep section order, commands, image
+  illustrated Web UI/CLI manuals. Keep section order, commands, image
   paths, and safety guidance aligned; translate explanatory prose.
 - `scripts/update_user_guide.py` owns the production workflow:
-  `capture` builds and starts the isolated desktop preview, captures
+  `capture` builds and starts the isolated web UI preview, captures
   sanitized screenshots with a locally installed Chromium browser, and
   stops only the process it started; `check` validates the manuals and
   their local image/link references; `update` runs a documentation-only

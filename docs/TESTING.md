@@ -108,28 +108,21 @@ Conventions:
   layout, sanitization rules, and the rule that the same JSON file is
   loaded by both the decoder test and the consuming use-case test.
 
-## Desktop CLI integration
+## Web UI and installer testing
 
-Installer tests use temporary bundle, home and state roots. Test observable
-lifecycle transitions, foreign-file preservation, corrupt state, stale
-revisions, no-replace creation, permission failures and broken targets.
-Inspection must not create directories or execute discovered programs.
-Handler tests cover cross-origin/Host/token rejection before filesystem
-mutation and explicit disabled preview behavior. Run the entire affected
-package, including existing Settings and template cases.
+Web UI tests use in-memory SQLite stores (`internal/webui/db.Open(":memory:")`),
+mock operation functions, and `net/http/httptest`. Security tests cover
+authentication enforcement (token vs basic vs none), loopback Host header
+validation (DNS rebinding protection), CSRF cross-origin state-changing
+request rejection, and security headers. Run the entire `internal/webui/...`
+tree with `go test ./internal/webui/...`.
 
-The Windows launcher is verified as a real subprocess: arguments including
-empty strings, quotes and Unicode, stdin/stdout/stderr, cwd, environment and
-exit codes must survive forwarding. Console cancellation additionally needs
-a real Windows console. Cross-compilation is not native execution evidence.
+Installer tests verify `scripts/install.sh` and `scripts/install.ps1`:
+- Test SHA-256 checksum verification against `checksums.txt` and abort on mismatch.
+- Test download fallback (`curl` and `wget` on unix; PowerShell `Invoke-RestMethod` on Windows).
+- Test environment overrides: `DOMJUDGE_TOOL_VERSION`, `DOMJUDGE_TOOL_INSTALL_DIR`, and `DOMJUDGE_TOOL_NO_MODIFY_PATH=1`.
+- Verify user PATH configuration without requiring administrator privileges.
+- Verify atomic binary installation and `<installed> version` execution.
 
-Package smoke checks unpack artifacts, verify metadata/checksums and run
-the packaged CLI's help, version and offline config generation. Run installed
-commands with an isolated PATH and private installation roots; never use
-the operator's real command directory as a test fixture.
-
-Native acceptance covers macOS, Linux, Windows 11 ARM64, and Windows 10 x86_64.
-VM tests use a standard user without Developer Mode; administrator CI jobs
-alone cannot establish that no elevation is required. Store local VM paths,
-credentials and captures only in ignored locations. Confirm legal terms and
-security/account changes with the operator at the point of action.
+Isolated preview tests run `cmd/e2e-server` with in-memory data for deterministic
+manual check and screenshot validation via `scripts/update_user_guide.py check`.

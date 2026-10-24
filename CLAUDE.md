@@ -6,12 +6,11 @@ Reply in zh-TW; the rest in en-US.
 
 ## Project
 
-- `domjudge-tool` provides a Go CLI and native Desktop preview for managing
-  DOMjudge contest servers.
-- Current CLI milestone: Phase 2 (`v1.6.0`), supporting DOMjudge 7.3.x and
-  8.3.1. Desktop uses Wails v3, templ/Datastar, and GORM/SQLite; it includes
-  native bundling and current-user CLI integration. Unsigned Desktop
-  artifacts are separate from public releases.
+- `domjudge-tool` provides a Go CLI and local web UI (`domjudge-tool web`)
+  for managing DOMjudge contest servers.
+- Current CLI milestone: supporting DOMjudge 7.3.x and 8.3.1. The local web
+  UI uses templ, Datastar, and pure-Go GORM/SQLite, served directly by the CLI
+  with optional browser opening, authentication, and TLS.
 - Preserve Python CLI compatibility from Phase 1 unless the user explicitly
   asks to change behavior.
 
@@ -58,8 +57,8 @@ Reply in zh-TW; the rest in en-US.
 - `mise install` installs the pinned toolchain; `mise tasks` lists tasks.
 - `mise run setup` installs project dependencies and hooks.
 - `mise run build` builds `./bin/domjudge-tool`.
-- `mise run build-desktop` builds the native Desktop preview.
-- `mise run package-desktop -smoke` packages Desktop with its independent CLI.
+- `mise run build-css` rebuilds `./internal/webui/assets/tailwind.css`.
+- `mise run generate-templates` regenerates templ Go files from `*.templ` sources.
 - `mise run user-guide-check` checks paired manuals and their local references.
 - `mise run test` runs the test suite; use `mise run test-race` for
   concurrency work.
@@ -82,11 +81,11 @@ Reply in zh-TW; the rest in en-US.
   lives under `internal/client/web`.
 - `internal/client/httpx` is the shared place for HTTP transport concerns.
 - `internal/model`, `internal/config`, and `internal/util` are leaf packages.
-- `cmd/desktop` composes the build-tagged Wails shell and Desktop HTTP
-  handlers; Desktop code reuses the same operation packages as the CLI.
-- `internal/desktop/cliinstall` owns current-user command integration.
-  `cmd/package-desktop` builds native bundles; `cmd/cli-launcher` provides
-  Windows console forwarding without starting the Desktop.
+- `internal/cli/web` wires the `domjudge-tool web` Cobra command and options.
+- `internal/webui/server` composes the HTTP server, stores, security middleware,
+  and production operation functions.
+- `internal/webui/{assets,db,handler,oplog,profile,settings,templates}` implement
+  the web UI.
 - Library packages return data/errors or use structured `slog`; they do not
   print directly.
 
@@ -149,11 +148,10 @@ Reply in zh-TW; the rest in en-US.
 
 ```text
 cmd/domjudge-tool/   thin entry point
-cmd/desktop/        native Desktop composition (desktop build tag)
-cmd/package-desktop/ native Desktop + CLI bundle packager
-cmd/cli-launcher/   Windows console-only command forwarder
-internal/            business logic, clients, CLI wiring
+cmd/e2e-server/      isolated web UI test server (in-memory data)
+internal/            business logic, clients, CLI wiring, web UI
 docs/                architecture, conventions, roadmap, ADRs
+scripts/             installers, verification, utility scripts
 testdata/            sanitized fixtures
 .claude/             Claude Code shared settings and hooks
 .codex/              Codex project settings

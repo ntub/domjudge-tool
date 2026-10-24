@@ -117,6 +117,38 @@ domjudge-tool version
 
 無額外旗標。
 
+#### `web`
+
+啟動本機網頁介面並開啟預設瀏覽器。持續提供服務直到收到中斷訊號（Ctrl+C 或 SIGTERM）後正常關閉。
+
+```bash
+domjudge-tool web
+domjudge-tool web --no-browser --port 0
+```
+
+| 旗標 | 預設值 | 說明 |
+| ---- | ------ | ---- |
+| `--host` | `127.0.0.1` | 監聽位址（IP 或主機名稱） |
+| `--port` | `9900` | 監聽連接埠；`0` 表示自動選擇可用連接埠 |
+| `--auth` | `token` | 驗證模式：`token`、`basic` 或 `none` |
+| `--token` | — | `--auth token` 的固定存取權杖（環境變數 `DOMJUDGE_TOOL_WEB_TOKEN`，至少 16 字元） |
+| `--username` | `admin` | `--auth basic` 的使用者名稱 |
+| `--password` | — | `--auth basic` 的密碼（環境變數 `DOMJUDGE_TOOL_WEB_PASSWORD`） |
+| `--tls-cert` | — | HTTPS 的 PEM 憑證檔案（須與 `--tls-key` 一併指定） |
+| `--tls-key` | — | HTTPS 的 PEM 私鑰檔案（須與 `--tls-cert` 一併指定） |
+| `--no-browser` | `false` | 不自動開啟瀏覽器 |
+| `--db` | `<config-dir>/domjudge-tool/domjudge-tool.db` | SQLite 資料庫路徑 |
+
+標準輸出（stdout）會依序印出：
+
+```text
+domjudge-tool web is serving at http://127.0.0.1:9900/
+Open in your browser: http://127.0.0.1:9900/?token=<token>
+Press Ctrl+C to stop.
+```
+
+`Open in your browser:` 行是穩定且可用於腳本解析的約定；在 `basic` 與 `none` 模式下不會帶有權杖參數。萬用監聽位址（`0.0.0.0`、`::`）在提供本機開啟時會轉換為 loopback 位址印出。當 `--host` 為非 loopback 且未設定 TLS 時，會向 stderr 印出警告。若以非 loopback 位址搭配 `--auth none` 啟動會直接被拒絕並回報錯誤。旗標優先權高於環境變數。
+
 ---
 
 ### 使用者與隊伍

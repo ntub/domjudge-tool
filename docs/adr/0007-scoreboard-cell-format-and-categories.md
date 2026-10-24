@@ -55,7 +55,7 @@ category sections, records category provenance, and emits no summary row.
 
 - **No summary row.** `Build` no longer appends the summary row.
 
-- **Shared encoding.** CLI and Desktop use `scoreboard.WriteCSV`, whose
+- **Shared encoding.** CLI and web UI use `scoreboard.WriteCSV`, whose
   CRLF line endings preserve the Python CSV dialect. Team display names
   retain the last-whitespace-token behavior shared with the legacy parser.
 

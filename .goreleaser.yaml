@@ -1,9 +1,9 @@
 # GoReleaser builds the standalone CLI archives and checksums only.
 # Publishing happens in .github/workflows/release.yml, which also attaches the
-# Desktop bundles, provenance attestations, and CHANGELOG.md release notes.
+# installer scripts, provenance attestations, and CHANGELOG.md release notes.
 version: 2
 project_name: domjudge-tool
-# Keep --clean away from dist/desktop, where package-desktop writes bundles.
+# CLI release archives are built into dist/cli.
 dist: dist/cli
 
 builds:

@@ -65,11 +65,11 @@ adr/
 | [0009](0009-api-v4-cross-version-response-compatibility.md) | Accepted | API v4 cross-version response compatibility |
 | [0010](0010-problem-package-contest-scoping-and-import.md) | Accepted | Problem package contest scoping and import |
 | [0011](0011-import-problems-upsert.md) | Accepted | Import problems upsert |
-| [0012](0012-phase3-local-datastore.md) | Accepted | Desktop local datastore: GORM and SQLite |
-| [0013](0013-phase3-frontend-stack.md) | Accepted | Desktop frontend: Wails, templ, and Datastar |
+| [0012](0012-phase3-local-datastore.md) | Accepted | Web UI local datastore: GORM and SQLite |
+| [0013](0013-phase3-frontend-stack.md) | Accepted | Web UI frontend: templ, Datastar, and Tailwind |
 | [0015](0015-security-runtime-and-dependency-upgrades.md) | Accepted | Security runtime and dependency upgrades |
-| [0016](0016-desktop-bundled-cli.md) | Proposed | Desktop-bundled CLI and per-user command integration |
 | [0017](0017-mise-toolchain-and-tag-release.md) | Proposed | mise toolchain, tasks, and tag-only release pipeline |
+| [0018](0018-local-web-ui-command.md) | Proposed | Local web UI served by `domjudge-tool web` |
 
 ## Style
 

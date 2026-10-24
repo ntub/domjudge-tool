@@ -11,8 +11,7 @@ from `actions/setup-go`, Node.js from `.node-version`, formatters and linters
 from `@latest` installs or Homebrew, and CI piped a TruffleHog install script
 from its `main` branch. Versions drifted between machines, an upstream
 release race broke the secret-scan install, and nothing verified most tool
-downloads. Releases were cut by hand, and the Desktop bundles built by CI
-were never attached to a release.
+downloads. Releases were cut by hand without automated verification.
 
 ## Decision
 
@@ -42,8 +41,9 @@ pushing a tag matching `v[0-9]+.[0-9]+.[0-9]+`:
 1. `verify` requires an annotated tag on a commit reachable from `main`, the
    strict `vMAJOR.MINOR.PATCH` form, and a non-empty `## [MAJOR.MINOR.PATCH]`
    section in `CHANGELOG.md`, which becomes the release notes.
-2. The CI gates, the six native Desktop bundles, and the six GoReleaser CLI
-   archives build in parallel with read-only tokens.
+2. The CI gates and the six GoReleaser CLI archives build in parallel with
+   read-only tokens; the one-line installer scripts (`scripts/install.sh` and
+   `scripts/install.ps1`) are staged as release assets.
 3. `publish` runs in the `release` environment, verifies every checksum,
    records Sigstore build-provenance attestations for every archive, and
    creates the GitHub release. It is the only job with `contents: write`.
@@ -67,9 +67,10 @@ release has been produced by it yet.
 
 - **Keep just with per-tool installers.** Leaves versions and integrity
   unpinned and duplicates setup between machines and CI.
-- **GoReleaser publishes the release.** It cannot build the native CGO
-  Desktop bundles, which need six native runners; a single publish job keeps
-  one write-scoped step and one notes source.
+- **GoReleaser publishes the release.** GoReleaser builds the portable CLI
+  archives; a dedicated publish job in the release environment verifies
+  checksums, attaches attested archives, checksums, and installer scripts, and
+  uses one write-scoped token and one curated notes source.
 - **Generate notes with git-cliff at release time.** Curated
   `CHANGELOG.md` sections are reviewed before the tag exists; generated
   notes are not.
@@ -87,21 +88,21 @@ release has been produced by it yet.
   `mise.toml`, running `mise lock`, and committing both files.
 - Negative: a release tag without a matching `CHANGELOG.md` section, or on
   a commit outside `main`, fails before anything is built.
-- Constraints: Desktop artifacts remain unsigned and un-notarized. Tag
-  protection rules and `release` environment reviewers are repository
-  settings, not files; they must be configured on GitHub to stop a writer
-  from pushing a release tag alone.
+- Constraints: CLI binaries are not OS-code-signed; integrity and authenticity
+  come from SHA-256 checksums and Sigstore attestations. Tag protection rules
+  and `release` environment reviewers are repository settings, not files;
+  they must be configured on GitHub to stop a writer from pushing a release tag
+  alone.
 
 ## References
 
 - [mise configuration](../../mise.toml) and [lockfile](../../mise.lock).
-- [CI](../../.github/workflows/ci.yml),
-  [Desktop artifacts](../../.github/workflows/desktop-artifacts.yml), and
+- [CI](../../.github/workflows/ci.yml) and
   [release](../../.github/workflows/release.yml) workflows.
 - [Release-notes extractor](../../scripts/release_notes.py).
 - [ADR 0015](0015-security-runtime-and-dependency-upgrades.md) for runtime
-  security baselines and [ADR 0016](0016-desktop-bundled-cli.md) for the
-  Desktop bundle format.
+  security baselines and [ADR 0018](0018-local-web-ui-command.md) for the
+  local web UI command.
 - [mise lockfile](https://mise.jdx.dev/dev-tools/mise-lock.html) and
   [mise-action](https://github.com/jdx/mise-action).
 - [GitHub artifact attestations](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations).

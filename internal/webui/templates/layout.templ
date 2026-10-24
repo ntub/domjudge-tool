@@ -1,0 +1,151 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en" data-theme="dark">
+	<head>
+		<script>
+			(function(){var t=localStorage.getItem('dj-theme');if(t)document.documentElement.setAttribute('data-theme',t)})();
+		</script>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } — domjudge-tool</title>
+		<link href="/static/tailwind.css" rel="stylesheet"/>
+		<link href="/static/daisyui.css" rel="stylesheet"/>
+		<link href="/static/webui.css" rel="stylesheet"/>
+		<script type="module" src="/static/datastar.min.js"></script>
+	</head>
+	<body class="bg-base-200">
+		<a href="#dj-main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 btn btn-sm btn-primary">Skip to content</a>
+		<!-- Mobile top bar -->
+		<div class="dj-topbar">
+			<button class="dj-menu-btn" onclick="var s=document.getElementById('dj-sidebar');var o=s.classList.toggle('open');this.setAttribute('aria-expanded',o);" aria-expanded="false" aria-controls="dj-sidebar" aria-label="Toggle navigation">&#9776;</button>
+			<span class="dj-logo-sm">domjudge-tool</span>
+		</div>
+		<div class="dj-root">
+			<!-- Sidebar -->
+			<nav class="dj-sidebar" id="dj-sidebar">
+				<a href="/" class="dj-logo">domjudge-tool</a>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Servers</p>
+					<a href="/profiles" class="dj-nav-item">Servers</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Users</p>
+					<a href="/import-users-teams" class="dj-nav-item">Import Users</a>
+					<a href="/remove-users-teams" class="dj-nav-item">Remove Users</a>
+					<a href="/export-users" class="dj-nav-item">Export Users</a>
+					<a href="/set-password" class="dj-nav-item">Set Password</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Problems</p>
+					<a href="/download-problems" class="dj-nav-item">Download Problems</a>
+					<a href="/import-problems" class="dj-nav-item">Import Problems</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Contest</p>
+					<a href="/download-scoreboard" class="dj-nav-item">Scoreboard</a>
+					<a href="/download-submissions" class="dj-nav-item">Submissions</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">Email</p>
+					<a href="/email-tools" class="dj-nav-item">Email Tools</a>
+				</div>
+				<div class="dj-nav-group">
+					<p class="dj-nav-group-label">System</p>
+					<a href="/history" class="dj-nav-item">History</a>
+					<a href="/settings" class="dj-nav-item">Settings</a>
+				</div>
+			</nav>
+			<!-- Content -->
+			<main class="dj-content" id="dj-main" tabindex="-1">
+				{ children... }
+			</main>
+		</div>
+		<script>
+			(function(){
+				var path = window.location.pathname;
+				document.querySelectorAll('.dj-nav-item').forEach(function(a){
+					var href = a.getAttribute('href');
+					if(href === '/'){
+						if(path === '/'){
+							a.classList.add('active');
+							a.setAttribute('aria-current', 'page');
+						}
+					} else if(path === href || path.startsWith(href + '/')){
+						a.classList.add('active');
+						a.setAttribute('aria-current', 'page');
+					}
+				});
+				window.djConfirm = function(modal, onConfirm) {
+					var trigger = document.activeElement;
+					var cancel = modal.querySelector('button[data-dj-cancel]');
+					var confirm = modal.querySelector('[data-dj-confirm]');
+					function close() {
+						modal.classList.remove('modal-open');
+						modal.removeEventListener('click', click);
+						document.removeEventListener('keydown', keydown, true);
+						document.removeEventListener('focusin', focusin);
+						if (trigger) trigger.focus();
+					}
+					function click(e) {
+						if (e.target.closest('[data-dj-cancel]')) close();
+						else if (e.target.closest('[data-dj-confirm]')) {
+							close();
+							onConfirm();
+						}
+					}
+					function keydown(e) {
+						if (e.key === 'Escape') {
+							e.preventDefault();
+							close();
+						} else if (e.key === 'Tab') {
+							e.preventDefault();
+							(document.activeElement === cancel ? confirm : cancel).focus();
+						}
+					}
+					function focusin(e) {
+						if (!modal.contains(e.target)) cancel.focus();
+					}
+					modal.classList.add('modal-open');
+					modal.addEventListener('click', click);
+					document.addEventListener('keydown', keydown, true);
+					document.addEventListener('focusin', focusin);
+					cancel.focus();
+				};
+				document.addEventListener('submit', function(e){
+					var f = e.target;
+					if (e.defaultPrevented || !f.hasAttribute('data-dj-busy')) return;
+					if (f.dataset.djSubmitting === 'true') {
+						e.preventDefault();
+						return;
+					}
+					f.dataset.djSubmitting = 'true';
+					var b = f.querySelector('button[type=submit]');
+					if (b) {
+						b.disabled = true;
+						b.setAttribute('aria-busy', 'true');
+					}
+				});
+				window.addEventListener('pageshow', function(){
+					document.querySelectorAll('form[data-dj-busy]').forEach(function(f){
+						delete f.dataset.djSubmitting;
+					});
+					document.querySelectorAll('form[data-dj-busy] button[type=submit]').forEach(function(b){
+						b.disabled = false;
+						b.removeAttribute('aria-busy');
+					});
+				});
+			})();
+		</script>
+	</body>
+	</html>
+}
+
+templ Flash(kind, message string) {
+	if message != "" {
+		<div class={ "alert mb-6", "alert-" + kind } role="alert">
+			<span>{ message }</span>
+		</div>
+	}
+}

@@ -1,7 +1,6 @@
 # Build artifacts
 /bin/
 /dist/
-/desktop
 /domjudge-tool
 /e2e-server
 *.exe

@@ -1,0 +1,58 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/ntub/domjudge-tool/internal/webui/profile"
+)
+
+templ DownloadScoreboardForm(profiles []profile.ServerProfile) {
+	@Layout("Download Scoreboard") {
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+			<h1 class="text-2xl font-bold">Download Scoreboard</h1>
+		</div>
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body">
+				<form
+					method="post"
+					action="/download-scoreboard"
+					class="space-y-4"
+					data-signals='{"profileId": ""}'
+				>
+					<div class="form-control">
+						<label class="label" for="ds_profile_id">
+							<span class="label-text font-medium">Server Profile</span>
+						</label>
+						<select
+							id="ds_profile_id"
+							name="profile_id"
+							class="select select-bordered w-full"
+							data-bind:profile-id
+							data-on:change="@get('/api/fragment/contests')"
+							required
+						>
+							<option value="">— choose a server —</option>
+							for _, p := range profiles {
+								<option value={ fmt.Sprintf("%d", p.ID) }>{ p.Name } ({ p.Host })</option>
+							}
+						</select>
+					</div>
+					@ContestInputFragment(
+						"Leave blank to use profile's contest ID",
+						"Select a server profile to load contests, or enter the ID directly.",
+						"",
+						false,
+					)
+					<div class="form-control">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input type="checkbox" name="exclude_hidden" class="checkbox"/>
+							<span class="label-text">Exclude hidden team categories (e.g. System)</span>
+						</label>
+					</div>
+					<div class="card-actions justify-end pt-2">
+						<button type="submit" class="btn btn-primary">Download CSV</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	}
+}

@@ -1,4 +1,4 @@
-// Command e2e-server starts the desktop UI on :9901 with in-memory SQLite
+// Command e2e-server starts the web UI on :9901 with in-memory SQLite
 // and nop run-funcs for browser-based end-to-end testing.
 //
 // Usage:
@@ -17,15 +17,15 @@ import (
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
 	"github.com/ntub/domjudge-tool/internal/config"
-	"github.com/ntub/domjudge-tool/internal/desktop/assets"
-	"github.com/ntub/domjudge-tool/internal/desktop/db"
-	"github.com/ntub/domjudge-tool/internal/desktop/handler"
-	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
-	"github.com/ntub/domjudge-tool/internal/desktop/profile"
-	"github.com/ntub/domjudge-tool/internal/desktop/settings"
 	"github.com/ntub/domjudge-tool/internal/importer"
 	"github.com/ntub/domjudge-tool/internal/model"
 	"github.com/ntub/domjudge-tool/internal/util/progress"
+	"github.com/ntub/domjudge-tool/internal/webui/assets"
+	"github.com/ntub/domjudge-tool/internal/webui/db"
+	"github.com/ntub/domjudge-tool/internal/webui/handler"
+	"github.com/ntub/domjudge-tool/internal/webui/oplog"
+	"github.com/ntub/domjudge-tool/internal/webui/profile"
+	"github.com/ntub/domjudge-tool/internal/webui/settings"
 )
 
 const addr = "127.0.0.1:9901"
@@ -146,12 +146,7 @@ func main() {
 	})
 
 	// Screen 12: Settings (read/write via sStore).
-	if err := handler.RegisterSettings(mux, sStore, pStore, handler.CLIInstallOptions{
-		Host: addr, AppVersion: "preview",
-		UnavailableReason: "CLI integration is disabled in preview mode. Open the packaged desktop app to install its command.",
-	}); err != nil {
-		log.Fatalf("settings routes: %v", err)
-	}
+	handler.RegisterSettings(mux, sStore, pStore)
 
 	// Screen 10: Email Tools (nop funcs).
 	handler.RegisterEmailTools(mux, sStore, oStore,
@@ -248,8 +243,6 @@ func main() {
 		return api.Teams.List(ctx, cid)
 	})
 
-	handler.RegisterPickDirectory(mux, handler.DesktopPickDirectory)
-
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
 	log.Printf("E2E server listening → http://%s/", addr)
@@ -258,7 +251,7 @@ func main() {
 	}
 }
 
-// profileToConfig converts a desktop ServerProfile to the legacy DomServerClient.
+// profileToConfig converts a web UI ServerProfile to the legacy DomServerClient.
 func profileToConfig(p profile.ServerProfile) *config.DomServerClient {
 	cfg := config.Default()
 	cfg.Host = p.Host
