@@ -53,6 +53,10 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y xvfb x11-utils imagemagick libgtk-4-1 libwebkitgtk-6.0-4
+          # Hosted Ubuntu 24.04 runners forbid unprivileged user namespaces, which
+          # makes WebKit's bubblewrap sandbox abort the app. Allow them so the
+          # smoke exercises the real, sandboxed WebView rather than disabling it.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Download the release and verify checksums and provenance
         run: |
