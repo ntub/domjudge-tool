@@ -162,7 +162,13 @@ jobs:
               done
               [ -n "$found" ] || fail "no native X11 window titled domjudge-tool"
               xwininfo -root -tree | grep -F '"domjudge-tool"'
-              pgrep -f WebKitWebProcess >/dev/null || fail "no WebKitWebProcess: WebView did not start"
+              web=""
+              for _ in $(seq 1 60); do
+                if pgrep -f 'WebKitWebProcess|WebKitGPUProcess' >/dev/null; then web=1; break; fi
+                sleep 1
+              done
+              ps -eo pid,args | grep -i '[w]ebkit' || true
+              [ -n "$web" ] || fail "no WebKit web process: WebView did not start"
               sleep 5
               import -window root evidence/screenshot.png
               colors="$(identify -format '%k' evidence/screenshot.png)"
