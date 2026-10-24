@@ -78,20 +78,11 @@ jobs:
           rm -rf "$RUNNER_TEMP/unix-install"
           DOMJUDGE_TOOL_VERSION="$TAG" DOMJUDGE_TOOL_INSTALL_DIR="$test_dir" sh scripts/install.sh
 
-          # Source rc file where PATH was configured, then verify command resolves from PATH
-          if [ -f "$HOME/.bash_profile" ]; then
-            . "$HOME/.bash_profile"
-          elif [ -f "$HOME/.bashrc" ]; then
-            . "$HOME/.bashrc"
-          elif [ -f "$HOME/.profile" ]; then
-            . "$HOME/.profile"
-          fi
-
-          resolved="$(command -v domjudge-tool)"
-          echo "Resolved from PATH: $resolved"
-          test -n "$resolved"
-          version="$(domjudge-tool version)"
+          # A new terminal runs an interactive shell; Ubuntu's ~/.bashrc
+          # returns early when sourced non-interactively.
+          version="$("${SHELL:-/bin/bash}" -ic 'command -v domjudge-tool && domjudge-tool version' 2>/dev/null)"
           echo "$version"
+          [[ "$version" == *"$test_dir/domjudge-tool"* ]]
           [[ "$version" == *"${TAG#v}"* ]]
 
       - name: Test installer script (Windows)
