@@ -554,3 +554,104 @@ func TestFragmentExportUsersInit_NoProfile_ReturnsBothFallbacks(t *testing.T) {
 		t.Error("body should contain text input fallbacks")
 	}
 }
+
+func TestFragmentExportUsersInit_ProfileNotFound_And_FetchErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		profileID string
+		wantCalls int
+	}{
+		{name: "unknown profile", profileID: "9999"},
+		{name: "both fetches fail", profileID: "1", wantCalls: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			userCalls, teamCalls := 0, 0
+			fetchUsers := func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
+				userCalls++
+				return nil, errors.New("cannot fetch users")
+			}
+			fetchTeams := func(_ context.Context, _ profile.ServerProfile) ([]model.Team, error) {
+				teamCalls++
+				return nil, errors.New("cannot fetch teams")
+			}
+			h := newFragmentHandler(t, nil, fetchUsers, nil, fetchTeams)
+			rec := getExportUsersInitFragment(t, h, tc.profileID)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("fallback status = %d, want 200", rec.Code)
+			}
+			patches := operationElementPatches(t, rec.Body.String())
+			if len(patches) != 2 {
+				t.Fatalf("fallback patches = %d, want user IDs and team ID", len(patches))
+			}
+			for i, field := range []struct {
+				id   string
+				name string
+			}{
+				{id: "users-ids-fragment", name: "ids"},
+				{id: "team-id-fragment", name: "team_id"},
+			} {
+				handlerTag(t, patches[i], "div", "id", field.id)
+				input := handlerTag(t, patches[i], "input", "name", field.name)
+				if input["type"] != "text" {
+					t.Errorf("fallback %s type = %q, want editable text", field.name, input["type"])
+				}
+				if _, disabled := input["disabled"]; disabled {
+					t.Errorf("fallback %s is disabled; manual filtering must remain available", field.name)
+				}
+			}
+			if userCalls != tc.wantCalls || teamCalls != tc.wantCalls {
+				t.Errorf("fallback fetch calls = %d/%d, want %d each", userCalls, teamCalls, tc.wantCalls)
+			}
+		})
+	}
+}
+
+func TestFragmentUsers_Errors(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		profileID string
+		field     string
+		fields    []string
+		wantCalls int
+		required  bool
+	}{
+		{name: "unknown profile", profileID: "9999", field: "include,exclude", fields: []string{"include", "exclude"}},
+		{name: "combined fetch failure", profileID: "1", field: "include,exclude", fields: []string{"include", "exclude"}, wantCalls: 1},
+		{name: "IDs fetch failure", profileID: "1", field: "ids", fields: []string{"ids"}, wantCalls: 1},
+		{name: "required username without profile", field: "username", fields: []string{"username"}, required: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			h := newFragmentHandler(t, nil, func(_ context.Context, _ profile.ServerProfile) ([]model.User, error) {
+				calls++
+				return nil, errors.New("fetch fail")
+			}, nil, nil)
+			target := "/api/fragment/users?profile_id=" + tc.profileID + "&field=" + tc.field
+			if tc.required {
+				target += "&required=true"
+			}
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("fallback status = %d, want 200", rec.Code)
+			}
+			patches := operationElementPatches(t, rec.Body.String())
+			if len(patches) != len(tc.fields) {
+				t.Fatalf("fallback patches = %d, want %d fields", len(patches), len(tc.fields))
+			}
+			for i, field := range tc.fields {
+				input := handlerTag(t, patches[i], "input", "name", field)
+				if input["type"] != "text" {
+					t.Errorf("fallback %s type = %q, want editable text", field, input["type"])
+				}
+				_, required := input["required"]
+				if required != tc.required {
+					t.Errorf("fallback %s required = %t, want %t", field, required, tc.required)
+				}
+			}
+			if calls != tc.wantCalls {
+				t.Errorf("fallback fetch calls = %d, want %d", calls, tc.wantCalls)
+			}
+		})
+	}
+}

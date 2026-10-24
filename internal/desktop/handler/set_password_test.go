@@ -149,3 +149,25 @@ func TestSetPassword_Post_Error(t *testing.T) {
 		t.Error("form re-render should show error")
 	}
 }
+
+func TestSetPassword_Post_ValidationErrors(t *testing.T) {
+	h := newSetPasswordEnv(t, nil)
+
+	form1 := url.Values{"profile_id": {"bad"}, "username": {"u"}}
+	req1 := httptest.NewRequest(http.MethodPost, "/set-password", strings.NewReader(form1.Encode()))
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec1 := httptest.NewRecorder()
+	h.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", rec1.Code)
+	}
+
+	form2 := url.Values{"profile_id": {"9999"}, "username": {"u"}}
+	req2 := httptest.NewRequest(http.MethodPost, "/set-password", strings.NewReader(form2.Encode()))
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec2 := httptest.NewRecorder()
+	h.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", rec2.Code)
+	}
+}

@@ -8,7 +8,7 @@ import (
 templ ProfileList(profiles []profile.ServerProfile, flash, flashKind string) {
 	@Layout("Server Profiles") {
 		@Flash(flashKind, flash)
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Server Profiles</h1>
 			<a href="/profiles/new" class="btn btn-primary btn-sm">+ Add Server</a>
 		</div>
@@ -19,14 +19,14 @@ templ ProfileList(profiles []profile.ServerProfile, flash, flashKind string) {
 			</div>
 		} else {
 			<div class="card bg-base-100 shadow overflow-x-auto">
-				<table class="table table-zebra">
+				<table class="table table-zebra dj-profile-table">
 					<thead>
 						<tr>
 							<th>Name</th>
 							<th>Host</th>
 							<th>Version</th>
 							<th>Default</th>
-							<th></th>
+							<th><span class="sr-only">Actions</span></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -38,7 +38,7 @@ templ ProfileList(profiles []profile.ServerProfile, flash, flashKind string) {
 										<span class="badge badge-success badge-xs ml-2">default</span>
 									}
 								</td>
-								<td class="text-sm font-mono">{ p.Host }</td>
+								<td class="text-sm font-mono max-w-[18rem] truncate dj-host-cell" title={ p.Host }>{ p.Host }</td>
 								<td><span class="badge badge-ghost badge-sm">{ p.Version }</span></td>
 								<td>
 									if !p.IsDefault {
@@ -47,12 +47,18 @@ templ ProfileList(profiles []profile.ServerProfile, flash, flashKind string) {
 										</form>
 									}
 								</td>
-								<td class="flex gap-2 justify-end">
-									<a href={ templ.SafeURL(fmt.Sprintf("/profiles/%d/edit", p.ID)) } class="btn btn-ghost btn-xs">Edit</a>
-									<form method="POST" action={ templ.SafeURL(fmt.Sprintf("/profiles/%d/delete", p.ID)) }
-									      onsubmit="return confirm('Delete this server profile?')">
-										<button class="btn btn-error btn-xs">Delete</button>
-									</form>
+								<td class="whitespace-nowrap">
+									<div class="flex gap-2 justify-end">
+										<a href={ templ.SafeURL(fmt.Sprintf("/profiles/%d/edit", p.ID)) } class="btn btn-ghost btn-xs">Edit</a>
+										<button
+											type="button"
+											class="btn btn-error btn-xs delete-profile-btn"
+											data-profile-id={ fmt.Sprintf("%d", p.ID) }
+											data-profile-name={ p.Name }
+										>
+											Delete
+										</button>
+									</div>
 								</td>
 							</tr>
 						}
@@ -60,6 +66,23 @@ templ ProfileList(profiles []profile.ServerProfile, flash, flashKind string) {
 				</table>
 			</div>
 		}
+		@Confirmation("delete-profile-modal", "Delete Server Profile", "Delete Profile") {
+			<p>Are you sure you want to delete profile <strong id="delete-profile-name"></strong>? This cannot be undone.</p>
+		}
+		<form id="delete-profile-form" method="POST" class="hidden" data-dj-busy></form>
+		<script>
+			(function(){
+				var modal = document.getElementById('delete-profile-modal');
+				var form = document.getElementById('delete-profile-form');
+				document.addEventListener('click', function(e){
+					var btn = e.target.closest('.delete-profile-btn');
+					if (!btn) return;
+					document.getElementById('delete-profile-name').textContent = btn.getAttribute('data-profile-name');
+					form.action = '/profiles/' + btn.getAttribute('data-profile-id') + '/delete';
+					window.djConfirm(modal, function(){ form.requestSubmit(); });
+				});
+			})();
+		</script>
 	}
 }
 
@@ -68,7 +91,7 @@ templ ProfileForm(p profile.ServerProfile, action, submitLabel, flash, flashKind
 		@Flash(flashKind, flash)
 		<div class="max-w-2xl">
 			<h1 class="text-2xl font-bold mb-6">{ submitLabel } Server</h1>
-			<form method="POST" action={ templ.SafeURL(action) } class="card bg-base-100 shadow p-6 flex flex-col gap-4">
+			<form method="POST" action={ templ.SafeURL(action) } class="card bg-base-100 shadow p-6 flex flex-col gap-4" data-dj-busy>
 				<label class="form-control">
 					<div class="label"><span class="label-text">Profile name *</span></div>
 					<input type="text" name="name" required class="input input-bordered"
@@ -89,7 +112,7 @@ templ ProfileForm(p profile.ServerProfile, action, submitLabel, flash, flashKind
 					<input type="password" name="password" required class="input input-bordered"
 					       placeholder="••••••••" value={ p.Password }/>
 				</label>
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<label class="form-control">
 						<div class="label"><span class="label-text">DOMjudge version</span></div>
 						<input type="text" name="version" class="input input-bordered"

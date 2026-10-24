@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/starfederation/datastar-go/datastar"
 
@@ -150,15 +151,20 @@ func removeUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 		rep := &sseReporter{sse: sse}
 
 		result, deleteErr := runDelete(r.Context(), p, opts, rep)
+		// Terminal audit writes must survive a cancelled stream, but remain bounded.
+		finishCtx, cancelFinish := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
+		defer cancelFinish()
 		if deleteErr != nil {
 			slog.Error("remove stream: delete failed", "err", deleteErr)
+			if err := oplogStore.FinishError(finishCtx, entryID, deleteErr.Error()); err != nil {
+				slog.Error("remove stream: persist failure", "operation_id", entryID, "err", err)
+			}
 			if patchErr := sse.PatchElementf(
-				`<div id="remove-result" class="alert alert-error">Remove failed: %s</div>`,
+				`<div id="remove-result" role="status" class="alert alert-error">Remove failed: %s</div>`,
 				deleteErr.Error(),
 			); patchErr != nil {
 				slog.Error("sse patch remove error", "err", patchErr)
 			}
-			_ = oplogStore.FinishError(r.Context(), entryID, deleteErr.Error())
 			return
 		}
 
@@ -167,11 +173,19 @@ func removeUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 		if result.DryRun {
 			rowCount = len(result.PlannedUsers) + len(result.PlannedTeams)
 		}
-		_ = oplogStore.FinishOK(r.Context(), entryID, rowCount, string(summaryJSON))
+		if err := oplogStore.FinishOK(finishCtx, entryID, rowCount, string(summaryJSON)); err != nil {
+			slog.Error("remove stream: persist completion", "operation_id", entryID, "err", err)
+			if patchErr := sse.PatchElementf(
+				`<div id="remove-result" role="status" class="alert alert-warning">Removal completed, but could not save operation history.</div>`,
+			); patchErr != nil {
+				slog.Error("sse patch history warning", "err", patchErr)
+			}
+			return
+		}
 
 		if result.DryRun {
 			if patchErr := sse.PatchElementf(
-				`<div id="remove-result" class="alert alert-info">
+				`<div id="remove-result" role="status" class="alert alert-info">
 					Dry-run: would delete %d user(s) and %d team(s).
 					<ul class="list-disc ml-4 mt-1">%s</ul>
 				</div>`,
@@ -182,7 +196,7 @@ func removeUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 			}
 		} else {
 			if patchErr := sse.PatchElementf(
-				`<div id="remove-result" class="alert alert-success">Done — deleted %d user(s) and %d team(s).</div>`,
+				`<div id="remove-result" role="status" class="alert alert-success">Done — deleted %d user(s) and %d team(s).</div>`,
 				result.DeletedUsers, result.DeletedTeams,
 			); patchErr != nil {
 				slog.Error("sse patch delete result", "err", patchErr)

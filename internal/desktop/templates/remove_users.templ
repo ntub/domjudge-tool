@@ -7,17 +7,19 @@ import (
 
 templ RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string) {
 	@Layout("Remove Users & Teams") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Remove Users &amp; Teams</h1>
 		</div>
 		@Flash(flashKind, flash)
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
 				<form
+					id="remove-users-form"
 					method="post"
 					action="/remove-users-teams"
 					class="space-y-4"
 					data-signals='{"profileId": ""}'
+					data-dj-busy
 				>
 					<div class="form-control">
 						<label class="label" for="remove_profile_id">
@@ -41,22 +43,42 @@ templ RemoveUsersForm(profiles []profile.ServerProfile, flash, flashKind string)
 					@UsersTextInputFragment("exclude", "Exclude (usernames to keep)", "user3, user4, …", "Protected users (admin, judgehost, server account) are always excluded.")
 					<div class="form-control">
 						<label class="label cursor-pointer justify-start gap-3">
-							<input type="checkbox" name="dry_run" id="dry_run" class="checkbox checkbox-warning"/>
+							<input type="checkbox" name="dry_run" id="dry_run" class="checkbox checkbox-warning" checked/>
 							<span class="label-text font-medium">Dry-run (preview only, no changes)</span>
 						</label>
 					</div>
 					<div class="card-actions justify-end pt-2">
-						<button type="submit" class="btn btn-error">Remove Users &amp; Teams</button>
+						<button type="submit" class="btn btn-error" id="remove-submit-btn">Remove Users &amp; Teams</button>
 					</div>
 				</form>
 			</div>
 		</div>
+		@Confirmation("remove-confirm-modal", "Permanently Delete Users & Teams?", "Permanently Delete") {
+			<p>This will permanently delete the selected users and teams on this server. This cannot be undone.</p>
+		}
+		<script>
+			(function(){
+				var form = document.getElementById('remove-users-form');
+				var modal = document.getElementById('remove-confirm-modal');
+				var dryRun = document.getElementById('dry_run');
+				var confirmed = false;
+				form.addEventListener('submit', function(e){
+					if (dryRun.checked || confirmed) return;
+					e.preventDefault();
+					window.djConfirm(modal, function(){
+						confirmed = true;
+						form.requestSubmit();
+						confirmed = false;
+					});
+				});
+			})();
+		</script>
 	}
 }
 
 templ RemoveUsersRun(oplogID int64) {
 	@Layout("Removing…") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Remove Progress</h1>
 		</div>
 		<div class="card bg-base-100 shadow-sm">
@@ -64,10 +86,10 @@ templ RemoveUsersRun(oplogID int64) {
 				data-init={ fmt.Sprintf("@get('/remove-users-teams/%d/stream')", oplogID) }>
 				<div class="flex items-center justify-between">
 					<span class="font-medium">Progress</span>
-					<span id="remove-count" class="text-sm text-base-content/60">starting…</span>
+					<span id="import-count" class="text-sm text-base-content/60" aria-live="polite">starting…</span>
 				</div>
-				<progress id="remove-progress" class="progress progress-error w-full" value="0" max="100"></progress>
-				<div id="remove-result"></div>
+				<progress id="import-progress" class="progress progress-error w-full" value="0" max="100"></progress>
+				<div id="remove-result" role="status"></div>
 			</div>
 		</div>
 		<div class="mt-4">

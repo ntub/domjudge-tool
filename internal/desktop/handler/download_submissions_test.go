@@ -213,6 +213,7 @@ func TestDownloadSubmissionsStream_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
+	assertOperationStreamResult(t, w, "import", "alert-success", true)
 	body := w.Body.String()
 	if !strings.Contains(body, "3 submission(s) downloaded") {
 		t.Errorf("response missing success message; body=%q", body)
@@ -245,8 +246,63 @@ func TestDownloadSubmissionsStream_Error(t *testing.T) {
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
+	assertOperationStreamResult(t, w, "import", "alert-error", false)
 	body := w.Body.String()
 	if !strings.Contains(body, "api unreachable") {
 		t.Errorf("response missing error message; body=%q", body)
+	}
+}
+
+func TestDownloadSubmissionsRunPage(t *testing.T) {
+	env := newDownloadEnv(t)
+	mux := handler.New(env.profileStore)
+	handler.RegisterDownloadSubmissions(mux, env.profileStore, env.oplogStore, nil, "")
+
+	for _, id := range []string{"7", "42"} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/download-submissions/"+id+"/run", nil))
+		assertOperationRunPage(t, rec, "/download-submissions/"+id+"/stream", "import")
+	}
+
+	recBad := httptest.NewRecorder()
+	mux.ServeHTTP(recBad, httptest.NewRequest(http.MethodGet, "/download-submissions/bad/run", nil))
+	if recBad.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", recBad.Code)
+	}
+}
+
+func TestDownloadSubmissionsSubmit_MoreValidationErrors(t *testing.T) {
+	env := newDownloadEnv(t)
+	mux := handler.New(env.profileStore)
+	handler.RegisterDownloadSubmissions(mux, env.profileStore, env.oplogStore, nil, "")
+
+	form1 := url.Values{"profile_id": {"bad"}}
+	req1 := httptest.NewRequest(http.MethodPost, "/download-submissions", strings.NewReader(form1.Encode()))
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec1 := httptest.NewRecorder()
+	mux.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", rec1.Code)
+	}
+
+	form2 := url.Values{"profile_id": {"9999"}}
+	req2 := httptest.NewRequest(http.MethodPost, "/download-submissions", strings.NewReader(form2.Encode()))
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", rec2.Code)
+	}
+
+	pid, _ := env.profileStore.Create(context.Background(), profile.ServerProfile{
+		Name: "sub-prof-err", Host: "https://test-station.example.org", Username: "u", Password: "p",
+	})
+	form3 := url.Values{"profile_id": {fmt.Sprintf("%d", pid)}, "contest_id": {""}}
+	req3 := httptest.NewRequest(http.MethodPost, "/download-submissions", strings.NewReader(form3.Encode()))
+	req3.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec3 := httptest.NewRecorder()
+	mux.ServeHTTP(rec3, req3)
+	if rec3.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", rec3.Code)
 	}
 }

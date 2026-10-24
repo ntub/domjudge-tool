@@ -158,7 +158,7 @@ func importUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 		csvFile, err := os.Open(entry.CsvPath)
 		if err != nil {
 			slog.Error("import stream: open csv", "path", entry.CsvPath, "err", err)
-			if patchErr := sse.PatchElementf(`<div id="import-result" class="alert alert-error">Error: could not open CSV file: %s</div>`, err.Error()); patchErr != nil {
+			if patchErr := sse.PatchElementf(`<div id="import-result" role="status" class="alert alert-error">Error: could not open CSV file: %s</div>`, err.Error()); patchErr != nil {
 				slog.Error("sse patch error alert", "err", patchErr)
 			}
 			_ = oplogStore.FinishError(r.Context(), entryID, err.Error())
@@ -177,7 +177,7 @@ func importUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 
 		if importErr != nil {
 			slog.Error("import stream: import failed", "err", importErr)
-			if patchErr := sse.PatchElementf(`<div id="import-result" class="alert alert-error">Import failed: %s</div>`, importErr.Error()); patchErr != nil {
+			if patchErr := sse.PatchElementf(`<div id="import-result" role="status" class="alert alert-error">Import failed: %s</div>`, importErr.Error()); patchErr != nil {
 				slog.Error("sse patch import error", "err", patchErr)
 			}
 			_ = oplogStore.FinishError(r.Context(), entryID, importErr.Error())
@@ -187,7 +187,7 @@ func importUsersStream(profileStore *profile.Store, oplogStore *oplog.Store, run
 		summaryJSON, _ := json.Marshal(summary)
 		_ = oplogStore.FinishOK(r.Context(), entryID, summary.ProcessedRows, string(summaryJSON))
 
-		if patchErr := sse.PatchElementf(`<div id="import-result" class="alert alert-success">
+		if patchErr := sse.PatchElementf(`<div id="import-result" role="status" class="alert alert-success">
 			Done — %d rows processed (%d created, %d updated).
 		</div>`, summary.ProcessedRows, summary.CreatedUsers, summary.UpdatedUsers); patchErr != nil {
 			slog.Error("sse patch result", "err", patchErr)
@@ -207,7 +207,7 @@ func (r *sseReporter) Start(total int, _ string) {
 	r.done = 0
 	if err := r.sse.PatchElementf(
 		`<progress id="import-progress" class="progress progress-primary w-full" value="0" max="%d"></progress>`+
-			`<span id="import-count">0 / %d</span>`,
+			`<span id="import-count" aria-live="polite">0 / %d</span>`,
 		total, total,
 	); err != nil {
 		slog.Error("sseReporter: Start patch", "err", err)
@@ -218,7 +218,7 @@ func (r *sseReporter) Tick() {
 	r.done++
 	if err := r.sse.PatchElementf(
 		`<progress id="import-progress" class="progress progress-primary w-full" value="%d" max="%d"></progress>`+
-			`<span id="import-count">%d / %d</span>`,
+			`<span id="import-count" aria-live="polite">%d / %d</span>`,
 		r.done, r.total, r.done, r.total,
 	); err != nil {
 		slog.Error("sseReporter: Tick patch", "err", err)
@@ -228,7 +228,7 @@ func (r *sseReporter) Tick() {
 func (r *sseReporter) Finish() {
 	if err := r.sse.PatchElementf(
 		`<progress id="import-progress" class="progress progress-success w-full" value="%d" max="%d"></progress>`+
-			`<span id="import-count">%d / %d</span>`,
+			`<span id="import-count" aria-live="polite">%d / %d</span>`,
 		r.total, r.total, r.total, r.total,
 	); err != nil {
 		slog.Error("sseReporter: Finish patch", "err", err)

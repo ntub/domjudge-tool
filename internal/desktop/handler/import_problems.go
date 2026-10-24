@@ -224,7 +224,7 @@ func importProblemsStream(
 		if importErr != nil {
 			slog.Error("import-problems stream: import failed", "err", importErr)
 			if patchErr := sse.PatchElementf(
-				`<div id="import-result" class="alert alert-error">Import failed: %s</div>`,
+				`<div id="import-result" role="status" class="alert alert-error">Import failed: %s</div>`,
 				importErr.Error(),
 			); patchErr != nil {
 				slog.Error("sse patch import-problems error", "err", patchErr)
@@ -237,7 +237,7 @@ func importProblemsStream(
 		_ = oplogStore.FinishOK(r.Context(), entryID, result.Imported, string(summaryJSON))
 
 		if patchErr := sse.PatchElementf(
-			`<div id="import-result" class="alert alert-success">Done — %d problem(s) imported.</div>`,
+			`<div id="import-result" role="status" class="alert alert-success">Done — %d problem(s) imported.</div>`,
 			result.Imported,
 		); patchErr != nil {
 			slog.Error("sse patch import-problems result", "err", patchErr)

@@ -119,3 +119,12 @@ func TestPickDirectory_InvalidSignal_FallsBackToOutDir(t *testing.T) {
 		}
 	}
 }
+
+func TestDesktopPickDirectory_CanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := handler.DesktopPickDirectory(ctx)
+	if err == nil {
+		t.Error("expected error for canceled context")
+	}
+}

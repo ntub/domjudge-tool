@@ -20,9 +20,10 @@ import (
 
 // DownloadOpts are the parameters for a download-problems operation.
 type DownloadOpts struct {
-	OutDir  string   `json:"out_dir"`
-	Only    []string `json:"only,omitempty"`
-	Exclude []string `json:"exclude,omitempty"`
+	OutDir    string   `json:"out_dir"`
+	ContestID string   `json:"contest_id,omitempty"`
+	Only      []string `json:"only,omitempty"`
+	Exclude   []string `json:"exclude,omitempty"`
 }
 
 // DownloadResult is the outcome of a download-problems operation.
@@ -89,9 +90,10 @@ func downloadProblemsSubmit(profileStore *profile.Store, oplogStore *oplog.Store
 		}
 
 		opts := DownloadOpts{
-			OutDir:  outDir,
-			Only:    splitTrimmed(r.FormValue("only")),
-			Exclude: splitTrimmed(r.FormValue("exclude")),
+			OutDir:    outDir,
+			ContestID: strings.TrimSpace(r.FormValue("contest_id")),
+			Only:      splitTrimmed(r.FormValue("only")),
+			Exclude:   splitTrimmed(r.FormValue("exclude")),
 		}
 		paramsJSON, _ := json.Marshal(opts)
 
@@ -155,6 +157,9 @@ func downloadProblemsStream(
 				slog.Warn("download-problems stream: parse params", "err", err)
 			}
 		}
+		if opts.ContestID != "" {
+			p.ContestID = &opts.ContestID
+		}
 
 		sse := datastar.NewSSE(w, r)
 		rep := &sseReporter{sse: sse}
@@ -163,7 +168,7 @@ func downloadProblemsStream(
 		if dlErr != nil {
 			slog.Error("download-problems stream: download failed", "err", dlErr)
 			if patchErr := sse.PatchElementf(
-				`<div id="import-result" class="alert alert-error">Download failed: %s</div>`,
+				`<div id="import-result" role="status" class="alert alert-error">Download failed: %s</div>`,
 				dlErr.Error(),
 			); patchErr != nil {
 				slog.Error("sse patch download error", "err", patchErr)
@@ -180,7 +185,7 @@ func downloadProblemsStream(
 		_ = oplogStore.FinishOK(r.Context(), entryID, result.Downloaded, string(summaryJSON))
 
 		if patchErr := sse.PatchElementf(
-			`<div id="import-result" class="alert alert-success">
+			`<div id="import-result" role="status" class="alert alert-success">
 				Done — %d problem(s) downloaded (%d skipped).<br>
 				Files saved to: <code>%s</code>
 			</div>`,

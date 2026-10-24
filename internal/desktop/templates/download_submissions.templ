@@ -7,7 +7,7 @@ import (
 
 templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, flash, flashKind string) {
 	@Layout("Download Submissions") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Download Submissions</h1>
 		</div>
 		if flash != "" {
@@ -20,6 +20,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 					action="/download-submissions"
 					class="space-y-4"
 					data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q, "contestId": ""}`, defaultOutDir) }
+					data-dj-busy
 				>
 					<div class="form-control">
 						<label class="label" for="ds_profile_id">
@@ -94,7 +95,7 @@ templ DownloadSubmissionsForm(profiles []profile.ServerProfile, defaultOutDir, f
 
 templ DownloadSubmissionsRun(id int64) {
 	@Layout("Download Submissions — Running") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Download Submissions</h1>
 			<a href="/download-submissions" class="btn btn-ghost btn-sm">← New Download</a>
 		</div>
@@ -102,8 +103,8 @@ templ DownloadSubmissionsRun(id int64) {
 			<div class="card-body space-y-4"
 				data-init={ fmt.Sprintf("@get('/download-submissions/%d/stream')", id) }>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
-				<span id="import-count" class="text-sm text-base-content/70">Starting…</span>
-				<div id="import-result"></div>
+				<span id="import-count" class="text-sm text-base-content/70" aria-live="polite">Starting…</span>
+				<div id="import-result" role="status"></div>
 			</div>
 		</div>
 	}

@@ -5,11 +5,14 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -22,6 +25,9 @@ import (
 )
 
 const port = ":9900"
+
+// appVersion is injected by the native bundle packager.
+var appVersion = "dev"
 
 func main() {
 	dbPath := desktopDBPath()
@@ -48,35 +54,55 @@ func main() {
 	handler.RegisterExportUsers(mux, store, desktopRunExport)
 	handler.RegisterDownloadProblems(mux, store, oStore, desktopRunDownload, defaultDownloadOutDir())
 	handler.RegisterImportProblems(mux, store, oStore, desktopRunImportProblems)
-	handler.RegisterDownloadScoreboard(mux, store, desktopRunDownloadScoreboard)
+	handler.RegisterDownloadScoreboard(mux, store, oStore, desktopRunDownloadScoreboard)
 	handler.RegisterDownloadSubmissions(mux, store, oStore, desktopRunDownloadSubmissions, defaultDownloadOutDir())
 	handler.RegisterHistory(mux, store, oStore)
 	handler.RegisterSetPassword(mux, store, desktopRunSetPassword)
-	handler.RegisterSettings(mux, sStore, store)
+	if err := handler.RegisterSettings(mux, sStore, store, desktopCLIInstallOptions("127.0.0.1"+port, appVersion)); err != nil {
+		log.Fatalf("settings routes: %v", err)
+	}
 	handler.RegisterEmailTools(mux, sStore, oStore,
 		desktopEmailScaffold, desktopEmailValidate, desktopEmailRender, desktopEmailSend)
 	handler.RegisterAPIFragment(mux, store, desktopFetchContests, desktopFetchUsers, desktopFetchProblems, desktopFetchTeams)
 	handler.RegisterPickDirectory(mux, handler.DesktopPickDirectory)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(assets.FS))))
 
-	go func() {
-		if err := http.ListenAndServe("127.0.0.1"+port, mux); err != nil {
-			log.Fatalf("http server: %v", err)
-		}
-	}()
-	time.Sleep(80 * time.Millisecond)
+	// Reserve the exact origin before Wails can open a window. A bind failure
+	// must never navigate the WebView to a different process on the same port.
+	listener, err := net.Listen("tcp", "127.0.0.1"+port)
+	if err != nil {
+		log.Fatalf("bind desktop listener: %v", err)
+	}
+	defer func() { _ = listener.Close() }()
 
 	app := application.New(application.Options{
 		Name: "domjudge-tool",
+		Icon: assets.Icon,
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	downloads := nativeDownloads(mux, func(ctx context.Context, name string) (io.WriteCloser, error) {
+		return pickDownloadFile(ctx, app, name)
+	})
+	go func() {
+		if err := http.Serve(listener, downloads); err != nil && !errors.Is(err, net.ErrClosed) {
+			log.Fatalf("http server: %v", err)
+		}
+	}()
+
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "domjudge-tool",
-		Width:  1280,
-		Height: 800,
-		URL:    "http://127.0.0.1" + port + "/",
+		Title:     "domjudge-tool",
+		Width:     1280,
+		Height:    800,
+		MinWidth:  800,
+		MinHeight: 560,
+		URL:       "http://127.0.0.1" + port + "/",
+		Mac: application.MacWindow{
+			WebviewPreferences: application.MacWebviewPreferences{
+				ApplicationNameForUserAgent: desktopUserAgent,
+			},
+		},
 	})
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

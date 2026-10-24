@@ -11,35 +11,44 @@ import (
 	"github.com/ntub/domjudge-tool/internal/desktop/templates"
 )
 
-// RegisterSettings wires the /settings routes onto mux.
-func RegisterSettings(mux *http.ServeMux, settingsStore *settings.Store, profileStore *profile.Store) {
-	mux.HandleFunc("GET /settings", settingsForm(settingsStore, profileStore))
+// RegisterSettings wires Settings and its separately protected CLI actions.
+// Host must match the exact loopback address bound by the caller.
+func RegisterSettings(mux *http.ServeMux, settingsStore *settings.Store, profileStore *profile.Store, opts CLIInstallOptions) error {
+	cli, err := newCLIInstallHandler(opts, settingsStore, profileStore)
+	if err != nil {
+		return err
+	}
+	mux.HandleFunc("GET /settings", cli.guard(settingsForm(settingsStore, profileStore, cli)))
 	mux.HandleFunc("POST /settings", settingsSave(settingsStore, profileStore))
+	registerCLIActions(mux, cli)
+	return nil
 }
 
-func settingsForm(settingsStore *settings.Store, profileStore *profile.Store) http.HandlerFunc {
+func settingsForm(settingsStore *settings.Store, profileStore *profile.Store, cli *cliInstallHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cur, err := settingsStore.Get(r.Context())
-		if err != nil {
-			http.Error(w, "could not load settings", http.StatusInternalServerError)
-			slog.Error("settings form: get", "err", err)
-			return
-		}
-		profiles, err := profileStore.List(r.Context())
-		if err != nil {
-			http.Error(w, "could not load profiles", http.StatusInternalServerError)
-			slog.Error("settings form: list profiles", "err", err)
-			return
-		}
-		flash := r.URL.Query().Get("flash")
-		kind := r.URL.Query().Get("kind")
-		if kind == "" {
-			kind = "info"
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := templates.SettingsForm(cur, profiles, flash, kind).Render(r.Context(), w); err != nil {
-			slog.Error("render settings form", "err", err)
-		}
+		status, _ := cli.inspect(r.Context()) // Inspection failures are visible in the CLI card.
+		flash, kind := cliFlash(r)
+		renderSettings(w, r, settingsStore, profileStore, cli.view(status), flash, kind, http.StatusOK)
+	}
+}
+
+func renderSettings(w http.ResponseWriter, r *http.Request, settingsStore *settings.Store, profileStore *profile.Store, cli templates.CLIInstallView, flash, kind string, statusCode int) {
+	cur, err := settingsStore.Get(r.Context())
+	if err != nil {
+		http.Error(w, "could not load settings", http.StatusInternalServerError)
+		slog.Error("settings form: get", "err", err)
+		return
+	}
+	profiles, err := profileStore.List(r.Context())
+	if err != nil {
+		http.Error(w, "could not load profiles", http.StatusInternalServerError)
+		slog.Error("settings form: list profiles", "err", err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(statusCode)
+	if err := templates.SettingsForm(cur, profiles, cli, flash, kind).Render(r.Context(), w); err != nil {
+		slog.Error("render settings form", "err", err)
 	}
 }
 
@@ -81,13 +90,9 @@ func settingsSave(settingsStore *settings.Store, profileStore *profile.Store) ht
 		}
 		if err := settingsStore.Save(r.Context(), row); err != nil {
 			slog.Error("settings save: save", "err", err)
-			// Re-render form with error.
-			cur, _ := settingsStore.Get(r.Context())
-			profiles, _ := profileStore.List(r.Context())
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if tErr := templates.SettingsForm(cur, profiles, err.Error(), "error").Render(r.Context(), w); tErr != nil {
-				slog.Error("render settings form error", "err", tErr)
-			}
+			// This legacy POST is outside the CLI guard, so never render its token.
+			cliResponseHeaders(w)
+			renderSettings(w, r, settingsStore, profileStore, cliUnavailableView(), err.Error(), "error", http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(w, r, "/settings?flash=Settings+saved.&kind=success", http.StatusSeeOther)

@@ -7,13 +7,13 @@ import (
 
 templ ImportUsersForm(profiles []profile.ServerProfile, flash, flashKind string) {
 	@Layout("Import Users & Teams") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Import Users &amp; Teams</h1>
 		</div>
 		@Flash(flashKind, flash)
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/import-users-teams" enctype="multipart/form-data" class="space-y-4">
+				<form method="post" action="/import-users-teams" enctype="multipart/form-data" class="space-y-4" data-dj-busy>
 					<div class="form-control">
 						<label class="label" for="profile_id">
 							<span class="label-text font-medium">Server Profile</span>
@@ -46,7 +46,7 @@ templ ImportUsersForm(profiles []profile.ServerProfile, flash, flashKind string)
 
 templ ImportUsersRun(oplogID int64) {
 	@Layout("Importing…") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Import Progress</h1>
 		</div>
 		<div class="card bg-base-100 shadow-sm">
@@ -54,10 +54,10 @@ templ ImportUsersRun(oplogID int64) {
 				data-init={ fmt.Sprintf("@get('/import-users-teams/%d/stream')", oplogID) }>
 				<div class="flex items-center justify-between">
 					<span class="font-medium">Progress</span>
-					<span id="import-count" class="text-sm text-base-content/60">starting…</span>
+					<span id="import-count" class="text-sm text-base-content/60" aria-live="polite">starting…</span>
 				</div>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
-				<div id="import-result"></div>
+				<div id="import-result" role="status"></div>
 			</div>
 		</div>
 		<div class="mt-4">

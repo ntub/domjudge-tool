@@ -2,6 +2,7 @@ package profile_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ntub/domjudge-tool/internal/desktop/db"
@@ -121,8 +122,8 @@ func TestStore_Delete(t *testing.T) {
 	}
 
 	_, err = s.Get(ctx, id)
-	if err == nil {
-		t.Fatal("expected error for deleted profile, got nil")
+	if !errors.Is(err, profile.ErrNotFound) {
+		t.Fatalf("Get deleted profile error = %v, want ErrNotFound", err)
 	}
 }
 
@@ -155,8 +156,8 @@ func TestStore_GetByID_NotFound(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
 	_, err := s.Get(ctx, 9999)
-	if err == nil {
-		t.Fatal("expected error for nonexistent id")
+	if !errors.Is(err, profile.ErrNotFound) {
+		t.Fatalf("Get missing profile error = %v, want ErrNotFound", err)
 	}
 }
 
@@ -176,5 +177,82 @@ func TestStore_SeedFromConfig(t *testing.T) {
 	}
 	if got.AffiliationCountry == nil || *got.AffiliationCountry != "TWN" {
 		t.Errorf("AffiliationCountry: got %v", got.AffiliationCountry)
+	}
+}
+
+func TestStore_SeedFromLegacy_Idempotent(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+
+	id1, err := s.SeedFromLegacy(ctx, "first", "https://test-station.example.org", "admin", "pass", "7.3.2", nil)
+	if err != nil {
+		t.Fatalf("first seed: %v", err)
+	}
+
+	id2, err := s.SeedFromLegacy(ctx, "second", "https://test-station.example.org", "admin2", "pass2", "8.3.1", nil)
+	if err != nil {
+		t.Fatalf("second seed: %v", err)
+	}
+	if id1 != id2 {
+		t.Errorf("expected idempotent seed to return id %d, got %d", id1, id2)
+	}
+	got, err := s.Get(ctx, id1)
+	if err != nil {
+		t.Fatalf("Get original profile: %v", err)
+	}
+	if got.Name != "first" || got.Username != "admin" || got.Password != "pass" || got.Version != "7.3.2" || !got.IsDefault {
+		t.Errorf("second seed changed existing profile: %+v", got)
+	}
+	list, err := s.List(ctx)
+	if err != nil {
+		t.Fatalf("List after second seed: %v", err)
+	}
+	if len(list) != 1 || int64(list[0].ID) != id1 {
+		t.Errorf("profiles after second seed = %+v, want only ID %d", list, id1)
+	}
+}
+
+func TestStore_ClosedDBErrors(t *testing.T) {
+	gdb, err := db.Open(":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	s, err := profile.NewStore(gdb)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	sqlDB, err := gdb.DB()
+	if err != nil {
+		t.Fatalf("raw DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close DB: %v", err)
+	}
+
+	ctx := context.Background()
+	if _, err := s.List(ctx); err == nil {
+		t.Error("expected error on List with closed db")
+	}
+	if _, err := s.Get(ctx, 1); err == nil {
+		t.Error("expected error on Get with closed db")
+	}
+	if _, err := s.Create(ctx, sampleProfile("p")); err == nil {
+		t.Error("expected error on Create with closed db")
+	}
+	if err := s.Update(ctx, sampleProfile("p")); err == nil {
+		t.Error("expected error on Update with closed db")
+	}
+	if err := s.Delete(ctx, 1); err == nil {
+		t.Error("expected error on Delete with closed db")
+	}
+	if err := s.SetDefault(ctx, 1); err == nil {
+		t.Error("expected error on SetDefault with closed db")
+	}
+	if _, err := s.SeedFromLegacy(ctx, "x", "https://closed.example.org", "u", "p", "v", nil); err == nil {
+		t.Error("expected error on SeedFromLegacy with closed db")
+	}
+	if _, err := profile.NewStore(gdb); err == nil {
+		t.Error("expected migration error on NewStore with closed db")
 	}
 }

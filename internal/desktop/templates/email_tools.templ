@@ -4,7 +4,7 @@ import "fmt"
 
 templ EmailToolsIndex(flash, flashKind string) {
 	@Layout("Email Tools") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Email Tools</h1>
 		</div>
 		if flash != "" {
@@ -41,7 +41,7 @@ templ EmailToolsIndex(flash, flashKind string) {
 
 templ EmailScaffoldForm(flash, flashKind string) {
 	@Layout("Email Tools — Scaffold") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Scaffold Template</h1>
 			<a href="/email-tools" class="btn btn-ghost btn-sm">← Email Tools</a>
 		</div>
@@ -50,7 +50,7 @@ templ EmailScaffoldForm(flash, flashKind string) {
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/email-tools/scaffold" class="space-y-4">
+				<form method="post" action="/email-tools/scaffold" class="space-y-4" data-dj-busy>
 					<div class="form-control">
 						<label class="label" for="es_dir">
 							<span class="label-text font-medium">Template Directory</span>
@@ -84,7 +84,7 @@ templ EmailScaffoldForm(flash, flashKind string) {
 
 templ EmailValidateForm(flash, flashKind string) {
 	@Layout("Email Tools — Validate") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Validate Template</h1>
 			<a href="/email-tools" class="btn btn-ghost btn-sm">← Email Tools</a>
 		</div>
@@ -93,7 +93,7 @@ templ EmailValidateForm(flash, flashKind string) {
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/email-tools/validate" class="space-y-4">
+				<form method="post" action="/email-tools/validate" class="space-y-4" data-dj-busy>
 					<div class="form-control">
 						<label class="label" for="ev_dir">
 							<span class="label-text font-medium">Template Directory</span>
@@ -118,7 +118,7 @@ templ EmailValidateForm(flash, flashKind string) {
 
 templ EmailRenderForm(flash, flashKind string) {
 	@Layout("Email Tools — Render") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Render Emails</h1>
 			<a href="/email-tools" class="btn btn-ghost btn-sm">← Email Tools</a>
 		</div>
@@ -127,7 +127,7 @@ templ EmailRenderForm(flash, flashKind string) {
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/email-tools/render" class="space-y-4">
+				<form method="post" action="/email-tools/render" class="space-y-4" data-dj-busy>
 					<div class="form-control">
 						<label class="label" for="er_csv">
 							<span class="label-text font-medium">CSV File</span>
@@ -187,7 +187,7 @@ templ EmailRenderForm(flash, flashKind string) {
 
 templ EmailSendForm(flash, flashKind string) {
 	@Layout("Email Tools — Send") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Send Emails</h1>
 			<a href="/email-tools" class="btn btn-ghost btn-sm">← Email Tools</a>
 		</div>
@@ -199,7 +199,7 @@ templ EmailSendForm(flash, flashKind string) {
 		</div>
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/email-tools/send" class="space-y-4">
+				<form method="post" action="/email-tools/send" class="space-y-4" data-dj-busy>
 					<div class="form-control">
 						<label class="label" for="esnd_csv">
 							<span class="label-text font-medium">CSV File</span>
@@ -240,7 +240,7 @@ templ EmailSendForm(flash, flashKind string) {
 
 templ EmailSendRun(id int64) {
 	@Layout("Email Tools — Sending") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Send Emails</h1>
 			<a href="/email-tools/send" class="btn btn-ghost btn-sm">← New Send</a>
 		</div>
@@ -248,8 +248,8 @@ templ EmailSendRun(id int64) {
 			<div class="card-body space-y-4"
 				data-init={ fmt.Sprintf("@get('/email-tools/send/%d/stream')", id) }>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
-				<span id="import-count" class="text-sm text-base-content/70">Starting…</span>
-				<div id="import-result"></div>
+				<span id="import-count" class="text-sm text-base-content/70" aria-live="polite">Starting…</span>
+				<div id="import-result" role="status"></div>
 			</div>
 		</div>
 	}

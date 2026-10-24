@@ -113,7 +113,7 @@ func main() {
 	})
 
 	// Screen 6: Download Scoreboard (sync download).
-	handler.RegisterDownloadScoreboard(mux, pStore, func(
+	handler.RegisterDownloadScoreboard(mux, pStore, oStore, func(
 		_ context.Context, _ profile.ServerProfile, _ handler.DownloadScoreboardOpts, w io.Writer,
 	) error {
 		_, _ = io.WriteString(w, "Rank,Team,Score\r\n1,Team A,100\r\n")
@@ -146,7 +146,12 @@ func main() {
 	})
 
 	// Screen 12: Settings (read/write via sStore).
-	handler.RegisterSettings(mux, sStore, pStore)
+	if err := handler.RegisterSettings(mux, sStore, pStore, handler.CLIInstallOptions{
+		Host: addr, AppVersion: "preview",
+		UnavailableReason: "CLI integration is disabled in preview mode. Open the packaged desktop app to install its command.",
+	}); err != nil {
+		log.Fatalf("settings routes: %v", err)
+	}
 
 	// Screen 10: Email Tools (nop funcs).
 	handler.RegisterEmailTools(mux, sStore, oStore,

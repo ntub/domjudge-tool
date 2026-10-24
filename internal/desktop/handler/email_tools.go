@@ -305,7 +305,7 @@ func emailSendStream(
 		if sendErr != nil {
 			slog.Error("email-send stream: send failed", "err", sendErr)
 			if patchErr := sse.PatchElementf(
-				`<div id="import-result" class="alert alert-error">Send failed: %s</div>`,
+				`<div id="import-result" role="status" class="alert alert-error">Send failed: %s</div>`,
 				sendErr.Error(),
 			); patchErr != nil {
 				slog.Error("sse patch email-send error", "err", patchErr)
@@ -318,7 +318,7 @@ func emailSendStream(
 		_ = oplogStore.FinishOK(r.Context(), entryID, n, string(summaryJSON))
 
 		if patchErr := sse.PatchElementf(
-			`<div id="import-result" class="alert alert-success">Done — %d email(s) sent.</div>`,
+			`<div id="import-result" role="status" class="alert alert-success">Done — %d email(s) sent.</div>`,
 			n,
 		); patchErr != nil {
 			slog.Error("sse patch email-send result", "err", patchErr)

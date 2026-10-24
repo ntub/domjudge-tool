@@ -106,8 +106,8 @@ func TestRemoveUsers_GetRunPage(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("status: got %d, want 200", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "remove-progress") {
-		t.Error("run page should contain element id 'remove-progress'")
+	if !strings.Contains(rec.Body.String(), `id="import-progress"`) {
+		t.Error("run page should expose the shared reporter progress target")
 	}
 }
 
@@ -136,10 +136,7 @@ func TestRemoveUsers_Stream_DryRun(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
 		t.Errorf("Content-Type: got %q, want text/event-stream", ct)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "datastar-patch-elements") {
-		t.Errorf("body should contain SSE patch events; got: %.200s", body)
-	}
+	assertOperationStreamResult(t, rec, "remove", "alert-info", true)
 }
 
 func TestRemoveUsers_Stream_RealDelete(t *testing.T) {
@@ -164,10 +161,7 @@ func TestRemoveUsers_Stream_RealDelete(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("status: got %d, want 200", rec.Code)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "datastar-patch-elements") {
-		t.Errorf("body should contain SSE patch events; got: %.200s", body)
-	}
+	assertOperationStreamResult(t, rec, "remove", "alert-success", true)
 }
 
 func TestRemoveUsers_Stream_Error(t *testing.T) {
@@ -186,7 +180,127 @@ func TestRemoveUsers_Stream_Error(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("status: got %d, want 200 (SSE keeps connection)", rec.Code)
 	}
+	assertOperationStreamResult(t, rec, "remove", "alert-error", true)
 	if !strings.Contains(rec.Body.String(), "login failed") {
 		t.Errorf("body should contain error; got: %.200s", rec.Body.String())
+	}
+}
+
+func TestRemoveUsers_RunPage_And_SubmitErrors(t *testing.T) {
+	h := newRemoveHandler(t, nil)
+
+	for _, id := range []string{"7", "42"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/remove-users-teams/"+id+"/run", nil))
+		assertOperationRunPage(t, rec, "/remove-users-teams/"+id+"/stream", "remove")
+	}
+
+	recBadID := httptest.NewRecorder()
+	h.ServeHTTP(recBadID, httptest.NewRequest(http.MethodGet, "/remove-users-teams/bad/run", nil))
+	if recBadID.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", recBadID.Code)
+	}
+
+	formBad := url.Values{"profile_id": {"notanumber"}}
+	reqBad := httptest.NewRequest(http.MethodPost, "/remove-users-teams", strings.NewReader(formBad.Encode()))
+	reqBad.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recBad := httptest.NewRecorder()
+	h.ServeHTTP(recBad, reqBad)
+	if recBad.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", recBad.Code)
+	}
+
+	formMissing := url.Values{"profile_id": {"9999"}}
+	reqMissing := httptest.NewRequest(http.MethodPost, "/remove-users-teams", strings.NewReader(formMissing.Encode()))
+	reqMissing.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recMissing := httptest.NewRecorder()
+	h.ServeHTTP(recMissing, reqMissing)
+	if recMissing.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", recMissing.Code)
+	}
+}
+
+func TestRemoveUsers_Stream_Errors(t *testing.T) {
+	h := newRemoveHandler(t, nil)
+
+	rec1 := httptest.NewRecorder()
+	h.ServeHTTP(rec1, httptest.NewRequest(http.MethodGet, "/remove-users-teams/bad/stream", nil))
+	if rec1.Code != http.StatusBadRequest {
+		t.Errorf("status: got %d, want 400", rec1.Code)
+	}
+
+	rec2 := httptest.NewRecorder()
+	h.ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/remove-users-teams/9999/stream", nil))
+	if rec2.Code != http.StatusNotFound {
+		t.Errorf("status: got %d, want 404", rec2.Code)
+	}
+}
+
+func TestRemoveUsers_Stream_CanceledRequestPersistsOutcome(t *testing.T) {
+	tests := []struct {
+		name       string
+		result     handler.DeleteResult
+		canceled   bool
+		wantStatus string
+		wantRows   int
+	}{
+		{
+			name:       "canceled deletion",
+			canceled:   true,
+			wantStatus: oplog.StatusError,
+		},
+		{
+			name:       "deletion completed before disconnect",
+			result:     handler.DeleteResult{DeletedUsers: 2, DeletedTeams: 1},
+			wantStatus: oplog.StatusDone,
+			wantRows:   3,
+		},
+		{
+			name: "dry run completed before disconnect",
+			result: handler.DeleteResult{
+				DryRun:       true,
+				PlannedUsers: []string{"user1", "user2"},
+				PlannedTeams: []string{"team-1"},
+			},
+			wantStatus: oplog.StatusDone,
+			wantRows:   3,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newHistoryEnv(t)
+			mux := handler.New(env.pStore)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			handler.RegisterRemoveUsersTeams(mux, env.pStore, env.oStore,
+				func(ctx context.Context, _ profile.ServerProfile, _ handler.DeleteOpts, _ progress.Reporter) (handler.DeleteResult, error) {
+					cancel()
+					if tc.canceled {
+						return handler.DeleteResult{}, ctx.Err()
+					}
+					return tc.result, nil
+				})
+			submit := postRemoveForm(t, mux, "user1,user2", "", tc.result.DryRun)
+			if submit.Code != http.StatusSeeOther {
+				t.Fatalf("submit status = %d, want 303", submit.Code)
+			}
+			req := httptest.NewRequest(http.MethodGet, "/remove-users-teams/1/stream", nil).WithContext(ctx)
+			mux.ServeHTTP(httptest.NewRecorder(), req)
+
+			entry, err := env.oStore.Get(context.Background(), 1)
+			if err != nil {
+				t.Fatalf("get operation: %v", err)
+			}
+			if entry.Status != tc.wantStatus || entry.FinishedAt == nil {
+				t.Fatalf("terminal outcome = status %q, finished %v; want %q with a finish time",
+					entry.Status, entry.FinishedAt, tc.wantStatus)
+			}
+			if entry.RowCount != tc.wantRows {
+				t.Errorf("row count = %d, want %d", entry.RowCount, tc.wantRows)
+			}
+			if tc.canceled && entry.ErrorMsg != context.Canceled.Error() {
+				t.Errorf("error = %q, want cancellation", entry.ErrorMsg)
+			}
+		})
 	}
 }

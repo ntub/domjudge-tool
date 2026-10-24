@@ -15,6 +15,7 @@ const (
 	TypeDownloadProblems    = "download-problems"
 	TypeImportProblems      = "import-problems"
 	TypeDownloadSubmissions = "download-submissions"
+	TypeDownloadScoreboard  = "download-scoreboard"
 	TypeEmailSend           = "email-send"
 
 	StatusRunning = "running"

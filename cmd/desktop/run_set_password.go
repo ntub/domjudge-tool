@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	apiv4 "github.com/ntub/domjudge-tool/internal/client/api/v4"
+	"github.com/ntub/domjudge-tool/internal/client/web/gatewayfactory"
 	"github.com/ntub/domjudge-tool/internal/desktop/handler"
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
+	"github.com/ntub/domjudge-tool/internal/importer"
 	"github.com/ntub/domjudge-tool/internal/util/password"
 )
 
 // desktopRunSetPassword implements handler.SetPasswordFunc.
-// It uses the API accounts-import path (accounts.tsv) to set the password.
-// Scraper fallback and per-user role changes are not supported from the
-// desktop UI — use the CLI set-password command for those cases.
+// Password writes use the same version-aware transport policy as the CLI.
 func desktopRunSetPassword(
 	ctx context.Context,
 	p profile.ServerProfile,
@@ -61,9 +61,27 @@ func desktopRunSetPassword(
 		generated = true
 	}
 
-	tsv := fmt.Sprintf("accounts\t1\nteam\t%s\t%s\t%s\n", fullName, opts.Username, pw)
-	if _, err := api.Imports.Accounts(ctx, strings.NewReader(tsv)); err != nil {
-		return handler.SetPasswordResult{}, fmt.Errorf("set-password: api imports accounts: %w", err)
+	decision := importer.NewDefaultRouter(cfg).Decide(ctx, importer.OpSetPassword, importer.Context{})
+	switch decision.Path {
+	case importer.PathAPI:
+		tsv := fmt.Sprintf("accounts\t1\nteam\t%s\t%s\t%s\n", fullName, opts.Username, pw)
+		if _, err := api.Imports.Accounts(ctx, strings.NewReader(tsv)); err != nil {
+			return handler.SetPasswordResult{}, fmt.Errorf("set-password: api imports accounts: %w", err)
+		}
+	case importer.PathScraper:
+		gw, err := gatewayfactory.New(ctx, cfg)
+		if err != nil {
+			return handler.SetPasswordResult{}, fmt.Errorf("set-password: gateway: %w", err)
+		}
+		if err := gw.Login(ctx); err != nil {
+			return handler.SetPasswordResult{}, fmt.Errorf("set-password: login: %w", err)
+		}
+		//nolint:staticcheck // The router selects the supported write transport.
+		if err := gw.SetUserPassword(ctx, userID, pw, nil, true); err != nil {
+			return handler.SetPasswordResult{}, fmt.Errorf("set-password: gateway: %w", err)
+		}
+	default:
+		return handler.SetPasswordResult{}, fmt.Errorf("set-password: router returned unknown path %q", decision.Path)
 	}
 
 	return handler.SetPasswordResult{

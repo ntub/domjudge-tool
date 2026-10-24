@@ -175,7 +175,7 @@ func downloadSubmissionsStream(
 		if dlErr != nil {
 			slog.Error("download-submissions stream: download failed", "err", dlErr)
 			if patchErr := sse.PatchElementf(
-				`<div id="import-result" class="alert alert-error">Download failed: %s</div>`,
+				`<div id="import-result" role="status" class="alert alert-error">Download failed: %s</div>`,
 				dlErr.Error(),
 			); patchErr != nil {
 				slog.Error("sse patch download-submissions error", "err", patchErr)
@@ -187,7 +187,7 @@ func downloadSubmissionsStream(
 		_ = oplogStore.FinishOK(r.Context(), entryID, result.Downloaded, "")
 
 		if patchErr := sse.PatchElementf(
-			`<div id="import-result" class="alert alert-success">
+			`<div id="import-result" role="status" class="alert alert-success">
 				Done — %d submission(s) downloaded.<br>
 				Files saved to: <code>%s</code>
 			</div>`,

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,14 +11,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ntub/domjudge-tool/internal/desktop/oplog"
 	"github.com/ntub/domjudge-tool/internal/desktop/profile"
 	"github.com/ntub/domjudge-tool/internal/desktop/templates"
 )
 
 // DownloadScoreboardOpts are the parameters for a download-scoreboard operation.
 type DownloadScoreboardOpts struct {
-	ContestID     string
-	ExcludeHidden bool
+	ContestID     string `json:"contest_id"`
+	ExcludeHidden bool   `json:"exclude_hidden"`
 }
 
 // DownloadScoreboardFunc is the injectable scoreboard download operation.
@@ -25,9 +27,9 @@ type DownloadScoreboardOpts struct {
 type DownloadScoreboardFunc func(ctx context.Context, p profile.ServerProfile, opts DownloadScoreboardOpts, w io.Writer) error
 
 // RegisterDownloadScoreboard wires the /download-scoreboard routes onto mux.
-func RegisterDownloadScoreboard(mux *http.ServeMux, profileStore *profile.Store, runDownload DownloadScoreboardFunc) {
+func RegisterDownloadScoreboard(mux *http.ServeMux, profileStore *profile.Store, oplogStore *oplog.Store, runDownload DownloadScoreboardFunc) {
 	mux.HandleFunc("GET /download-scoreboard", downloadScoreboardForm(profileStore))
-	mux.HandleFunc("POST /download-scoreboard", downloadScoreboardPost(profileStore, runDownload))
+	mux.HandleFunc("POST /download-scoreboard", downloadScoreboardPost(profileStore, oplogStore, runDownload))
 }
 
 func downloadScoreboardForm(profileStore *profile.Store) http.HandlerFunc {
@@ -45,7 +47,7 @@ func downloadScoreboardForm(profileStore *profile.Store) http.HandlerFunc {
 	}
 }
 
-func downloadScoreboardPost(profileStore *profile.Store, runDownload DownloadScoreboardFunc) http.HandlerFunc {
+func downloadScoreboardPost(profileStore *profile.Store, oplogStore *oplog.Store, runDownload DownloadScoreboardFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "bad form", http.StatusBadRequest)
@@ -77,11 +79,31 @@ func downloadScoreboardPost(profileStore *profile.Store, runDownload DownloadSco
 			ContestID:     cid,
 			ExcludeHidden: r.FormValue("exclude_hidden") == "on",
 		}
+		params, _ := json.Marshal(opts)
+		entry, err := oplogStore.Create(r.Context(), oplog.OperationLog{
+			Type:       oplog.TypeDownloadScoreboard,
+			ProfileID:  uint(profileID),
+			Status:     oplog.StatusRunning,
+			ParamsJSON: string(params),
+		})
+		if err != nil {
+			slog.Error("download scoreboard: create history", "err", err)
+			http.Error(w, "could not create history entry", http.StatusInternalServerError)
+			return
+		}
 
 		var buf bytes.Buffer
 		if err := runDownload(r.Context(), p, opts, &buf); err != nil {
 			slog.Error("download scoreboard: run", "err", err)
+			if finishErr := oplogStore.FinishError(r.Context(), entry.ID, err.Error()); finishErr != nil {
+				slog.Error("download scoreboard: record failure", "err", finishErr)
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := oplogStore.FinishOK(r.Context(), entry.ID, 0, fmt.Sprintf(`{"bytes":%d}`, buf.Len())); err != nil {
+			slog.Error("download scoreboard: finish history", "err", err)
+			http.Error(w, "could not complete history entry", http.StatusInternalServerError)
 			return
 		}
 

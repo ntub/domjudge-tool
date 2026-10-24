@@ -7,7 +7,7 @@ import (
 
 templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flash, flashKind string) {
 	@Layout("Download Problems") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Download Problems</h1>
 		</div>
 		if flash != "" {
@@ -15,7 +15,7 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 		}
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body">
-				<form method="post" action="/download-problems" class="space-y-4" data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q}`, defaultOutDir) }>
+				<form method="post" action="/download-problems" class="space-y-4" data-dj-busy data-signals={ fmt.Sprintf(`{"profileId": "", "outDir": %q}`, defaultOutDir) }>
 					<div class="form-control">
 						<label class="label" for="dp_profile_id">
 							<span class="label-text font-medium">Server Profile</span>
@@ -25,7 +25,7 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 							name="profile_id"
 							class="select select-bordered w-full"
 							data-bind:profile-id
-							data-on:change="@get('/api/fragment/problems?field=only,exclude')"
+							data-on:change="@get('/api/fragment/contests').then(() => @get('/api/fragment/problems?field=only,exclude'))"
 							required
 						>
 							<option value="">— choose a server —</option>
@@ -34,6 +34,12 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 							}
 						</select>
 					</div>
+					@ContestInputFragment(
+						"Leave blank to use profile's contest ID",
+						"Select a server profile to load contests, or enter the ID directly.",
+						"",
+						false,
+					)
 					<div class="form-control">
 						<label class="label" for="out_dir">
 							<span class="label-text font-medium">Output Directory</span>
@@ -73,7 +79,7 @@ templ DownloadProblemsForm(profiles []profile.ServerProfile, defaultOutDir, flas
 
 templ DownloadProblemsRun(id int64) {
 	@Layout("Download Problems — Running") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Download Problems</h1>
 			<a href="/download-problems" class="btn btn-ghost btn-sm">← New Download</a>
 		</div>
@@ -81,8 +87,8 @@ templ DownloadProblemsRun(id int64) {
 			<div class="card-body space-y-4"
 				data-init={ fmt.Sprintf("@get('/download-problems/%d/stream')", id) }>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
-				<span id="import-count" class="text-sm text-base-content/70">Starting…</span>
-				<div id="import-result"></div>
+				<span id="import-count" class="text-sm text-base-content/70" aria-live="polite">Starting…</span>
+				<div id="import-result" role="status"></div>
 			</div>
 		</div>
 	}

@@ -7,7 +7,7 @@ import (
 
 templ ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind string) {
 	@Layout("Import Problems") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Import Problems</h1>
 		</div>
 		if flash != "" {
@@ -21,6 +21,7 @@ templ ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind stri
 					enctype="multipart/form-data"
 					class="space-y-4"
 					data-signals='{"profileId": ""}'
+					data-dj-busy
 				>
 					<div class="form-control">
 						<label class="label" for="ip_profile_id">
@@ -80,7 +81,7 @@ templ ImportProblemsForm(profiles []profile.ServerProfile, flash, flashKind stri
 
 templ ImportProblemsRun(id int64) {
 	@Layout("Import Problems — Running") {
-		<div class="flex items-center justify-between mb-6">
+		<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
 			<h1 class="text-2xl font-bold">Import Problems</h1>
 			<a href="/import-problems" class="btn btn-ghost btn-sm">← New Import</a>
 		</div>
@@ -88,8 +89,8 @@ templ ImportProblemsRun(id int64) {
 			<div class="card-body space-y-4"
 				data-init={ fmt.Sprintf("@get('/import-problems/%d/stream')", id) }>
 				<progress id="import-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
-				<span id="import-count" class="text-sm text-base-content/70">Starting…</span>
-				<div id="import-result"></div>
+				<span id="import-count" class="text-sm text-base-content/70" aria-live="polite">Starting…</span>
+				<div id="import-result" role="status"></div>
 			</div>
 		</div>
 	}

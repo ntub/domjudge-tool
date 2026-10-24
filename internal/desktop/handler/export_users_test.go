@@ -135,3 +135,37 @@ func TestExportUsers_Post_Error(t *testing.T) {
 		t.Errorf("body should contain error message; got: %s", rec.Body.String())
 	}
 }
+
+func TestExportUsers_ValidationErrors(t *testing.T) {
+	h := newExportHandler(t, nil)
+
+	form1 := url.Values{"profile_id": {"bad"}}
+	req1 := httptest.NewRequest(http.MethodPost, "/export-users", strings.NewReader(form1.Encode()))
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec1 := httptest.NewRecorder()
+	h.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", rec1.Code)
+	}
+	form2 := url.Values{"profile_id": {"9999"}}
+	req2 := httptest.NewRequest(http.MethodPost, "/export-users", strings.NewReader(form2.Encode()))
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec2 := httptest.NewRecorder()
+	h.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusBadRequest {
+		t.Errorf("status=%d, want 400", rec2.Code)
+	}
+
+	mockExport := func(_ context.Context, _ profile.ServerProfile, opts handler.ExportOpts, w io.Writer) error {
+		if opts.Format != "csv" {
+			t.Errorf("format = %q, want csv fallback", opts.Format)
+		}
+		_, _ = w.Write([]byte("username,name\n"))
+		return nil
+	}
+	hMock := newExportHandler(t, mockExport)
+	rec3 := postExportForm(t, hMock, "invalid-format")
+	if rec3.Code != http.StatusOK {
+		t.Errorf("status: got %d, want 200", rec3.Code)
+	}
+}

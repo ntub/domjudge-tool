@@ -10,6 +10,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/starfederation/datastar-go v1.2.2
 	github.com/wailsapp/wails/v3 v3.0.0-beta.34
+	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.47.0
 	gorm.io/gorm v1.31.2
 )
@@ -38,7 +39,6 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
