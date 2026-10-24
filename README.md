@@ -77,11 +77,12 @@ release does. macOS produces `bin/domjudge-tool.app`; Linux and Windows
 produce a portable directory under `bin/desktop/domjudge-tool`. Archives and
 checksums are under `dist/desktop`.
 
-In the packaged app, open **Settings → Command Line Tool** to install the
-current-user command. Follow the displayed PATH instructions; the app never
-edits shell configuration or Windows registry PATH. CLI commands work while
-Desktop is closed. Moving the app requires **Relink**; deleting it makes its
-CLI target unavailable. See the [installation guide](docs/USER_GUIDE.md#23-install-the-bundled-cli-command)
+In the packaged app, use the **Command-Line Tool** card in **Settings** to
+install the current-user command. Follow the displayed PATH instructions; the
+app never edits PATH, shell configuration, or the Windows registry. CLI
+commands work while Desktop is closed. Moving the app requires
+**Relink CLI to This App**; deleting it makes its CLI target unavailable. See
+the [installation guide](docs/USER_GUIDE.md#23-install-the-bundled-cli-command)
 for conflicts, removal and platform prerequisites. A raw development build
 without a bundle does not provide installation.
 

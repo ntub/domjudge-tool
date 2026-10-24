@@ -141,11 +141,12 @@ Applications。原生視窗起始大小為 1280 × 800，最小為 **800 × 560*
 
 1. 將符合平台的套件解壓至固定、目前使用者可寫入的位置，保留完整目錄。
    macOS 請先移動 `.app` 再開啟；App Translocation 位置不允許安裝指令。
-2. 在套件應用程式開啟 **Settings → Command Line Tool**。選擇 **Install**
-   前，確認套件版本、目標及指令路徑。
-3. 依畫面說明設定 PATH，或直接執行畫面顯示的完整指令路徑。
-   應用程式不會修改 shell 啟動檔或 Windows registry PATH。
-   PATH 偵測只代表這個應用程式的環境，不代表所有終端機或 shell alias。
+2. 在套件應用程式開啟 **Settings**，找到 **Command-Line Tool** 卡片。確認套件
+   CLI 版本、**User Command Path** 及 **This App's CLI** 後，勾選
+   **I confirm** 核取方塊，再選擇 **Install CLI**。
+3. 依 **Manual PATH Setup and Command Lookup** 的說明設定 PATH，或直接執行
+   畫面顯示的完整指令路徑。應用程式不會修改 PATH、shell 啟動檔或 Windows
+   registry，也無法檢查其他終端機的 PATH、alias 或指令快取。
 4. 在設定好的終端機執行 `domjudge-tool --help` 與 `domjudge-tool version`。
    CLI 操作仍需另外建立 `domserver.json`。
 
@@ -154,13 +155,15 @@ Applications。原生視窗起始大小為 1280 × 800，最小為 **800 × 560*
 | macOS / Linux | `~/.local/bin/domjudge-tool` | 經過私人狀態目錄的 symlink，連至套件內 CLI |
 | Windows | `%LOCALAPPDATA%\domjudge-tool\cli-install\bin\domjudge-tool.exe` | 指向套件內 CLI 的原生 console 轉發程式 |
 
-在原位置替換完整應用程式，CLI 目標會跟著更新。Windows 替換檔案前，請關閉
-執行中的相關程式。移動應用程式後，從新位置開啟並選擇 **Relink**。
-另一份應用程式不會自動接管指令。目標不存在時會明確失敗；
-Windows 轉發程式不會改執行 PATH 上的其他同名指令。
+每個操作都必須勾選各自的確認核取方塊。開啟 Settings 後若整合狀態已變動，
+操作會被拒絕；請重新檢查目前路徑後再確認。在原位置替換完整應用程式，CLI
+目標會跟著更新。Windows 替換檔案前，請關閉執行中的相關程式。移動應用程式後，
+從新位置開啟並選擇 **Relink CLI to This App**。另一份應用程式不會自動接管指令。
+刪除應用程式會留下失效的指令；目標不存在時會明確失敗，Windows 轉發程式
+不會改執行 PATH 上的其他同名指令。
 
-**Uninstall** 只移除可驗證由應用程式管理的指令整合，不會刪除桌面版、
-連線設定、CLI 設定檔或其他來源的 CLI。遇到外來檔案、被修改的轉發程式、
+**Uninstall CLI Integration** 只移除可驗證由應用程式管理的指令整合，不會刪除
+桌面版、連線設定、CLI 設定檔或其他來源的 CLI。遇到外來檔案、被修改的轉發程式、
 過期表單或權限問題時，會顯示錯誤，不強制覆寫或提權。
 若 PATH 優先找到另一份指令，請先確認其來源再調整。
 HTML 預覽及缺少套件 metadata 的原始開發執行檔不提供安裝功能。

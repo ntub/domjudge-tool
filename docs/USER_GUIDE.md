@@ -161,12 +161,14 @@ build baseline is Ubuntu 24.04. Windows needs WebView2.
 1. Extract the matching package to a permanent, user-writable location.
    Keep the complete directory together. On macOS, move the `.app` before
    opening it; installation from App Translocation is refused.
-2. Open **Settings → Command Line Tool** in the packaged app. Review the
-   bundled version, target and command paths before choosing **Install**.
-3. Follow the displayed PATH instructions, or invoke the displayed full
-   command path directly. The app never changes shell startup files or the
-   Windows registry PATH. A PATH observation describes only this app's
-   environment, not every terminal or shell alias.
+2. Open **Settings** in the packaged app and find the **Command-Line Tool**
+   card. Review the bundled CLI version, **User Command Path** and
+   **This App's CLI**, tick the **I confirm** checkbox, then choose
+   **Install CLI**.
+3. Follow **Manual PATH Setup and Command Lookup**, or invoke the displayed
+   full command path directly. The app never changes PATH, shell startup
+   files or the Windows registry. It cannot check another terminal's PATH,
+   aliases or command cache.
 4. Run `domjudge-tool --help` and `domjudge-tool version` in the configured
    terminal. Create a separate `domserver.json` for CLI operations.
 
@@ -175,19 +177,23 @@ build baseline is Ubuntu 24.04. Windows needs WebView2.
 | macOS / Linux | `~/.local/bin/domjudge-tool` | Symlink through private state to the bundled CLI |
 | Windows | `%LOCALAPPDATA%\domjudge-tool\cli-install\bin\domjudge-tool.exe` | Native console launcher pointing to the bundled CLI |
 
-Replacing the complete app at the same location updates its CLI target.
-Close running Windows binaries before replacing their files. After moving
-the app, use **Relink** from the new location. Another copy of the app never
-automatically takes over the command. A missing target fails visibly; the
-Windows launcher never falls back to another command found on PATH.
+Each action requires its own confirmation checkbox. If the integration
+changed after Settings was opened, the action is refused; review the
+current paths and confirm again. Replacing the complete app at the same
+location updates its CLI target. Close running Windows binaries before
+replacing their files. After moving the app, open it from the new location
+and use **Relink CLI to This App**. Another copy of the app never
+automatically takes over the command. Deleting the app leaves a broken
+command; a missing target fails visibly, and the Windows launcher never
+falls back to another command found on PATH.
 
-**Uninstall** removes only verified, app-managed command integration. It
-does not delete Desktop, server profiles, CLI configuration or other CLI
-installations. Foreign files, modified launchers, stale forms and permission
-errors are reported without forced overwrite or elevation. If another
-installation takes precedence in PATH, inspect it before changing anything.
-The HTML preview and a raw development executable without bundle metadata
-do not offer installation.
+**Uninstall CLI Integration** removes only verified, app-managed command
+integration. It does not delete Desktop, server profiles, CLI configuration
+or other CLI installations. Foreign files, modified launchers, stale forms
+and permission errors are reported without forced overwrite or elevation.
+If another installation takes precedence in PATH, inspect it before changing
+anything. The HTML preview and a raw development executable without bundle
+metadata do not offer installation.
 
 ## 3. Connect to the correct server
 
