@@ -171,7 +171,7 @@ jobs:
                 if pgrep -f 'WebKitWebProcess|WebKitGPUProcess' >/dev/null; then web=1; break; fi
                 sleep 1
               done
-              ps -eo pid,args | grep -i '[w]ebkit' || true
+              pgrep -aif webkit || true
               [ -n "$web" ] || fail "no WebKit web process: WebView did not start"
               sleep 5
               import -window root evidence/screenshot.png

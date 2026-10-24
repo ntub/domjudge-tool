@@ -36,7 +36,10 @@ golangci-lint = "2.15.0"
 # Repository, security, and release tools.
 lefthook = "2.2.2"
 trufflehog = "3.99.4"
+# actionlint runs shellcheck on `run:` scripts only when it is on PATH; pin it
+# so local checks match CI runners, which preinstall shellcheck.
 actionlint = "1.7.12"
+shellcheck = "0.11.0"
 zizmor = "1.31.1"
 git-cliff = "2.14.2"
 goreleaser = "2.19.0"
